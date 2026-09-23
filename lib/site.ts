@@ -6,7 +6,7 @@ export const site = {
   description:
     "Proofline finds internships and entry-level jobs that fit you, scores each one with the math shown, and writes a one-page resume for every application using only facts you've confirmed.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://proofline.app",
-  contactEmail: "hello@proofline.app",
+  contactEmail: "christianbrinkley4@gmail.com",
   routes: {
     signUp: "/signup",
     signIn: "/login",
