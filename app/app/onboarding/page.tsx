@@ -13,15 +13,15 @@ export const metadata: Metadata = { title: "Set up your agent" };
 
 const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.category, state: f.verificationState, source: f.source });
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({ searchParams }: PageProps<"/app/onboarding">) {
+  const requested = (await searchParams).step;
   const session = await requireSession();
   const userId = session.user.id;
   const profile = await ensureProfile(userId, session.user.name);
   const [experiences, facts, questions] = await Promise.all([listExperiences(userId), listFacts(userId), listOpenQuestions(userId)]);
 
-  const step = (ONBOARDING_STEPS as readonly string[]).includes(profile.onboardingStep ?? "")
-    ? (profile.onboardingStep as OnboardingStep)
-    : "start";
+  const isStep = (value: unknown): value is OnboardingStep => typeof value === "string" && (ONBOARDING_STEPS as readonly string[]).includes(value);
+  const step: OnboardingStep = isStep(requested) ? requested : isStep(profile.onboardingStep) ? profile.onboardingStep : "start";
 
   const data: OnboardingData = {
     step: profile.onboardingCompletedAt && step === "done" ? "done" : step,

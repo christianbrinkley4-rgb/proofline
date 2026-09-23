@@ -97,6 +97,19 @@ export async function answerQuestion(userId: string, questionId: string, answer:
     });
   }
 
+  // A held bullet goes live once the student backs it, and is retired if they say no.
+  if (q.bulletId) {
+    const bullet = await db.query.bullet.findFirst({ where: eq(schema.bullet.id, q.bulletId) });
+    if (bullet && fact && fact.verificationState === "confirmed") {
+      await db
+        .update(schema.bullet)
+        .set({ status: "active", factIds: [...bullet.factIds, fact.id], scoreDetail: { ...(bullet.scoreDetail ?? {}), verified: true, unsupported: [] } })
+        .where(eq(schema.bullet.id, bullet.id));
+    } else if (bullet && q.kind === "yes_no") {
+      await db.update(schema.bullet).set({ status: "archived" }).where(eq(schema.bullet.id, bullet.id));
+    }
+  }
+
   const [updated] = await db
     .update(schema.question)
     .set({ status: "answered", answer: value, answeredAt: new Date() })
