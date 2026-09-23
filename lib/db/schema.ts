@@ -285,7 +285,20 @@ export const question = pgTable(
 
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
 
-export const jobSourceEnum = pgEnum("job_source", ["greenhouse", "lever", "ashby", "smartrecruiters", "link"]);
+export const jobSourceEnum = pgEnum("job_source", [
+  "greenhouse",
+  "lever",
+  "ashby",
+  "smartrecruiters",
+  "link",
+  "workday",
+  "themuse",
+  "adzuna",
+  "usajobs",
+]);
+
+/** internship, entry (new grad, junior), experienced, or unknown when the posting doesn't say. */
+export const jobLevelEnum = pgEnum("job_level", ["internship", "entry", "experienced", "unknown"]);
 export const jobModeEnum = pgEnum("job_mode", ["remote", "hybrid", "onsite", "unknown"]);
 
 /** Postings are shared across users; per-user state lives in `job_match`. */
@@ -300,6 +313,7 @@ export const job = pgTable(
     title: text("title").notNull(),
     location: text("location"),
     mode: jobModeEnum("mode").notNull().default("unknown"),
+    level: jobLevelEnum("level").notNull().default("unknown"),
     url: text("url").notNull(),
     description: text("description"),
     department: text("department"),
