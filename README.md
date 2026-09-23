@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Proofline
 
-## Getting Started
+A web app that takes a student from "I need a job" to hired: profile, job discovery, fit scores, tailored one-page resumes, applications, tracking, follow-ups, and interview prep, in one loop. Every resume line traces back to a fact the user confirmed.
 
-First, run the development server:
+"Proofline" is the working name. It lives in one place, [`lib/site.ts`](lib/site.ts).
+
+## Status
+
+| Phase 1 slice | State |
+| --- | --- |
+| 1. Scaffold, design system, landing page | Done |
+| 2. Auth, onboarding, knowledge base model | Next |
+| 3. Resume upload and fact confirmation | |
+| 4. Bullet generator with verification prompts | |
+| 5. Natural-language job discovery and fit score | |
+| 6. Tailoring engine and DOCX/PDF export | |
+| 7. Application tracker | |
+
+## Setup
+
+Requires Node 20 or newer.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Other scripts:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test             # unit tests (Vitest)
+npm run typecheck    # tsc --noEmit
+npm run lint         # ESLint
+npm run build        # production build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env.local` when a slice needs keys. Slice 1 needs none.
 
-## Learn More
+## Architecture map
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/                      Next.js App Router pages and global styles (tokens in globals.css)
+components/ui/            shadcn/ui primitives (Radix base)
+components/brand/         Logo and mark
+components/marketing/     Landing page sections
+  product-demo/           Interactive demo in the hero (find, score, tailor, track)
+lib/site.ts               Product name, URLs, routes
+lib/voice/rules.ts        Voice rules: em dashes, banned filler, weak bullet openers
+lib/fit/rubric.ts         Fit score rubric (six components, eligibility gates)
+lib/demo/sample-data.ts   Made-up student, companies, and postings for the demo
+tests/                    Cross-cutting tests (site copy follows the voice rules)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Coming with the next slices:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+lib/llm/provider.ts       Provider interface. Anthropic first, swappable.
+lib/llm/prompts/          Versioned prompts (v1, v2...). Never inline in components.
+lib/kb/                   Append-only fact store with verification states
+lib/jobs/sources/         Greenhouse and Lever board clients, dedupe, ranking
+supabase/migrations/      Database schema
+```
 
-## Deploy on Vercel
+## Where prompts live
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`lib/llm/prompts/`, versioned by file (`bullets.v1.ts`, `bullets.v2.ts`). Components call typed functions in `lib/`, never a prompt string. The first prompts land in slice 3.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Quality gate
+
+The export quality gate (slice 12) blocks on factual failures and warns on style. Its style checks are already live in [`lib/voice/rules.ts`](lib/voice/rules.ts) and run in three places today:
+
+- `npm test` checks the rules themselves, the demo's resume bullets, and every file of site copy.
+- The landing page demo's "Checks" panel runs the same functions on the sample resume.
+- New copy that uses an em dash or a banned word fails `npm test`.
+
+## Design
+
+See [DESIGN.md](DESIGN.md) for tokens, type, spacing, motion, and copy rules.
+
+## Decisions that change the brief
+
+Logged so they can be reversed on purpose, not by accident.
+
+1. **Eligibility gates on the fit score.** The six weighted components stay as specified (30/25/15/15/10/5). On top of them, a failed hard requirement (graduation window, license, work authorization, a stated deal-breaker) caps the score at 40 and says why. A 78 you can't apply to is worse than useless. See `lib/fit/rubric.ts`.
+2. **Amber "pending" status next to the single green accent.** Unconfirmed facts have to be visibly marked. Amber is used only for things waiting on the user, never decoratively.
+3. **Made-up companies in the demo.** Real employer names next to fake postings could read as endorsements or real openings. The demo is labeled as sample data.
+4. **Voice rules as code from day one.** The same module will power the export quality gate, so the site and the product can't drift apart on tone.
+5. **Light-only marketing site for now.** Dark tokens exist so components stay theme-safe. The app UI can add a toggle later.
+6. **No LLM code in slice 1.** The provider interface arrives with the first real call (slice 3) instead of as an empty stub.
