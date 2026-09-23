@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // PGlite loads its WebAssembly build from its own package folder, so it must not be bundled.
+  serverExternalPackages: ["@electric-sql/pglite"],
 };
 
 export default nextConfig;

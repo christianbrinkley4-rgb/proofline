@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local agent/tool settings
 .claude/settings.local.json
+
+# local database
+.data/
