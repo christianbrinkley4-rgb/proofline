@@ -4,9 +4,11 @@ import { after } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { db, schema } from "@/lib/db";
+import { AgentSuggestions } from "@/components/jobs/agent-suggestions";
 import { JobSearch } from "@/components/jobs/job-search";
 import { WatchedSearches } from "@/components/jobs/watched-searches";
 import { requireSession } from "@/lib/auth";
+import { preferenceSuggestions } from "@/lib/agent/preferences";
 import { fitBand } from "@/lib/fit/rubric";
 import { formatPay, type JobResult } from "@/lib/jobs/search";
 import { listWatched, markViewed } from "@/lib/jobs/saved";
@@ -28,6 +30,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
     }),
     listWatched(session.user.id),
   ]);
+  const suggestions = await preferenceSuggestions(session.user.id);
   // Background refreshes of watched searches don't count as "your latest search".
   const lastSearch = recentSearches.find((e) => !e.data.savedSearchId);
   // Opening a watched search (from Today or a chip) means its new postings have been seen.
@@ -75,6 +78,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
         description="Tell your agent what you want. It searches employer career sites and job boards live, merges duplicates, and scores every opening against your confirmed profile."
       />
       <div className="mt-8">
+        <AgentSuggestions suggestions={suggestions.map((s) => ({ key: s.key, question: s.question, because: s.because }))} />
         <WatchedSearches searches={watched.map((w) => ({ id: w.id, query: w.query, fresh: w.newJobIds.length, lastRunAt: w.lastRunAt?.toISOString() ?? null }))} />
         <Suspense>
           {/* Keyed by the query so opening a watched search starts it fresh. */}

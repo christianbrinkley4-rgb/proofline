@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { importJobLink, LinkImportError } from "@/lib/jobs/sources/link";
+import { acceptSuggestion, declineSuggestion } from "@/lib/agent/preferences";
 import { markViewed, refreshSearch, unwatchSearch, watchSearch } from "@/lib/jobs/saved";
 import { requirementsOf, saveMatches, setMatchStatus, upsertJobs } from "@/lib/jobs/store";
 
@@ -77,6 +78,18 @@ export async function refreshSearchAction(id: string) {
   revalidatePath("/app");
   revalidatePath("/app/jobs");
   return result;
+}
+
+export async function answerSuggestionAction(key: string, accept: boolean): Promise<{ ok: boolean }> {
+  const id = await userId();
+  const clean = z.string().min(3).max(200).parse(key);
+  if (!accept) {
+    await declineSuggestion(id, clean);
+    return { ok: true };
+  }
+  const applied = await acceptSuggestion(id, clean);
+  revalidatePath("/app", "layout");
+  return { ok: Boolean(applied) };
 }
 
 export async function markSearchViewedAction(id: string) {

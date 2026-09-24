@@ -135,6 +135,11 @@ export default async function ProfilePage() {
               <Row label="When" value={profile?.targetTerm} />
               <Row label="Where" value={profile?.targetLocations.join(", ")} />
               <Row label="Setup" value={profile?.workModes.join(", ")} />
+              <Row label="Pay floor" value={profile?.payFloor ? `$${profile.payFloor}${profile.payFloor < 500 ? "/hr" : "/yr"}` : null} />
+              <Row
+                label="Skip"
+                value={profile?.dealBreakers.map((b) => (b.toLowerCase().startsWith("company:") ? `${b.slice(8).trim()} (company)` : b)).join(", ")}
+              />
             </dl>
           </SideCard>
           <SideCard title={`Skills (${skills.length})`} edit="/app/onboarding?step=skills">

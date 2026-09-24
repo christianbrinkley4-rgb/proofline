@@ -1,4 +1,7 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { logEvent } from "@/lib/agent/events";
+import { dealBreakerMatches } from "@/lib/agent/learn";
+import { db, schema } from "@/lib/db";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { indexCandidate, scoreFit, titleMatches, type FitReport } from "@/lib/fit/engine";
 import { parseRequirements } from "@/lib/fit/requirements";
@@ -49,7 +52,8 @@ function termFits(title: string, term: string | null): "match" | "other" | "none
   return `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} ${year}` === term ? "match" : "other";
 }
 
-function passes(job: NormalizedJob, intent: JobIntent, roleWords: string[], places: ReturnType<typeof resolvePlace>[]): boolean {
+function passes(job: NormalizedJob, intent: JobIntent, roleWords: string[], places: ReturnType<typeof resolvePlace>[], dealBreakers: string[] = []): boolean {
+  if (dealBreakerMatches(dealBreakers, job)) return false;
   if (roleWords.length && !titleMatches(job.title, roleWords)) return false;
   if (titleExcluded(job.title, intent.roles)) return false;
   if (intent.level === "internship" && job.level !== "internship") return false;
@@ -104,6 +108,7 @@ export async function searchJobs(
 ): Promise<{ intent: JobIntent; results: JobResult[]; stats: SearchStats }> {
   const started = Date.now();
   const profile = await getProfile(userId);
+  const dealBreakers = profile?.dealBreakers ?? [];
   const intent = parseIntent(query, {
     targetRoles: profile?.targetRoles,
     targetLocations: profile?.targetLocations,
@@ -124,7 +129,7 @@ export async function searchJobs(
   await mapLimit(BOARDS, 12, async (ref) => {
     const jobs = await boardJobs(ref);
     scanned += jobs.length;
-    candidates.push(...jobs.filter((j) => passes(j, intent, roleWords, places)));
+    candidates.push(...jobs.filter((j) => passes(j, intent, roleWords, places, dealBreakers)));
     done++;
     if (done % 20 === 0 || done === BOARDS.length) emit({ type: "status", message: `Searched ${done} of ${BOARDS.length} company boards` });
   });
@@ -142,7 +147,7 @@ export async function searchJobs(
     await mapLimit(workday, 6, (ref) => searchWorkday(ref, keyword || "intern").catch(() => [] as NormalizedJob[]))
   ).flat();
   scanned += wdFound.length;
-  const wdKept = wdFound.filter((j) => passes(j, intent, roleWords, places));
+  const wdKept = wdFound.filter((j) => passes(j, intent, roleWords, places, dealBreakers));
   candidates.push(...wdKept);
   emit({ type: "source", source: "Large employers", found: wdKept.length });
 
@@ -157,7 +162,7 @@ export async function searchJobs(
   emit({ type: "status", message: "Checking The Muse" });
   const muse = await searchMuse({ levels: museLevels, categories: museCategories, locations: places.length ? museLocations : [], pages: 3 }).catch(() => []);
   scanned += muse.length;
-  const museKept = muse.filter((j) => passes(j, intent, roleWords, places));
+  const museKept = muse.filter((j) => passes(j, intent, roleWords, places, dealBreakers));
   candidates.push(...museKept);
   emit({ type: "source", source: "The Muse", found: museKept.length });
 
@@ -166,7 +171,7 @@ export async function searchJobs(
     const extra = (await Promise.all([searchAdzuna(`${keyword}`, where).catch(() => []), searchUsaJobs(keyword, where).catch(() => [])])).flat();
     sourcesSearched += 1;
     scanned += extra.length;
-    candidates.push(...extra.filter((j) => passes(j, intent, roleWords, places)));
+    candidates.push(...extra.filter((j) => passes(j, intent, roleWords, places, dealBreakers)));
   }
 
   // Merge duplicates: same company, title, and city from several boards
@@ -205,8 +210,9 @@ export async function searchJobs(
     if (detail) Object.assign(job, detail);
   });
 
-  // Exclusions that live in the description ("don't require the CPA")
+  // Exclusions that live in the description ("don't require the CPA", deal-breakers like "Unpaid")
   const final = top.filter((job) => {
+    if (dealBreakerMatches(dealBreakers, job)) return false;
     if (!intent.exclude.includes("cpa") || !job.description) return true;
     return !parseRequirements(job.description).licensesRequired.includes("CPA");
   });
@@ -215,10 +221,20 @@ export async function searchJobs(
   const rows = await upsertJobs(final);
   const candidate = await loadCandidate(userId);
   const index = indexCandidate(candidate);
+  // A job the student already turned down stays gone.
+  const rowIds = [...rows.values()].map((r) => r.id);
+  const dismissed = new Set(
+    rowIds.length
+      ? (await db.query.jobMatch.findMany({
+          where: and(eq(schema.jobMatch.userId, userId), eq(schema.jobMatch.status, "dismissed"), inArray(schema.jobMatch.jobId, rowIds)),
+          columns: { jobId: true },
+        })).map((m) => m.jobId)
+      : [],
+  );
   const scored: Array<{ job: JobRow; fit: FitReport; termMatch: boolean }> = [];
   for (const job of final) {
     const row = rows.get(`${job.source}|${job.sourceId}`);
-    if (!row) continue;
+    if (!row || dismissed.has(row.id)) continue;
     const requirements = (row.requirements as unknown as ReturnType<typeof parseRequirements> | null) ?? parseRequirements(row.description);
     const fit = scoreFit({ title: row.title, location: row.location, mode: row.mode, level: row.level, requirements }, candidate, index);
     scored.push({ job: row, fit, termMatch: termFits(row.title, intent.term) === "match" });
