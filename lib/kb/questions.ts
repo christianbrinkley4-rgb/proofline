@@ -63,12 +63,21 @@ export type AnswerResult = { question: Question; fact?: Fact };
 /**
  * Applies an answer. Yes/no questions about a proposed fact confirm or reject it.
  * Other answers become a new confirmed fact, since the user typed them.
+ *
+ * An answer relayed by an outside AI (`source: "connector"`) becomes an unconfirmed
+ * fact instead, and it can never answer a yes/no question: only the person confirms.
  */
-export async function answerQuestion(userId: string, questionId: string, answer: string): Promise<AnswerResult | undefined> {
+export async function answerQuestion(
+  userId: string,
+  questionId: string,
+  answer: string,
+  source: "user_stated" | "connector" = "user_stated",
+): Promise<AnswerResult | undefined> {
   const q = await db.query.question.findFirst({
     where: and(eq(schema.question.id, questionId), eq(schema.question.userId, userId)),
   });
   if (!q || q.status !== "open") return undefined;
+  if (source === "connector" && q.kind === "yes_no") return undefined;
 
   const value = answer.trim();
   const dismissed = q.kind !== "yes_no" && (!value || isNonAnswer(value));
@@ -94,7 +103,7 @@ export async function answerQuestion(userId: string, questionId: string, answer:
       content: q.factTemplate ? fillTemplate(q.factTemplate, value) : value,
       data: { value, questionId: q.id },
       experienceId: q.experienceId,
-      source: "user_stated",
+      source,
       sourceDetail: `question:${q.id}`,
     });
   }

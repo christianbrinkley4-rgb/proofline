@@ -7,6 +7,8 @@ export type FactView = {
   category: string;
   state: "confirmed" | "unconfirmed" | "needs_review" | "rejected";
   source: string;
+  /** For connector facts, the name of the connected AI. */
+  sourceDetail?: string | null;
 };
 
 export type QuestionView = { id: string; prompt: string; kind: "yes_no" | "number" | "text" | "choice"; proposedValue: string | null };

@@ -11,7 +11,7 @@ import { ONBOARDING_STEPS, type OnboardingStep } from "./steps";
 
 export const metadata: Metadata = { title: "Set up your agent" };
 
-const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.category, state: f.verificationState, source: f.source });
+const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.category, state: f.verificationState, source: f.source, sourceDetail: f.sourceDetail });
 
 export default async function OnboardingPage({ searchParams }: PageProps<"/app/onboarding">) {
   const requested = (await searchParams).step;

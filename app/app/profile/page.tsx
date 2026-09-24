@@ -19,7 +19,7 @@ import { formatMonth, formatRange } from "@/lib/resume/parse/dates";
 
 export const metadata: Metadata = { title: "Profile" };
 
-const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.category, state: f.verificationState, source: f.source });
+const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.category, state: f.verificationState, source: f.source, sourceDetail: f.sourceDetail });
 
 export default async function ProfilePage() {
   const session = await requireSession();

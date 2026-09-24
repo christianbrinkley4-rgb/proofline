@@ -8,6 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { FactView } from "./types";
 
+/** Where a proposal came from, so the person knows who is asking them to confirm it. */
+function origin(fact: FactView): string | null {
+  if (fact.source === "connector") return `Suggested by ${fact.sourceDetail?.trim() || "your connected AI"}`;
+  if (fact.source === "resume_parsed") return "From your resume";
+  if (fact.source === "agent_proposed" || fact.source === "inferred") return "Proofline's suggestion";
+  return null;
+}
+
 /** One fact with Yes / No / Edit. Confirmed facts show a check and can still be corrected. */
 export function FactRow({ fact }: { fact: FactView }) {
   const [editing, setEditing] = useState(false);
@@ -56,7 +64,10 @@ export function FactRow({ fact }: { fact: FactView }) {
           ) : (
             <CircleAlert className="mt-0.5 size-4 shrink-0 text-pending" aria-label="Needs your OK" />
           )}
-          <p className="min-w-0 flex-1 text-[14px] leading-6">{fact.content}</p>
+          <p className="min-w-0 flex-1 text-[14px] leading-6">
+            {fact.content}
+            {state !== "confirmed" && origin(fact) && <span className="block text-[11.5px] leading-4 text-muted-foreground">{origin(fact)}</span>}
+          </p>
           <div className="flex shrink-0 gap-1">
             {state !== "confirmed" && (
               <>
