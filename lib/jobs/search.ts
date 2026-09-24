@@ -236,7 +236,7 @@ export async function searchJobs(
     ms: Date.now() - started,
   };
   emit({ type: "done", stats });
-  await logEvent(userId, "search_run", { query, matched: scored.length, scanned, roles: intent.roles, locations: intent.locations });
+  await logEvent(userId, "search_run", { query, matched: scored.length, scanned, roles: intent.roles, locations: intent.locations, savedSearchId: opts.savedSearchId ?? null });
 
   return {
     intent,

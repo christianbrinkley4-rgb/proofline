@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Bot, CalendarClock, CircleCheck, FileText, MessagesSquare, Search, UserRound } from "lucide-react";
+import { ArrowRight, BellRing, Bot, CalendarClock, CircleCheck, FileText, MessagesSquare, Search, UserRound } from "lucide-react";
 import { AgentChat } from "@/components/agent/agent-chat";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { requireSession } from "@/lib/auth";
@@ -20,6 +20,7 @@ const ICON: Record<NextMove["kind"], typeof UserRound> = {
   resume: FileText,
   prep: MessagesSquare,
   explore: Search,
+  news: BellRing,
 };
 
 export default async function AgentPage() {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classify, pickJob } from "./offline";
+import { classify, pickJob, watchQuery } from "./offline";
 
 describe("offline agent routing", () => {
   it.each([
@@ -19,8 +19,18 @@ describe("offline agent routing", () => {
     ["Last summer I tutored three students in algebra twice a week", "story"],
     ["I organized a food drive that collected 120 boxes for families", "story"],
     ["tell me a joke", "unknown"],
+    ["keep an eye on accounting internships in Raleigh for me", "watch"],
+    ["let me know when new tax internships open up", "watch"],
   ])("%s -> %s", (message, intent) => {
     expect(classify(message)).toBe(intent);
+  });
+
+  it.each([
+    ["keep an eye on accounting internships in Raleigh for me", "accounting internships in Raleigh"],
+    ["Can you watch for remote data analyst jobs?", "remote data analyst jobs"],
+    ["let me know when new tax internships open up", "tax internships"],
+  ])("pulls the search out of %s", (message, query) => {
+    expect(watchQuery(message)).toBe(query);
   });
 
   it("finds the named company, preferring tracked applications and longer names", () => {

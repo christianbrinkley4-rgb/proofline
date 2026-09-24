@@ -389,6 +389,10 @@ export const savedSearch = pgTable(
     intent: jsonb("intent").$type<Record<string, unknown>>().notNull(),
     alerts: boolean("alerts").notNull().default(true),
     lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    /** Every posting this search has already shown, so a refresh can tell what's new. */
+    seenJobIds: uuid("seen_job_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    /** Postings found since the student last looked at this search. */
+    newJobIds: uuid("new_job_ids").array().notNull().default(sql`'{}'::uuid[]`),
     createdAt: createdAt(),
   },
   (t) => [index("saved_search_user_idx").on(t.userId)],

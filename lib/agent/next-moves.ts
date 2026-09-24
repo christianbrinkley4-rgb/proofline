@@ -1,13 +1,14 @@
 import { factCounts } from "@/lib/kb/facts";
 import { listOpenQuestions } from "@/lib/kb/questions";
 import { listApplications } from "@/lib/tracker/service";
+import { listWatched } from "@/lib/jobs/saved";
 
 /** One thing the student should do next, with where to do it. */
-export type NextMove = { kind: "verify" | "follow_up" | "resume" | "prep" | "deadline" | "explore"; title: string; detail: string; href: string };
+export type NextMove = { kind: "verify" | "follow_up" | "resume" | "prep" | "deadline" | "explore" | "news"; title: string; detail: string; href: string };
 
 /** The most useful next actions, in priority order. Shared by the Agent page and chat. */
 export async function nextMoves(userId: string, now = new Date()): Promise<NextMove[]> {
-  const [facts, questions, applications] = await Promise.all([factCounts(userId), listOpenQuestions(userId), listApplications(userId)]);
+  const [facts, questions, applications, watched] = await Promise.all([factCounts(userId), listOpenQuestions(userId), listApplications(userId), listWatched(userId)]);
   const moves: NextMove[] = [];
 
   const soon = new Date(now.getTime() + 7 * 864e5).toISOString().slice(0, 10);
@@ -34,6 +35,15 @@ export async function nextMoves(userId: string, now = new Date()): Promise<NextM
       title: `Prepare for your ${app.company} interview`,
       detail: `Practice likely questions for ${app.title} with the stories you already have.`,
       href: `/app/jobs/${app.jobId}/packet#interview`,
+    });
+  }
+  for (const w of watched.filter((x) => x.newJobIds.length).slice(0, 2)) {
+    const n = w.newJobIds.length;
+    moves.push({
+      kind: "news",
+      title: `${n} new ${n === 1 ? "match" : "matches"} for "${w.query}"`,
+      detail: "Found since you last looked. Open the search to see how each one fits.",
+      href: `/app/jobs?q=${encodeURIComponent(w.query)}`,
     });
   }
   const waiting = facts.toReview + questions.length;

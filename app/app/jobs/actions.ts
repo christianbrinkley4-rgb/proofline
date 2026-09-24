@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { logEvent } from "@/lib/agent/events";
 import { requireSession } from "@/lib/auth";
-import { db, schema } from "@/lib/db";
+import { z } from "zod";
+import { db } from "@/lib/db";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
-import { parseIntent } from "@/lib/jobs/intent";
 import { importJobLink, LinkImportError } from "@/lib/jobs/sources/link";
+import { markViewed, refreshSearch, unwatchSearch, watchSearch } from "@/lib/jobs/saved";
 import { requirementsOf, saveMatches, setMatchStatus, upsertJobs } from "@/lib/jobs/store";
-import { getProfile } from "@/lib/kb/profile";
 
 async function userId() {
   return (await requireSession()).user.id;
@@ -54,16 +54,32 @@ export async function importLinkAction(url: string): Promise<{ ok: true; jobId: 
   }
 }
 
-export async function saveSearchAction(query: string) {
-  const id = await userId();
-  const profile = await getProfile(id);
-  const intent = parseIntent(query, {
-    targetRoles: profile?.targetRoles,
-    targetLocations: profile?.targetLocations,
-    workModes: profile?.workModes,
-    targetTerm: profile?.targetTerm,
-  });
-  await db.insert(schema.savedSearch).values({ userId: id, query, intent: intent as unknown as Record<string, unknown>, alerts: true, lastRunAt: new Date() });
+/** Watches a search; the results already on screen count as seen. */
+export async function saveSearchAction(query: string, shownJobIds: string[] = []): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await watchSearch(await userId(), query, shownJobIds);
+  } catch (error) {
+    return { ok: false, error: error instanceof Error && !(error instanceof z.ZodError) ? error.message : "Couldn't watch that search." };
+  }
   revalidatePath("/app");
   revalidatePath("/app/jobs");
+  return { ok: true };
+}
+
+export async function unwatchSearchAction(id: string) {
+  await unwatchSearch(await userId(), id);
+  revalidatePath("/app");
+  revalidatePath("/app/jobs");
+}
+
+export async function refreshSearchAction(id: string) {
+  const result = await refreshSearch(await userId(), id);
+  revalidatePath("/app");
+  revalidatePath("/app/jobs");
+  return result;
+}
+
+export async function markSearchViewedAction(id: string) {
+  await markViewed(await userId(), id);
+  revalidatePath("/app");
 }

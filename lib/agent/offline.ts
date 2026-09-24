@@ -14,6 +14,7 @@ export type OfflineReply = { text: string; tools: Array<{ name: string; ok: bool
 const HELP = `Here's what I can do right now:
 
 - **Find jobs**: "find accounting internships in Raleigh for summer 2027"
+- **Watch a search**: "keep an eye on tax internships in Charlotte"
 - **Plan your day**: "what should I do next?"
 - **Check your applications**: "where do my applications stand?"
 - **Draft a cover letter**: "cover letter for Robinhood"
@@ -41,11 +42,26 @@ export function pickJob(message: string, jobs: JobRef[]): JobRef | null {
   return named.sort((a, b) => b.company.length - a.company.length || Number(Boolean(b.applicationId)) - Number(Boolean(a.applicationId)))[0];
 }
 
-export type Intent = "help" | "next" | "search" | "letter" | "prep" | "follow_up" | "status" | "story" | "unknown";
+export type Intent = "help" | "next" | "search" | "watch" | "letter" | "prep" | "follow_up" | "status" | "story" | "unknown";
+
+const WATCH = /\b(keep (an eye|watching)|watch for|watch|alert me|notify me|let me know (when|if)|tell me when)\b/;
+
+/** "Keep an eye on accounting internships in Raleigh for me" -> "accounting internships in Raleigh". */
+export function watchQuery(message: string): string {
+  return message
+    .replace(/^(can you|could you|please)\s+/i, "")
+    .replace(/\b(keep an eye on|keep watching|watch for|watch|alert me (about|to|when there are|if there are)?|notify me (about|of|when there are)?|let me know (when|if) (there are|there's)?( new)?|tell me when (there are)?( new)?)\b/gi, "")
+    .replace(/\b(for me|please|new)\b/gi, "")
+    .replace(/\b(open up|come up|get posted|are posted|show up)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s,.:]+|[\s,.?!]+$/g, "")
+    .trim();
+}
 
 export function classify(message: string): Intent {
   const m = message.toLowerCase().trim();
   if (/cover letter/.test(m)) return "letter";
+  if (WATCH.test(m) && /\b(jobs?|internships?|roles?|positions?|openings?|co-?ops?)\b/.test(m)) return "watch";
   if (/\b(interview|prep(are)?|practice)\b/.test(m)) return "prep";
   if (/\bfollow[- ]?up\b/.test(m)) return "follow_up";
   if (/\b(what('s| is)? next|what should i do|to-?do|what'?s due|catch me up|next steps?|next moves?)\b/.test(m)) return "next";
@@ -126,6 +142,16 @@ export async function offlineReply(message: string, ctx: ToolContext): Promise<O
       if (!job.applicationId) return { text: `Track ${job.company} first and mark it Applied; then I can draft a follow-up. [Open the tracker](/app/tracker).`, tools };
       const draft = await call<{ subject: string; body: string }>("draft_follow_up", { applicationId: job.applicationId });
       return { text: `Here's a follow-up you can send from your email. Record it in the [tracker](/app/tracker) after you do.\n\n**Subject:** ${draft.subject}\n\n${draft.body}`, tools };
+    }
+
+    case "watch": {
+      const query = watchQuery(message);
+      if (query.length < 3) return { text: 'What should I watch for? Try "watch for accounting internships in Raleigh".', tools };
+      await call("watch_search", { query });
+      return {
+        text: `Watching "${query}". I'll rerun it about once a day and put anything new on your [Today](/app) page. Manage watched searches on [Jobs](/app/jobs).`,
+        tools,
+      };
     }
 
     case "status": {

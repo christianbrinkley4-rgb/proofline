@@ -264,7 +264,7 @@ export function JobSearch({
             <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-[13px]">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Bell className="size-4" />
-                Want me to keep watching? I&apos;ll show new matches on your Today page.
+                Want me to keep watching? I&apos;ll rerun it daily and show new matches on your Today page.
               </span>
               <Button
                 size="sm"
@@ -272,8 +272,14 @@ export function JobSearch({
                 disabled={watching}
                 onClick={async () => {
                   setWatching(true);
-                  await saveSearchAction(params.get("q") ?? query);
-                  toast("Saved. Your agent will keep watching this search.");
+                  const result = await saveSearchAction(params.get("q") ?? query, results.map((r) => r.jobId));
+                  if (!result.ok) {
+                    setWatching(false);
+                    toast(result.error);
+                    return;
+                  }
+                  toast("Watching. New matches will show up on your Today page.");
+                  router.refresh();
                 }}
               >
                 {watching ? <Check data-icon="inline-start" /> : <BellRing data-icon="inline-start" />}

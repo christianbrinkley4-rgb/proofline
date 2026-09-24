@@ -1,0 +1,2 @@
+ALTER TABLE "saved_search" ADD COLUMN "seen_job_ids" uuid[] DEFAULT '{}'::uuid[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "saved_search" ADD COLUMN "new_job_ids" uuid[] DEFAULT '{}'::uuid[] NOT NULL;

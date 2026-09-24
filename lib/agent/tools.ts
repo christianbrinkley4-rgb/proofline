@@ -3,6 +3,7 @@ import { logEvent } from "@/lib/agent/events";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { formatPay, searchJobs } from "@/lib/jobs/search";
+import { watchSearch } from "@/lib/jobs/saved";
 import { getJobForUser, listMatches, requirementsOf } from "@/lib/jobs/store";
 import { listExperiences } from "@/lib/kb/experiences";
 import { addFact, listFacts } from "@/lib/kb/facts";
@@ -221,6 +222,19 @@ export const TOOLS: AgentTool[] = [
           url: link(`/app/jobs/${r.jobId}`),
         })),
       };
+    },
+  }),
+
+  tool({
+    name: "watch_search",
+    title: "Watch a search",
+    description:
+      "Keep watching a job search for the student. Proofline reruns it about once a day and shows new postings on their Today page. Use a plain-language query like search_jobs takes.",
+    input: { query: z.string().trim().min(3).max(300) },
+    readOnly: false,
+    run: async (args, ctx) => {
+      const search = await watchSearch(ctx.userId, args.query);
+      return { id: search.id, query: search.query, note: "Watching. New postings will appear on the student's Today page.", todayUrl: link("/app") };
     },
   }),
 

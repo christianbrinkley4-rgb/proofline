@@ -1,12 +1,15 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { db, schema } from "@/lib/db";
 import { JobSearch } from "@/components/jobs/job-search";
+import { WatchedSearches } from "@/components/jobs/watched-searches";
 import { requireSession } from "@/lib/auth";
 import { fitBand } from "@/lib/fit/rubric";
 import { formatPay, type JobResult } from "@/lib/jobs/search";
+import { listWatched, markViewed } from "@/lib/jobs/saved";
 import { listMatches } from "@/lib/jobs/store";
 import { getProfile } from "@/lib/kb/profile";
 
@@ -16,13 +19,20 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
   const session = await requireSession();
   const { q } = await searchParams;
   const profile = await getProfile(session.user.id);
-  const [matches, lastSearch] = await Promise.all([
+  const [matches, recentSearches, watched] = await Promise.all([
     listMatches(session.user.id, ["new", "saved"], 120),
-    db.query.agentEvent.findFirst({
+    db.query.agentEvent.findMany({
       where: and(eq(schema.agentEvent.userId, session.user.id), eq(schema.agentEvent.type, "search_run")),
       orderBy: [desc(schema.agentEvent.createdAt)],
+      limit: 20,
     }),
+    listWatched(session.user.id),
   ]);
+  // Background refreshes of watched searches don't count as "your latest search".
+  const lastSearch = recentSearches.find((e) => !e.data.savedSearchId);
+  // Opening a watched search (from Today or a chip) means its new postings have been seen.
+  const opened = typeof q === "string" ? watched.find((w) => w.newJobIds.length && w.query.trim().toLowerCase() === q.trim().toLowerCase()) : undefined;
+  if (opened) after(() => markViewed(session.user.id, opened.id).catch(() => {}));
   // Saved jobs always show; unsaved ones only from the most recent search, so old results don't pile up.
   const since = lastSearch ? lastSearch.createdAt.getTime() - 10 * 60 * 1000 : 0;
   const current = matches.filter(({ match }) => match.status === "saved" || match.updatedAt.getTime() >= since);
@@ -65,8 +75,10 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
         description="Tell your agent what you want. It searches employer career sites and job boards live, merges duplicates, and scores every opening against your confirmed profile."
       />
       <div className="mt-8">
+        <WatchedSearches searches={watched.map((w) => ({ id: w.id, query: w.query, fresh: w.newJobIds.length, lastRunAt: w.lastRunAt?.toISOString() ?? null }))} />
         <Suspense>
-          <JobSearch initialQuery={query || defaultQuery} initialResults={initialResults} autoRun={Boolean(query)} />
+          {/* Keyed by the query so opening a watched search starts it fresh. */}
+          <JobSearch key={query} initialQuery={query || defaultQuery} initialResults={initialResults} autoRun={Boolean(query)} />
         </Suspense>
       </div>
     </PageBody>

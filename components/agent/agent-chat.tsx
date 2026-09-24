@@ -19,6 +19,7 @@ const TOOL_LABEL: Record<string, string> = {
   list_open_questions: "Checked open questions",
   answer_question: "Recorded your answer",
   search_jobs: "Searched jobs",
+  watch_search: "Watching a search",
   list_matched_jobs: "Checked your matches",
   get_job_fit: "Checked fit",
   list_applications: "Read your tracker",
