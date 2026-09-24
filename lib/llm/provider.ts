@@ -45,7 +45,7 @@ export const DEFAULT_MODEL = "claude-opus-5";
 
 class AnthropicProvider implements LlmProvider {
   readonly id = "anthropic" as const;
-  private client: Anthropic;
+  readonly client: Anthropic;
 
   constructor(
     apiKey: string,
@@ -108,6 +108,12 @@ export function getLlm(): LlmProvider | null {
   const key = process.env.ANTHROPIC_API_KEY?.trim();
   cached = key ? new AnthropicProvider(key, process.env.LLM_MODEL?.trim() || DEFAULT_MODEL) : null;
   return cached;
+}
+
+/** The SDK client and model for multi-turn features (chat), or null in offline mode. */
+export function anthropicClient(): { client: Anthropic; model: string } | null {
+  const llm = getLlm();
+  return llm instanceof AnthropicProvider ? { client: llm.client, model: llm.model } : null;
 }
 
 export function llmStatus(): { mode: "anthropic" | "offline"; model: string | null } {

@@ -375,7 +375,7 @@ export const TOOLS: AgentTool[] = [
       return view.prep.map((q) => ({
         question: q.question,
         why: q.why,
-        story: q.story ? { where: q.story.org, action: q.story.parts.action, result: q.story.parts.result } : null,
+        story: q.story ? { where: q.story.org, text: q.story.text, action: q.story.parts.action, result: q.story.parts.result } : null,
         tips: q.tips,
       }));
     },
