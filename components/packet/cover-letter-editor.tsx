@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { draftCoverLetterAction, saveCoverLetterAction, saveWhyAction } from "@/app/app/jobs/[id]/packet/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { blockingExportMessage, downloadExport, isBlockingFail } from "@/lib/export-download";
 import { letterText, type CoverLetter, type LetterCheck, type LetterParagraph } from "@/lib/packet/cover-letter";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +47,12 @@ export function CoverLetterEditor({
   const [savedWhy, setSavedWhy] = useState(initialWhy);
   const [confirmRedraft, setConfirmRedraft] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [downloading, setDownloading] = useState<"pdf" | "docx" | null>(null);
   const dirty = JSON.stringify(letter) !== JSON.stringify(saved);
-  const blocked = checks.some((c) => c.blocking && !c.ok);
+  const blockers = checks.filter(isBlockingFail);
+  const warns = checks.filter((c) => !c.blocking && !c.ok);
+  const blocked = blockers.length > 0;
+  const blockHint = blocked ? blockingExportMessage(blockers) : null;
 
   const draft = () =>
     startTransition(async () => {
@@ -89,6 +94,16 @@ export function CoverLetterEditor({
         toast.error("Couldn't save that. Please try again.");
       }
     });
+
+  const onDownload = async (format: "pdf" | "docx") => {
+    setDownloading(format);
+    try {
+      const result = await downloadExport(`/api/packet/${jobId}/cover-letter/${format}`, `Cover-Letter.${format}`);
+      if (!result.ok) toast.error(result.message);
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   // A fresh draft or a server-filled placeholder should replace local state when nothing is being edited.
   if (!dirty && initialLetter && JSON.stringify(initialLetter) !== JSON.stringify(saved)) {
@@ -196,7 +211,10 @@ export function CoverLetterEditor({
                   <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                 )}
                 <span>
-                  <span className="font-medium">{c.label}.</span> <span className="text-muted-foreground">{c.detail}</span>
+                  <span className="font-medium">{c.label}.</span>{" "}
+                  <span className="text-muted-foreground">{c.detail}</span>
+                  {!c.ok && c.blocking && <span className="ml-1 text-[11px] text-pending-ink">blocks export</span>}
+                  {!c.ok && !c.blocking && <span className="ml-1 text-[11px] text-muted-foreground">warning</span>}
                 </span>
               </li>
             ))}
@@ -219,18 +237,14 @@ export function CoverLetterEditor({
               Copy text
             </Button>
             {(["pdf", "docx"] as const).map((format) => (
-              <Button key={format} variant="outline" asChild={!blocked && !dirty} disabled={blocked || dirty}>
-                {!blocked && !dirty ? (
-                  <a href={`/api/packet/${jobId}/cover-letter/${format}`}>
-                    <Download data-icon="inline-start" />
-                    {format.toUpperCase()}
-                  </a>
-                ) : (
-                  <span>
-                    <Download data-icon="inline-start" />
-                    {format.toUpperCase()}
-                  </span>
-                )}
+              <Button
+                key={format}
+                variant="outline"
+                disabled={blocked || dirty || downloading !== null}
+                onClick={() => onDownload(format)}
+              >
+                <Download data-icon="inline-start" />
+                {format.toUpperCase()}
               </Button>
             ))}
             <span className="ml-auto" />
@@ -251,7 +265,10 @@ export function CoverLetterEditor({
               </Button>
             )}
           </div>
-          {blocked && !dirty && <p className="text-[12.5px] text-pending-ink">Downloads unlock once the checks marked with a warning pass.</p>}
+          {blocked && !dirty && blockHint && <p className="text-[12.5px] text-pending-ink">{blockHint}</p>}
+          {!blocked && !dirty && warns.length > 0 && (
+            <p className="text-[12.5px] text-muted-foreground">Style warnings won&apos;t block download.</p>
+          )}
         </>
       )}
     </div>

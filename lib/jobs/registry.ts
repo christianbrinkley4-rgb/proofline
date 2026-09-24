@@ -153,3 +153,11 @@ export function workdayFor(roles: string[], locations: string[]): Array<Tagged<W
   const hits = WORKDAY.filter((w) => w.tags.some((t) => tags.has(t)) || (nc && w.tags.includes("nc")));
   return hits.length ? hits : WORKDAY;
 }
+
+/** Company boards that match the role families; full set when there is no role signal. */
+export function boardsFor(roles: string[]): Array<Tagged<BoardRef>> {
+  if (!roles.length) return BOARDS;
+  const tags = new Set(roles.flatMap((r) => ROLE_TAGS[r] ?? [r]));
+  const hits = BOARDS.filter((b) => b.tags.some((t) => tags.has(t)));
+  return hits.length ? hits : BOARDS;
+}

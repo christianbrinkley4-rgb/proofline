@@ -34,6 +34,8 @@ export type ToolContext = {
   email: string;
   /** Who is calling, e.g. "Claude" or "Proofline". Shown to the person next to proposals. */
   client: string;
+  /** Live status lines for long tools (in-app chat). MCP callers leave this unset. */
+  onStatus?: (message: string) => void;
 };
 
 export type AgentTool = {
@@ -207,7 +209,9 @@ export const TOOLS: AgentTool[] = [
     },
     readOnly: false,
     run: async (args, ctx) => {
-      const { intent, results, stats } = await searchJobs(ctx.userId, args.query);
+      const { intent, results, stats } = await searchJobs(ctx.userId, args.query, (event) => {
+        if (event.type === "status") ctx.onStatus?.(event.message);
+      });
       return {
         understood: { roles: intent.roles, level: intent.level, term: intent.term, places: intent.locations, modes: intent.modes },
         scanned: stats.scanned,

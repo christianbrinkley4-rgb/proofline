@@ -43,6 +43,8 @@ export type SearchProgress =
   | { type: "intent"; intent: JobIntent }
   | { type: "status"; message: string }
   | { type: "source"; source: string; found: number }
+  /** Ranked matches. `partial` is true for the early title-level pass before detail fetch. */
+  | { type: "results"; results: unknown[]; partial?: boolean }
   | { type: "done"; stats: SearchStats };
 
 export type SearchStats = {

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { RichText } from "./rich-text";
 
 type ToolState = { name: string; title?: string; ok?: boolean };
-type Turn = { id: string; role: "user" | "assistant"; text: string; tools: ToolState[]; pending?: boolean };
+type Turn = { id: string; role: "user" | "assistant"; text: string; tools: ToolState[]; pending?: boolean; status?: string };
 
 const TOOL_LABEL: Record<string, string> = {
   get_profile: "Read your profile",
@@ -72,16 +72,18 @@ export function AgentChat({ initial, mode }: { initial: ChatRecord[]; mode: "mod
             | { type: "text"; delta: string }
             | { type: "tool"; name: string; title: string }
             | { type: "tool_done"; name: string; ok: boolean }
+            | { type: "status"; message: string }
             | { type: "done" }
             | { type: "error"; message: string };
           if (event.type === "text") update((turn) => ({ ...turn, text: turn.text + event.delta }));
-          else if (event.type === "tool") update((turn) => ({ ...turn, tools: [...turn.tools, { name: event.name, title: event.title }] }));
+          else if (event.type === "tool") update((turn) => ({ ...turn, tools: [...turn.tools, { name: event.name, title: event.title }], status: undefined }));
+          else if (event.type === "status") update((turn) => ({ ...turn, status: event.message }));
           else if (event.type === "tool_done") {
             if (!["get_profile", "list_facts", "list_open_questions", "list_matched_jobs", "get_job_fit", "list_applications", "interview_prep", "draft_follow_up"].includes(event.name)) changed = true;
             update((turn) => {
               const i = turn.tools.findIndex((t) => t.name === event.name && t.ok === undefined);
               const tools = i >= 0 ? turn.tools.map((t, j) => (j === i ? { ...t, ok: event.ok } : t)) : [...turn.tools, { name: event.name, ok: event.ok }];
-              return { ...turn, tools };
+              return { ...turn, tools, status: undefined };
             });
           } else if (event.type === "error") update((turn) => ({ ...turn, text: turn.text ? `${turn.text}\n\n${event.message}` : event.message }));
         }
@@ -143,13 +145,16 @@ export function AgentChat({ initial, mode }: { initial: ChatRecord[]; mode: "mod
           ) : (
             <div key={turn.id} className="max-w-[92%] text-[13.5px] leading-6">
               {turn.tools.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {turn.tools.map((t, i) => (
-                    <span key={i} className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11.5px] text-muted-foreground", t.ok === false && "border-pending/40 text-pending-ink")}>
-                      {t.ok === undefined ? <LoaderCircle className="size-3 animate-spin" /> : t.ok ? <Check className="size-3 text-brand" /> : <X className="size-3" />}
-                      {TOOL_LABEL[t.name] ?? t.title ?? t.name}
-                    </span>
-                  ))}
+                <div className="mb-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {turn.tools.map((t, i) => (
+                      <span key={i} className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11.5px] text-muted-foreground", t.ok === false && "border-pending/40 text-pending-ink")}>
+                        {t.ok === undefined ? <LoaderCircle className="size-3 animate-spin" /> : t.ok ? <Check className="size-3 text-brand" /> : <X className="size-3" />}
+                        {TOOL_LABEL[t.name] ?? t.title ?? t.name}
+                      </span>
+                    ))}
+                  </div>
+                  {turn.pending && turn.status ? <p className="mt-1.5 text-[11.5px] leading-4 text-muted-foreground">{turn.status}</p> : null}
                 </div>
               )}
               {turn.text ? <RichText text={turn.text} /> : turn.pending ? <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-label="Thinking" /> : null}

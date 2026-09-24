@@ -1,6 +1,16 @@
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { logEvent } from "@/lib/agent/events";
 import { db, schema } from "@/lib/db";
+
+/** Confirm/reject only touch current rows that are not already rejected. */
+function mutableFact(userId: string, factId: string) {
+  return and(
+    eq(schema.fact.id, factId),
+    eq(schema.fact.userId, userId),
+    isNull(schema.fact.supersededAt),
+    ne(schema.fact.verificationState, "rejected"),
+  );
+}
 
 export type Fact = typeof schema.fact.$inferSelect;
 export type FactCategory = Fact["category"];
@@ -77,20 +87,74 @@ export async function confirmFact(userId: string, factId: string): Promise<Fact 
   const [row] = await db
     .update(schema.fact)
     .set({ verificationState: "confirmed", confirmedAt: new Date() })
-    .where(and(eq(schema.fact.id, factId), eq(schema.fact.userId, userId), isNull(schema.fact.supersededAt)))
+    .where(mutableFact(userId, factId))
     .returning();
   if (row) await logEvent(userId, "fact_confirmed", { factId });
   return row;
+}
+
+/** Confirms many facts in one update and writes one event per confirmed row. */
+export async function confirmFacts(userId: string, factIds: string[]): Promise<Fact[]> {
+  const ids = [...new Set(factIds.filter(Boolean))];
+  if (!ids.length) return [];
+  const rows = await db
+    .update(schema.fact)
+    .set({ verificationState: "confirmed", confirmedAt: new Date() })
+    .where(
+      and(
+        eq(schema.fact.userId, userId),
+        inArray(schema.fact.id, ids),
+        isNull(schema.fact.supersededAt),
+        ne(schema.fact.verificationState, "rejected"),
+      ),
+    )
+    .returning();
+  if (rows.length) {
+    await db.insert(schema.agentEvent).values(
+      rows.map((row) => ({ userId, type: "fact_confirmed" as const, data: { factId: row.id } })),
+    );
+  }
+  return rows;
 }
 
 export async function rejectFact(userId: string, factId: string, reason?: string): Promise<Fact | undefined> {
   const [row] = await db
     .update(schema.fact)
     .set({ verificationState: "rejected" })
-    .where(and(eq(schema.fact.id, factId), eq(schema.fact.userId, userId), isNull(schema.fact.supersededAt)))
+    .where(mutableFact(userId, factId))
     .returning();
   if (row) await logEvent(userId, "fact_rejected", { factId, reason: reason ?? null, content: row.content });
   return row;
+}
+
+/** Inserts many independent facts in one statement and batches their events. */
+export async function addFacts(userId: string, inputs: FactInput[]): Promise<Fact[]> {
+  if (!inputs.length) return [];
+  const values = inputs.map((input) => {
+    const state = initialState(input.source);
+    return {
+      userId,
+      category: input.category,
+      content: input.content.trim(),
+      data: input.data ?? null,
+      experienceId: input.experienceId ?? null,
+      source: input.source,
+      sourceDetail: input.sourceDetail ?? null,
+      verificationState: state,
+      confirmedAt: state === "confirmed" ? new Date() : null,
+    };
+  });
+  const rows = await db.insert(schema.fact).values(values).returning();
+  await db.insert(schema.agentEvent).values(
+    rows.map((row, i) => ({
+      userId,
+      type: (values[i].verificationState === "confirmed" ? "fact_confirmed" : "fact_proposed") as
+        | "fact_confirmed"
+        | "fact_proposed",
+      data: { factId: row.id, source: inputs[i].source },
+    })),
+  );
+  return rows;
 }
 
 /**

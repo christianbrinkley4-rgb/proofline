@@ -37,6 +37,15 @@ describe("renderers", () => {
     expect(pdf.getTitle()).toBe("Resume");
   });
 
+  it("reuses a precomputed layout for PDF and DOCX", async () => {
+    const layout = await layoutResume(sample, TEMPLATES.classic);
+    const bytes = await renderPdf(sample, TEMPLATES.classic, "Resume", layout);
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(1);
+    const buffer = await renderDocx(sample, TEMPLATES.classic, layout);
+    expect(buffer.subarray(0, 2).toString()).toBe("PK");
+  });
+
   it("produces a DOCX", async () => {
     const buffer = await renderDocx(sample, TEMPLATES.technical);
     expect(buffer.subarray(0, 2).toString()).toBe("PK");

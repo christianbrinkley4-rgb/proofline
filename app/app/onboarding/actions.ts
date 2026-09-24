@@ -5,7 +5,7 @@ import { z } from "zod";
 import { logEvent } from "@/lib/agent/events";
 import { notesToStatements, probeExperience } from "@/lib/agent/probe";
 import { requireSession } from "@/lib/auth";
-import { addFact, confirmFact, listFacts, rejectFact, reviseFact } from "@/lib/kb/facts";
+import { addFact, confirmFact, confirmFacts, listFacts, rejectFact, reviseFact } from "@/lib/kb/facts";
 import { createExperience } from "@/lib/kb/experiences";
 import { updateProfile } from "@/lib/kb/profile";
 import { answerQuestion, askQuestion, dismissQuestion } from "@/lib/kb/questions";
@@ -16,7 +16,7 @@ async function userId() {
 }
 
 function refresh() {
-  revalidatePath("/app", "layout");
+  revalidatePath("/app/onboarding");
 }
 
 export async function saveStepAction(step: OnboardingStep) {
@@ -44,8 +44,7 @@ export async function reviseFactAction(factId: string, content: string) {
 }
 
 export async function confirmFactsAction(factIds: string[]) {
-  const id = await userId();
-  for (const factId of factIds) await confirmFact(id, factId);
+  await confirmFacts(await userId(), factIds);
   refresh();
 }
 
@@ -210,5 +209,5 @@ export async function finishOnboardingAction() {
   const id = await userId();
   await updateProfile(id, { onboardingCompletedAt: new Date(), onboardingStep: "done" });
   await logEvent(id, "preference_learned", { source: "onboarding_completed" });
-  refresh();
+  revalidatePath("/app", "layout");
 }

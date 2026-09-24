@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { after } from "next/server";
-import { ArrowRight, BellRing, CalendarClock, FileText, MessagesSquare, Search, SquareKanban, UserRound } from "lucide-react";
+import { ArrowRight, BellRing, CalendarClock, FileText, MessagesSquare, Search, Sparkles, SquareKanban, UserRound } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { RoleExplorer } from "@/components/jobs/role-explorer";
@@ -23,13 +23,15 @@ function greeting(name: string) {
 }
 
 const ICON: Record<NextMove["kind"], typeof UserRound> = {
-  verify: UserRound,
+  confirm_facts: UserRound,
+  answer_questions: UserRound,
   follow_up: CalendarClock,
   deadline: CalendarClock,
   resume: FileText,
   prep: MessagesSquare,
   explore: Search,
   news: BellRing,
+  prefs: Sparkles,
 };
 
 export default async function TodayPage() {

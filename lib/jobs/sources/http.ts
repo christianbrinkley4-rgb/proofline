@@ -13,10 +13,12 @@ export class SourceError extends Error {
 }
 
 export async function getJson<T>(url: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<T> {
-  const { timeoutMs = 10000, ...rest } = init;
+  const { timeoutMs = 10000, signal: outer, ...rest } = init;
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal = outer ? AbortSignal.any([timeout, outer]) : timeout;
   const res = await fetch(url, {
     ...rest,
-    signal: AbortSignal.timeout(timeoutMs),
+    signal,
     headers: { accept: "application/json", "user-agent": USER_AGENT, ...(rest.headers ?? {}) },
     cache: "no-store",
   });

@@ -10,12 +10,15 @@ import {
 } from "docx";
 import { PDFDocument, rgb } from "pdf-lib";
 import type { ResumeDocument } from "./document";
-import { layoutResume, loadFonts, PAGE, sanitize } from "./layout";
+import { layoutResume, loadFonts, PAGE, sanitize, type LayoutResult } from "./layout";
 import type { Template } from "./templates";
 
-/** The PDF draws exactly what the layout engine measured. */
-export async function renderPdf(doc: ResumeDocument, template: Template, title: string): Promise<Uint8Array> {
-  const layout = await layoutResume(doc, template);
+/**
+ * The PDF draws exactly what the layout engine measured. Pass `layout` from
+ * `freshChecks` (or any prior `layoutResume`) so export does not measure twice.
+ */
+export async function renderPdf(doc: ResumeDocument, template: Template, title: string, layout?: LayoutResult): Promise<Uint8Array> {
+  const ops = (layout ?? (await layoutResume(doc, template))).ops;
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
   pdf.setAuthor(doc.header.name);
@@ -24,7 +27,7 @@ export async function renderPdf(doc: ResumeDocument, template: Template, title: 
   const fonts = await loadFonts(template.family, pdf);
   const page = pdf.addPage([PAGE.width, PAGE.height]);
   const ink = rgb(0.08, 0.08, 0.09);
-  for (const op of layout.ops) {
+  for (const op of ops) {
     if (op.kind === "text") page.drawText(op.text, { x: op.x, y: op.y, size: op.size, font: fonts[op.font], color: ink });
     else page.drawLine({ start: { x: op.x1, y: op.y }, end: { x: op.x2, y: op.y }, thickness: op.thickness, color: rgb(0.35, 0.35, 0.37) });
   }
@@ -37,8 +40,9 @@ const twip = (points: number) => Math.round(points * 20);
 /**
  * DOCX with the same content and styles. Word reflows text itself, so we match
  * fonts, sizes, margins, and spacing; the fonts are metric twins of the PDF's.
+ * `layout` is accepted for call-site parity with PDF (quality gate already measured).
  */
-export async function renderDocx(doc: ResumeDocument, t: Template): Promise<Buffer> {
+export async function renderDocx(doc: ResumeDocument, t: Template, _layout?: LayoutResult): Promise<Buffer> {
   const contentWidth = twip(PAGE.width - 2 * t.margin);
   const font = t.docxFont;
   const size = pt(t.bodySize);

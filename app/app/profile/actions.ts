@@ -14,7 +14,7 @@ async function userId() {
 }
 
 function refresh() {
-  revalidatePath("/app", "layout");
+  revalidatePath("/app/profile");
 }
 
 export async function generateBulletsAction(experienceId: string) {

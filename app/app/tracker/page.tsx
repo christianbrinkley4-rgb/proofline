@@ -11,9 +11,10 @@ import { requirementsOf } from "@/lib/jobs/store";
 import { listApplications } from "@/lib/tracker/service";
 
 export const metadata: Metadata = { title: "Application tracker" };
-export default async function TrackerPage() {
+export default async function TrackerPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
   const session = await requireSession();
   const userId = session.user.id;
+  const { app: openApp } = await searchParams;
   const [applications, candidate, resumes, events] = await Promise.all([
     listApplications(userId), loadCandidate(userId),
     db.query.resume.findMany({ where: eq(schema.resume.userId, userId), columns: { id: true, jobId: true } }),
@@ -36,6 +37,7 @@ export default async function TrackerPage() {
     insights[app.id] = { score: fit.score, strengths: fit.strengths, gaps: fit.gaps, nextSteps: steps.slice(0, 4), versions: resumes.filter((r) => r.jobId === job.id).length };
   }
   const activity = parseApplicationActivity(events);
-  return <PageBody className="max-w-[1600px]"><PageHeader title="Your next chapter." description="Every opportunity, the evidence behind it, and your next move. All in one place." /><TrackerBoard applications={applications} insights={insights} activity={activity} name={session.user.name} now={new Date().toISOString()} /></PageBody>;
+  const initialAppId = typeof openApp === "string" && applications.some((a) => a.id === openApp) ? openApp : null;
+  return <PageBody className="max-w-[1600px]"><PageHeader title="Your next chapter." description="Every opportunity, the evidence behind it, and your next move. All in one place." /><TrackerBoard applications={applications} insights={insights} activity={activity} name={session.user.name} now={new Date().toISOString()} initialAppId={initialAppId} /></PageBody>;
 }
 

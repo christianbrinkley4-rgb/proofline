@@ -24,13 +24,13 @@ const date = (value: Date | string | null) => {
 const selectClass = "h-9 w-full rounded-md border bg-background px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const errorMessage = "Couldn't save that change. Your information is still here; please try again.";
 
-export function TrackerBoard({ applications, insights, activity, name, now }: {
-  applications: Application[]; insights: Record<string, ApplicationInsight>; activity: ApplicationActivity[]; name: string; now: string;
+export function TrackerBoard({ applications, insights, activity, name, now, initialAppId = null }: {
+  applications: Application[]; insights: Record<string, ApplicationInsight>; activity: ApplicationActivity[]; name: string; now: string; initialAppId?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"board" | "list">("board");
   const [dueOnly, setDueOnly] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialAppId);
   const [adding, setAdding] = useState(false);
   const [dragged, setDragged] = useState<string | null>(null);
   const [over, setOver] = useState<Stage | null>(null);

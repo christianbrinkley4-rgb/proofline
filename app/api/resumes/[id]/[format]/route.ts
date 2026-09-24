@@ -1,6 +1,7 @@
 import { logEvent } from "@/lib/agent/events";
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { blockedExportResponse } from "@/lib/export-gate";
 import { exportBlocked } from "@/lib/resume/quality";
 import { renderDocx, renderPdf } from "@/lib/resume/render";
 import { freshChecks, getResume, resumeFileName } from "@/lib/resume/store";
@@ -14,12 +15,9 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/resumes/[id
   const stored = await getResume(session.user.id, id);
   if (!stored) return new Response("Not found", { status: 404 });
 
-  // The quality gate runs again right before any file is built.
-  const { checks } = await freshChecks(session.user.id, stored);
-  if (exportBlocked(checks)) {
-    const reasons = checks.filter((c) => c.blocking && c.status === "fail").map((c) => c.detail);
-    return new Response(`This resume can't be exported yet: ${reasons.join(" ")}`, { status: 409 });
-  }
+  // The quality gate runs again right before any file is built; reuse its layout.
+  const { layout, checks } = await freshChecks(session.user.id, stored);
+  if (exportBlocked(checks)) return blockedExportResponse(checks);
 
   const job = stored.row.jobId ? await db.query.job.findFirst({ where: (j, { eq }) => eq(j.id, stored.row.jobId!) }) : null;
   const filename = resumeFileName(stored.document.header.name, job?.company ?? null, format);
@@ -27,8 +25,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/resumes/[id
 
   const body =
     format === "pdf"
-      ? await renderPdf(stored.document, stored.template, `${stored.document.header.name} Resume`)
-      : new Uint8Array(await renderDocx(stored.document, stored.template));
+      ? await renderPdf(stored.document, stored.template, `${stored.document.header.name} Resume`, layout)
+      : new Uint8Array(await renderDocx(stored.document, stored.template, layout));
   return new Response(new Uint8Array(body), {
     headers: {
       "content-type": format === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -6,6 +6,7 @@ import { Check, CircleAlert, Download, Minus, Scissors, SquareKanban } from "luc
 import { toast } from "sonner";
 import { trackJobAction } from "@/app/app/tracker/actions";
 import { Button } from "@/components/ui/button";
+import { blockingExportMessage, downloadExport, isBlockingFail } from "@/lib/export-download";
 import type { TemplateId, VariantId } from "@/lib/resume/document";
 import { VARIANT_BLURB, VARIANT_LABEL } from "@/lib/resume/document";
 import type { DrawOp } from "@/lib/resume/layout";
@@ -45,9 +46,26 @@ export function ResumeWorkspace({
   const [panel, setPanel] = useState<Panel>("why");
   const [hovered, setHovered] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [downloading, setDownloading] = useState<"pdf" | "docx" | null>(null);
   const passed = checks.filter((c) => c.status === "pass").length;
+  const blockers = checks.filter(isBlockingFail);
+  const warns = checks.filter((c) => !c.blocking && c.status === "warn");
+  const blockHint = blockers.length ? blockingExportMessage(blockers) : null;
   const retailor = (next: { variant?: VariantId; template?: TemplateId }) =>
     `/app/resumes/new?${new URLSearchParams({ ...(jobId ? { job: jobId } : {}), variant: next.variant ?? variant, template: next.template ?? template })}`;
+
+  const onDownload = async (format: "pdf" | "docx") => {
+    setDownloading(format);
+    try {
+      const result = await downloadExport(`/api/resumes/${resumeId}/${format}`, `Resume.${format}`);
+      if (!result.ok) {
+        toast.error(result.message);
+        if (result.kind === "blocked") setPanel("checks");
+      }
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   return (
     <div>
@@ -80,22 +98,26 @@ export function ResumeWorkspace({
           ))}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {blocked && <span className="text-[12.5px] text-pending-ink">Fix the failed check to export</span>}
-          {(["pdf", "docx"] as const).map((format) =>
-            blocked ? (
-              <Button key={format} variant="outline" size="sm" disabled>
-                <Download data-icon="inline-start" />
-                {format.toUpperCase()}
-              </Button>
-            ) : (
-              <Button key={format} variant={format === "pdf" ? "default" : "outline"} size="sm" asChild>
-                <a href={`/api/resumes/${resumeId}/${format}`} download>
-                  <Download data-icon="inline-start" />
-                  {format.toUpperCase()}
-                </a>
-              </Button>
-            ),
+          {blocked && blockHint && (
+            <button type="button" onClick={() => setPanel("checks")} className="max-w-[18rem] text-left text-[12.5px] text-pending-ink hover:underline">
+              {blockHint}
+            </button>
           )}
+          {!blocked && warns.length > 0 && (
+            <span className="text-[12.5px] text-muted-foreground">Style warnings won&apos;t block export</span>
+          )}
+          {(["pdf", "docx"] as const).map((format) => (
+            <Button
+              key={format}
+              variant={format === "pdf" && !blocked ? "default" : "outline"}
+              size="sm"
+              disabled={blocked || downloading !== null}
+              onClick={() => onDownload(format)}
+            >
+              <Download data-icon="inline-start" />
+              {format.toUpperCase()}
+            </Button>
+          ))}
           {jobId && (
             <Button
               size="sm"

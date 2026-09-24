@@ -8,7 +8,7 @@ import { anthropicClient } from "@/lib/llm/provider";
 
 /**
  * Chat with the personal agent. Streams newline-delimited JSON events:
- * text deltas, tool starts and finishes, then "done" (or "error").
+ * text deltas, tool starts and finishes, live status, then "done" (or "error").
  * Uses Claude when a key is configured, and the rules-based agent otherwise.
  */
 
@@ -27,13 +27,18 @@ export async function POST(request: Request) {
 
   const [history, profile] = await Promise.all([listChat(userId, 20), getProfile(userId)]);
   await appendChat(userId, "user", message);
-  const ctx = { userId, email: session.user.email, client: "Proofline" };
   const model = anthropicClient();
 
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: WireEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      const ctx = {
+        userId,
+        email: session.user.email,
+        client: "Proofline",
+        onStatus: (statusMessage: string) => send({ type: "status", message: statusMessage }),
+      };
       try {
         let reply: { text: string; tools: Array<{ name: string; ok: boolean }> };
         if (model) {
@@ -43,7 +48,7 @@ export async function POST(request: Request) {
             send,
           );
         } else {
-          reply = await offlineReply(message, ctx);
+          reply = await offlineReply(message, ctx, send);
           for (const t of reply.tools) send({ type: "tool_done", name: t.name, ok: t.ok });
           send({ type: "text", delta: reply.text });
         }

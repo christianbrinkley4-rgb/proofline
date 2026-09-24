@@ -2,7 +2,7 @@ import { listMatches } from "@/lib/jobs/store";
 import { roleName } from "@/lib/jobs/text";
 import { listApplications } from "@/lib/tracker/service";
 import { nextMoves } from "./next-moves";
-import { runTool, type ToolContext } from "./tools";
+import { TOOL_BY_NAME, runTool, type ToolContext } from "./tools";
 
 /**
  * The agent without a model: common requests routed by rules to the same tools.
@@ -10,6 +10,9 @@ import { runTool, type ToolContext } from "./tools";
  */
 
 export type OfflineReply = { text: string; tools: Array<{ name: string; ok: boolean }> };
+
+/** Early tool-start events so the chat UI can show a chip before a long tool finishes. */
+export type OfflineEmit = (event: { type: "tool"; name: string; title: string }) => void;
 
 const HELP = `Here's what I can do right now:
 
@@ -76,7 +79,11 @@ function list(items: string[]): string {
   return items.map((i) => `- ${i}`).join("\n");
 }
 
-export async function offlineReply(message: string, ctx: ToolContext): Promise<OfflineReply> {
+function emitToolStart(emit: OfflineEmit, name: string) {
+  emit({ type: "tool", name, title: TOOL_BY_NAME.get(name)?.title ?? name });
+}
+
+export async function offlineReply(message: string, ctx: ToolContext, emit: OfflineEmit = () => {}): Promise<OfflineReply> {
   const tools: OfflineReply["tools"] = [];
   const call = async <T>(name: string, args: Record<string, unknown>): Promise<T> => {
     try {
@@ -100,6 +107,7 @@ export async function offlineReply(message: string, ctx: ToolContext): Promise<O
     }
 
     case "search": {
+      emitToolStart(emit, "search_jobs");
       const result = await call<{ scanned: number; results: Array<{ title: string; company: string; location: string | null; fit: number; warning: string | null; url: string }> }>("search_jobs", { query: message, limit: 5 });
       if (!result.results.length) return { text: `I scanned ${result.scanned.toLocaleString()} postings and nothing matched that exactly. Try a wider area or drop the season.`, tools };
       const lines = result.results.map((r) => `[${r.title}](${new URL(r.url).pathname}) at ${r.company}${r.location ? `, ${r.location}` : ""}: **${r.fit}** fit${r.warning ? ` (heads up: ${r.warning})` : ""}`);

@@ -1,5 +1,20 @@
-import { describe, expect, it } from "vitest";
-import { classify, pickJob, watchQuery } from "./offline";
+import { describe, expect, it, vi } from "vitest";
+import { classify, offlineReply, pickJob, watchQuery } from "./offline";
+
+vi.mock("./tools", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./tools")>();
+  return {
+    ...actual,
+    runTool: vi.fn(async (name: string) => {
+      if (name === "search_jobs") {
+        return { scanned: 10, results: [{ title: "Intern", company: "Acme", location: "Raleigh", fit: 80, warning: null, url: "http://localhost:3000/app/jobs/1" }] };
+      }
+      throw new Error(`unexpected tool ${name}`);
+    }),
+  };
+});
+
+import { runTool } from "./tools";
 
 describe("offline agent routing", () => {
   it.each([
@@ -41,5 +56,23 @@ describe("offline agent routing", () => {
     ];
     expect(pickJob("cover letter for coinbase", jobs)).toMatchObject({ jobId: "2", applicationId: "a" });
     expect(pickJob("cover letter for Deloitte", jobs)).toBeNull();
+  });
+
+  it("emits search_jobs before the tool runs", async () => {
+    const order: string[] = [];
+    vi.mocked(runTool).mockImplementation(async (name) => {
+      order.push(`run:${name}`);
+      return {
+        scanned: 10,
+        results: [{ title: "Intern", company: "Acme", location: "Raleigh", fit: 80, warning: null, url: "http://localhost:3000/app/jobs/1" }],
+      };
+    });
+    const reply = await offlineReply("find accounting internships in Raleigh for summer 2027", { userId: "u", email: "e@example.com", client: "Proofline" }, (event) => {
+      order.push(`emit:${event.name}`);
+      expect(event).toMatchObject({ type: "tool", name: "search_jobs", title: "Search jobs" });
+    });
+    expect(order).toEqual(["emit:search_jobs", "run:search_jobs"]);
+    expect(reply.tools).toEqual([{ name: "search_jobs", ok: true }]);
+    expect(reply.text).toContain("Acme");
   });
 });

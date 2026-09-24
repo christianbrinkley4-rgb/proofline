@@ -1,5 +1,5 @@
 import type { ParsedResume } from "@/lib/resume/parse/types";
-import { addFact, listFacts } from "./facts";
+import { addFacts, listFacts, type FactInput } from "./facts";
 import { createExperience, listExperiences, type ExperienceKind } from "./experiences";
 
 export type ImportSummary = {
@@ -25,16 +25,16 @@ export async function importParsedResume(userId: string, parsed: ParsedResume, f
   const existingFacts = await listFacts(userId, { states: ["confirmed", "unconfirmed", "needs_review", "rejected"] });
   const seen = new Set(existingFacts.map((f) => `${f.experienceId ?? ""}|${norm(f.content)}`));
   const summary: ImportSummary = { experiences: 0, facts: 0, skipped: 0 };
+  const pending: FactInput[] = [];
 
-  const propose = async (input: Parameters<typeof addFact>[1]) => {
+  const propose = (input: FactInput) => {
     const key = `${input.experienceId ?? ""}|${norm(input.content)}`;
     if (seen.has(key)) {
       summary.skipped++;
       return;
     }
     seen.add(key);
-    await addFact(userId, input);
-    summary.facts++;
+    pending.push(input);
   };
 
   for (const entry of parsed.entries) {
@@ -53,16 +53,16 @@ export async function importParsedResume(userId: string, parsed: ParsedResume, f
       summary.experiences++;
     }
     for (const text of entry.bullets) {
-      await propose({ category: "experience", content: text, experienceId: experience.id, source: "resume_parsed", sourceDetail: fileName });
+      propose({ category: "experience", content: text, experienceId: experience.id, source: "resume_parsed", sourceDetail: fileName });
     }
   }
 
   for (const edu of parsed.education) {
     for (const honor of edu.honors) {
-      await propose({ category: "award", content: honor, source: "resume_parsed", sourceDetail: fileName });
+      propose({ category: "award", content: honor, source: "resume_parsed", sourceDetail: fileName });
     }
     if (edu.coursework.length) {
-      await propose({
+      propose({
         category: "education",
         content: `Coursework: ${edu.coursework.join(", ")}`,
         data: { coursework: edu.coursework },
@@ -73,11 +73,13 @@ export async function importParsedResume(userId: string, parsed: ParsedResume, f
   }
 
   for (const skill of parsed.skills) {
-    await propose({ category: "skill", content: skill, source: "resume_parsed", sourceDetail: fileName });
+    propose({ category: "skill", content: skill, source: "resume_parsed", sourceDetail: fileName });
   }
   for (const cert of parsed.certifications) {
-    await propose({ category: "certification", content: cert, source: "resume_parsed", sourceDetail: fileName });
+    propose({ category: "certification", content: cert, source: "resume_parsed", sourceDetail: fileName });
   }
 
+  const rows = await addFacts(userId, pending);
+  summary.facts = rows.length;
   return summary;
 }

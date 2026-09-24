@@ -1,11 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { collapseLocations, isStale, STALE_DAYS } from "./collapse";
 import { parseIntent } from "./intent";
 import { resolvePlace } from "./locations";
+import { boardsFor } from "./registry";
 import { workdayQueriesFor } from "./roles";
-import { passesSearchFilters } from "./search";
+import { boardJobs, clearBoardJobsCache, passesSearchFilters } from "./search";
+import { fetchBoard } from "./sources/boards";
 import { planMuseSearches } from "./sources/search-apis";
 import type { NormalizedJob } from "./types";
+
+vi.mock("./sources/boards", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./sources/boards")>();
+  return { ...actual, fetchBoard: vi.fn() };
+});
+
+const mockedFetchBoard = vi.mocked(fetchBoard);
 
 const job = (id: string, location: string, source: NormalizedJob["source"] = "themuse", daysAgo = 5): NormalizedJob => ({
   source, sourceId: id, company: "Walmart", title: "Corporate Intern, Finance and Accounting", location, mode: "onsite", level: "internship",
@@ -52,6 +61,69 @@ describe("source query planning", () => {
         { levels: ["Entry Level"], categories: ["Accounting and Finance"], locations: ["Raleigh, NC"], pages: 2 },
         { levels: ["Entry Level"], categories: ["Customer Service"], locations: ["Raleigh, NC"], pages: 2 },
       ]);
+  });
+});
+
+describe("boardsFor", () => {
+  it("returns the full registry when there is no role signal", () => {
+    expect(boardsFor([]).length).toBeGreaterThan(50);
+    expect(boardsFor([])).toEqual(boardsFor(["unknown-role-xyz"]));
+  });
+
+  it("narrows to boards tagged for the role family", () => {
+    const accounting = boardsFor(["accounting"]);
+    const full = boardsFor([]);
+    expect(accounting.length).toBeGreaterThan(0);
+    expect(accounting.length).toBeLessThan(full.length);
+    expect(accounting.every((b) => b.tags.some((t) => ["accounting", "fintech", "finance"].includes(t)))).toBe(true);
+  });
+});
+
+describe("boardJobs cache", () => {
+  const ref = { source: "greenhouse" as const, slug: "cache-test-co", company: "Cache Test Co" };
+  const listing = [job("1", "Raleigh, NC", "greenhouse")];
+
+  beforeEach(() => {
+    clearBoardJobsCache();
+    mockedFetchBoard.mockReset();
+  });
+
+  it("shares one in-flight fetch across concurrent callers", async () => {
+    let resolve!: (jobs: NormalizedJob[]) => void;
+    mockedFetchBoard.mockReturnValue(new Promise((r) => { resolve = r; }));
+    const a = boardJobs(ref);
+    const b = boardJobs(ref);
+    expect(mockedFetchBoard).toHaveBeenCalledTimes(1);
+    resolve(listing);
+    await expect(Promise.all([a, b])).resolves.toEqual([listing, listing]);
+  });
+
+  it("keeps prior good data on failure without caching an empty miss", async () => {
+    mockedFetchBoard.mockResolvedValueOnce(listing);
+    expect(await boardJobs(ref)).toEqual(listing);
+    expect(mockedFetchBoard).toHaveBeenCalledTimes(1);
+
+    // Expire TTL while keeping prior jobs in the cache entry path used by a refetch.
+    const past = Date.now() + 31 * 60 * 1000;
+    vi.spyOn(Date, "now").mockReturnValue(past);
+    mockedFetchBoard.mockRejectedValueOnce(new Error("board down"));
+    expect(await boardJobs(ref)).toEqual(listing);
+    expect(mockedFetchBoard).toHaveBeenCalledTimes(2);
+
+    // Failed refresh did not sticky-cache []; another expired call still hits the network.
+    vi.spyOn(Date, "now").mockReturnValue(past + 31 * 60 * 1000);
+    mockedFetchBoard.mockRejectedValueOnce(new Error("still down"));
+    expect(await boardJobs(ref)).toEqual(listing);
+    expect(mockedFetchBoard).toHaveBeenCalledTimes(3);
+    vi.restoreAllMocks();
+  });
+
+  it("returns [] on failure when there is no prior data and does not sticky-cache empty", async () => {
+    mockedFetchBoard.mockRejectedValueOnce(new Error("board down"));
+    expect(await boardJobs(ref)).toEqual([]);
+    mockedFetchBoard.mockResolvedValueOnce(listing);
+    expect(await boardJobs(ref)).toEqual(listing);
+    expect(mockedFetchBoard).toHaveBeenCalledTimes(2);
   });
 });
 

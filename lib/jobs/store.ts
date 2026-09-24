@@ -8,46 +8,69 @@ import type { NormalizedJob } from "./types";
 export type JobRow = typeof schema.job.$inferSelect;
 export type MatchRow = typeof schema.jobMatch.$inferSelect;
 
-/** Inserts or refreshes postings. Returns rows keyed by `${source}|${sourceId}`. */
+const UPSERT_CHUNK = 40;
+const MATCH_CHUNK = 40;
+
+function jobValues(j: NormalizedJob) {
+  const requirements = j.description ? parseRequirements(j.description) : null;
+  return {
+    source: j.source,
+    sourceId: j.sourceId,
+    company: j.company,
+    companySlug: slugify(j.company),
+    title: j.title,
+    location: j.location,
+    mode: j.mode,
+    level: j.level,
+    url: j.url,
+    description: j.description,
+    department: j.department,
+    employmentType: j.employmentType,
+    payMin: j.payMin,
+    payMax: j.payMax,
+    payPeriod: j.payPeriod,
+    postedAt: j.postedAt && !Number.isNaN(j.postedAt.getTime()) ? j.postedAt : null,
+    dedupeKey: dedupeKey(j.company, j.title, j.location),
+    requirements: requirements as unknown as Record<string, unknown> | null,
+    fetchedAt: new Date(),
+  };
+}
+
+/** Inserts or refreshes postings in chunks. Returns rows keyed by `${source}|${sourceId}`. */
 export async function upsertJobs(jobs: NormalizedJob[]): Promise<Map<string, JobRow>> {
   const out = new Map<string, JobRow>();
-  for (const j of jobs) {
-    const requirements = j.description ? parseRequirements(j.description) : null;
-    const values = {
-      source: j.source,
-      sourceId: j.sourceId,
-      company: j.company,
-      companySlug: slugify(j.company),
-      title: j.title,
-      location: j.location,
-      mode: j.mode,
-      level: j.level,
-      url: j.url,
-      description: j.description,
-      department: j.department,
-      employmentType: j.employmentType,
-      payMin: j.payMin,
-      payMax: j.payMax,
-      payPeriod: j.payPeriod,
-      postedAt: j.postedAt && !Number.isNaN(j.postedAt.getTime()) ? j.postedAt : null,
-      dedupeKey: dedupeKey(j.company, j.title, j.location),
-      requirements: requirements as unknown as Record<string, unknown> | null,
-      fetchedAt: new Date(),
-    };
-    const [row] = await db
+  if (!jobs.length) return out;
+
+  for (let i = 0; i < jobs.length; i += UPSERT_CHUNK) {
+    const chunk = jobs.slice(i, i + UPSERT_CHUNK).map(jobValues);
+    const rows = await db
       .insert(schema.job)
-      .values(values)
+      .values(chunk)
       .onConflictDoUpdate({
         target: [schema.job.source, schema.job.sourceId],
         set: {
-          ...values,
+          company: sql`excluded.company`,
+          companySlug: sql`excluded.company_slug`,
+          title: sql`excluded.title`,
+          location: sql`excluded.location`,
+          mode: sql`excluded.mode`,
+          level: sql`excluded.level`,
+          url: sql`excluded.url`,
+          department: sql`excluded.department`,
+          employmentType: sql`excluded.employment_type`,
+          payMin: sql`excluded.pay_min`,
+          payMax: sql`excluded.pay_max`,
+          payPeriod: sql`excluded.pay_period`,
+          postedAt: sql`excluded.posted_at`,
+          dedupeKey: sql`excluded.dedupe_key`,
+          fetchedAt: sql`excluded.fetched_at`,
           // Keep a description we already fetched if this listing came without one.
           description: sql`coalesce(excluded.description, ${schema.job.description})`,
           requirements: sql`coalesce(excluded.requirements, ${schema.job.requirements})`,
         },
       })
       .returning();
-    out.set(`${j.source}|${j.sourceId}`, row);
+    for (const row of rows) out.set(`${row.source}|${row.sourceId}`, row);
   }
   return out;
 }
@@ -57,20 +80,37 @@ export function requirementsOf(row: JobRow): Requirements {
 }
 
 export async function saveMatches(userId: string, scored: Array<{ job: JobRow; fit: FitReport }>, savedSearchId?: string) {
-  for (const { job, fit } of scored) {
-    const fitJson = {
-      score: fit.score,
-      raw: fit.raw,
-      cappedBy: fit.cappedBy,
-      points: fit.points,
-      details: fit.details,
-      strengths: fit.strengths,
-      gaps: fit.gaps,
-    } as unknown as Record<string, unknown>;
+  if (!scored.length) return;
+
+  for (let i = 0; i < scored.length; i += MATCH_CHUNK) {
+    const chunk = scored.slice(i, i + MATCH_CHUNK).map(({ job, fit }) => {
+      const fitJson = {
+        score: fit.score,
+        raw: fit.raw,
+        cappedBy: fit.cappedBy,
+        points: fit.points,
+        details: fit.details,
+        strengths: fit.strengths,
+        gaps: fit.gaps,
+      } as unknown as Record<string, unknown>;
+      return {
+        userId,
+        jobId: job.id,
+        fitScore: fit.score,
+        fit: fitJson,
+        savedSearchId: savedSearchId ?? null,
+      };
+    });
     await db
       .insert(schema.jobMatch)
-      .values({ userId, jobId: job.id, fitScore: fit.score, fit: fitJson, savedSearchId: savedSearchId ?? null })
-      .onConflictDoUpdate({ target: [schema.jobMatch.userId, schema.jobMatch.jobId], set: { fitScore: fit.score, fit: fitJson } });
+      .values(chunk)
+      .onConflictDoUpdate({
+        target: [schema.jobMatch.userId, schema.jobMatch.jobId],
+        set: {
+          fitScore: sql`excluded.fit_score`,
+          fit: sql`excluded.fit`,
+        },
+      });
   }
 }
 

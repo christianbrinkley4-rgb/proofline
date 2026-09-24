@@ -116,6 +116,14 @@ export function anthropicClient(): { client: Anthropic; model: string } | null {
   return llm instanceof AnthropicProvider ? { client: llm.client, model: llm.model } : null;
 }
 
+/**
+ * Model for in-app agent chat. Prefer `LLM_CHAT_MODEL` (faster) when set;
+ * drafting and other features keep using `LLM_MODEL` / Opus via `getLlm()`.
+ */
+export function chatModel(fallback: string): string {
+  return process.env.LLM_CHAT_MODEL?.trim() || fallback;
+}
+
 export function llmStatus(): { mode: "anthropic" | "offline"; model: string | null } {
   const llm = getLlm();
   return llm ? { mode: llm.id, model: llm.model } : { mode: "offline", model: null };

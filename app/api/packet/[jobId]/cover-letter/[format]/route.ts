@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { logEvent } from "@/lib/agent/events";
 import { getSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
+import { blockedExportResponse } from "@/lib/export-gate";
 import { getProfile } from "@/lib/kb/profile";
 import { checkCoverLetter } from "@/lib/packet/cover-letter";
 import { renderLetterDocx, renderLetterPdf } from "@/lib/packet/render-letter";
@@ -24,10 +25,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/packet/[job
 
   // Same rule as resumes: check again right before any file is built.
   const checks = checkCoverLetter(letter, context.factText, new Map(context.evidence.map((e) => [e.id, e])));
-  const blocked = checks.filter((c) => c.blocking && !c.ok);
-  if (blocked.length) {
-    return new Response(`This cover letter can't be exported yet: ${blocked.map((c) => c.detail).join(" ")}`, { status: 409 });
-  }
+  if (checks.some((c) => c.blocking && !c.ok)) return blockedExportResponse(checks);
 
   // Match the template of the resume prepared for this job, so the two look like a set.
   const resume = await db.query.resume.findFirst({

@@ -52,6 +52,7 @@ export async function listResumes(userId: string) {
 /**
  * Re-checks a stored resume against the profile as it is right now. A fact
  * rejected after tailoring must not slip out in an export.
+ * Returns the layout so callers (preview, export) can reuse ops without measuring again.
  */
 export async function freshChecks(userId: string, stored: StoredResume) {
   const [facts, bullets] = await Promise.all([listFacts(userId, { states: ["confirmed"] }), listBullets(userId, undefined, true)]);

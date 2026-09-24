@@ -92,6 +92,7 @@ export function JobSearch({
           push(`Done in ${(event.stats.ms / 1000).toFixed(1)}s`, "done");
         } else if (event.type === "results") {
           setResults(event.results);
+          if (event.partial) return;
           setRunning(false);
           es.close();
         } else if (event.type === "error") {

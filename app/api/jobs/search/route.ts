@@ -6,7 +6,7 @@ export const maxDuration = 120;
 
 /**
  * Streams the agent's search as Server-Sent Events: what it understood, each
- * source as it's searched, then the scored results.
+ * source as it's searched, then scored results (partial early, then final).
  */
 export async function GET(request: Request) {
   const session = await getSession();
@@ -18,16 +18,26 @@ export async function GET(request: Request) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (event: SearchProgress | { type: "results"; results: unknown } | { type: "error"; message: string }) =>
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      const send = (event: SearchProgress | { type: "error"; message: string }) => {
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        } catch {
+          // Client closed the stream.
+        }
+      };
       try {
-        const { results } = await searchJobs(session.user.id, query, send);
+        const { results } = await searchJobs(session.user.id, query, send, { signal: request.signal });
         send({ type: "results", results });
       } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
         console.error("job search failed", error);
         send({ type: "error", message: "The search hit a problem. Try again in a moment." });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // Already closed.
+        }
       }
     },
   });
