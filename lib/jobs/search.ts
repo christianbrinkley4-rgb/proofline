@@ -10,10 +10,10 @@ import { getProfile } from "@/lib/kb/profile";
 import { parseIntent } from "./intent";
 import { isRemoteText, isUSLocation, matchesPlace, resolvePlace } from "./locations";
 import { BOARDS, workdayFor } from "./registry";
-import { familiesFor, titleExcluded, titleWordsFor } from "./roles";
+import { familiesFor, titleExcluded, titleWordsFor, workdayQueriesFor } from "./roles";
 import { fetchBoard, fetchBoardDetail, type BoardRef } from "./sources/boards";
 import { mapLimit } from "./sources/http";
-import { adzunaConfigured, searchAdzuna, searchMuse, searchUsaJobs, searchWorkday, usajobsConfigured, workdayDetail } from "./sources/search-apis";
+import { adzunaConfigured, planMuseSearches, searchAdzuna, searchMuse, searchUsaJobs, searchWorkday, usajobsConfigured, workdayDetail } from "./sources/search-apis";
 import { saveMatches, upsertJobs, type JobRow } from "./store";
 import { collapseLocations, isStale, SOURCE_RANK } from "./collapse";
 import { dedupeKey } from "./text";
@@ -52,7 +52,7 @@ function termFits(title: string, term: string | null): "match" | "other" | "none
   return `${m[1][0].toUpperCase()}${m[1].slice(1).toLowerCase()} ${year}` === term ? "match" : "other";
 }
 
-function passes(job: NormalizedJob, intent: JobIntent, roleWords: string[], places: ReturnType<typeof resolvePlace>[], dealBreakers: string[] = []): boolean {
+export function passesSearchFilters(job: NormalizedJob, intent: JobIntent, roleWords: string[], places: ReturnType<typeof resolvePlace>[], dealBreakers: string[] = []): boolean {
   if (dealBreakerMatches(dealBreakers, job)) return false;
   if (roleWords.length && !titleMatches(job.title, roleWords)) return false;
   if (titleExcluded(job.title, intent.roles)) return false;
@@ -62,6 +62,10 @@ function passes(job: NormalizedJob, intent: JobIntent, roleWords: string[], plac
   const text = `${job.title} ${job.department ?? ""}`.toLowerCase();
   if (intent.exclude.some((w) => w !== "cpa" && text.includes(w.toLowerCase()))) return false;
   if (intent.payFloor && job.payMax != null && job.payPeriod === intent.payFloor.period && job.payMax < intent.payFloor.amount) return false;
+
+  // A stated mode is a constraint when the posting identifies its mode. Unknown
+  // postings remain eligible until their full description can be inspected.
+  if (intent.modes.length && job.mode !== "unknown" && !intent.modes.includes(job.mode)) return false;
 
   const remoteOk = !intent.modes.length || intent.modes.includes("remote");
   const remoteJob = job.mode === "remote" || isRemoteText(job.location);
@@ -129,7 +133,7 @@ export async function searchJobs(
   await mapLimit(BOARDS, 12, async (ref) => {
     const jobs = await boardJobs(ref);
     scanned += jobs.length;
-    candidates.push(...jobs.filter((j) => passes(j, intent, roleWords, places, dealBreakers)));
+    candidates.push(...jobs.filter((j) => passesSearchFilters(j, intent, roleWords, places, dealBreakers)));
     done++;
     if (done % 20 === 0 || done === BOARDS.length) emit({ type: "status", message: `Searched ${done} of ${BOARDS.length} company boards` });
   });
@@ -137,22 +141,25 @@ export async function searchJobs(
 
   // Big employers on Workday, searched by keyword
   const families = familiesFor(intent.roles);
-  const keyword = [families[0]?.label ?? intent.roles[0] ?? "", intent.level === "internship" ? "intern" : ""]
-    .join(" ")
-    .trim()
-    .replace(/ and .*/, "");
+  const workdayQueries = workdayQueriesFor(intent.roles, intent.level);
   const workday = workdayFor(intent.roles, intent.locations);
   emit({ type: "status", message: `Checking ${workday.length} large employers (banks, Big 4, NC employers)` });
   const wdFound = (
-    await mapLimit(workday, 6, (ref) => searchWorkday(ref, keyword || "intern").catch(() => [] as NormalizedJob[]))
+    await mapLimit(workday, 6, async (ref) => {
+      const results: NormalizedJob[] = [];
+      for (const keyword of workdayQueries) {
+        results.push(...await searchWorkday(ref, keyword, workdayQueries.length > 1 ? 1 : 2).catch(() => [] as NormalizedJob[]));
+      }
+      return results;
+    })
   ).flat();
   scanned += wdFound.length;
-  const wdKept = wdFound.filter((j) => passes(j, intent, roleWords, places, dealBreakers));
+  const wdKept = wdFound.filter((j) => passesSearchFilters(j, intent, roleWords, places, dealBreakers));
   candidates.push(...wdKept);
   emit({ type: "source", source: "Large employers", found: wdKept.length });
 
   // Aggregators
-  let sourcesSearched = 2;
+  let sourcesSearched = 3;
   const museLevels = intent.level === "internship" ? ["Internship"] : intent.level === "entry" ? ["Entry Level"] : [];
   const museCategories = [...new Set(families.map((f) => f.museCategory).filter((c): c is string => Boolean(c)))];
   const museLocations = [
@@ -160,18 +167,20 @@ export async function searchJobs(
     ...(intent.modes.includes("remote") || !places.length ? ["Flexible / Remote"] : []),
   ];
   emit({ type: "status", message: "Checking The Muse" });
-  const muse = await searchMuse({ levels: museLevels, categories: museCategories, locations: places.length ? museLocations : [], pages: 3 }).catch(() => []);
+  const musePlans = planMuseSearches(museLevels, museCategories, places.length ? museLocations : []);
+  const muse = (await mapLimit(musePlans, 3, (plan) => searchMuse(plan).catch(() => [] as NormalizedJob[]))).flat();
   scanned += muse.length;
-  const museKept = muse.filter((j) => passes(j, intent, roleWords, places, dealBreakers));
+  const museKept = muse.filter((j) => passesSearchFilters(j, intent, roleWords, places, dealBreakers));
   candidates.push(...museKept);
   emit({ type: "source", source: "The Muse", found: museKept.length });
 
   if (adzunaConfigured() || usajobsConfigured()) {
     const where = intent.locations[0] ?? null;
-    const extra = (await Promise.all([searchAdzuna(`${keyword}`, where).catch(() => []), searchUsaJobs(keyword, where).catch(() => [])])).flat();
-    sourcesSearched += 1;
+    const keyword = workdayQueries[0];
+    const extra = (await Promise.all([searchAdzuna(keyword, where).catch(() => []), searchUsaJobs(keyword, where).catch(() => [])])).flat();
+    sourcesSearched += Number(adzunaConfigured()) + Number(usajobsConfigured());
     scanned += extra.length;
-    candidates.push(...extra.filter((j) => passes(j, intent, roleWords, places, dealBreakers)));
+    candidates.push(...extra.filter((j) => passesSearchFilters(j, intent, roleWords, places, dealBreakers)));
   }
 
   // Merge duplicates: same company, title, and city from several boards
@@ -212,7 +221,7 @@ export async function searchJobs(
 
   // Exclusions that live in the description ("don't require the CPA", deal-breakers like "Unpaid")
   const final = top.filter((job) => {
-    if (dealBreakerMatches(dealBreakers, job)) return false;
+    if (!passesSearchFilters(job, intent, roleWords, places, dealBreakers)) return false;
     if (!intent.exclude.includes("cpa") || !job.description) return true;
     return !parseRequirements(job.description).licensesRequired.includes("CPA");
   });

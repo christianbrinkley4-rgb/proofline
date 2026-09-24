@@ -169,7 +169,7 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
           </section>
           {fit.nextSteps.length > 0 && (
             <section className="rounded-xl border bg-background p-4">
-              <h2 className="text-[13.5px] font-semibold">What you can improve</h2>
+              <h2 className="text-[13.5px] font-semibold">What to do next</h2>
               <ol className="mt-2 list-decimal space-y-2 pl-4 text-[13px] leading-5 text-muted-foreground">
                 {fit.nextSteps.map((step) => <li key={step}>{step}</li>)}
               </ol>

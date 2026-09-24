@@ -11,6 +11,8 @@ import { describeIntent } from "@/lib/jobs/intent";
 import type { JobResult } from "@/lib/jobs/search";
 import type { JobIntent, SearchStats } from "@/lib/jobs/types";
 import { cn } from "@/lib/utils";
+import { readCaptureFragment, type CapturedJob } from "./capture-payload";
+import { JobCaptureHelp } from "./job-capture-help";
 import { PasteJob } from "./paste-job";
 import { ResultRow } from "./result-row";
 
@@ -54,6 +56,7 @@ export function JobSearch({
   const [linkOpen, setLinkOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(openPaste);
   const [link, setLink] = useState("");
+  const [captured, setCaptured] = useState<CapturedJob | null>(null);
   const [linkPending, startLink] = useTransition();
   const source = useRef<EventSource | null>(null);
   const counter = useRef(0);
@@ -107,9 +110,19 @@ export function JobSearch({
   );
 
   useEffect(() => {
+    const captureTimer = window.setTimeout(() => {
+      const incoming = readCaptureFragment(window.location.hash);
+      if (!incoming) return;
+      setCaptured(incoming);
+      setLink(incoming.url);
+      setPasteOpen(true);
+      // The posting text should not remain in the browser's address bar or history entry.
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }, 0);
     // Arriving with ?q= (from onboarding or a saved search) starts the hunt right away.
     const timer = autoRun && initialQuery ? setTimeout(() => run(initialQuery), 0) : undefined;
     return () => {
+      clearTimeout(captureTimer);
       clearTimeout(timer);
       source.current?.close();
     };
@@ -215,7 +228,20 @@ export function JobSearch({
           No link, or it needs a sign-in? Paste the description instead
         </button>
       )}
-      {pasteOpen && <PasteJob initial={{ ...pasteFor, url: /^https?:\/\//.test(link.trim()) ? link.trim() : undefined }} onCancel={() => setPasteOpen(false)} />}
+      <JobCaptureHelp />
+      {captured && pasteOpen && (
+        <p className="mt-4 rounded-lg border border-brand/30 bg-brand/5 px-4 py-3 text-[13px] leading-5">
+          Captured from {new URL(captured.url).hostname}. Review the details below. Nothing has been saved yet.
+        </p>
+      )}
+      {pasteOpen && (
+        <PasteJob
+          key={captured?.url ?? "manual"}
+          initial={captured ?? { ...pasteFor, url: /^https?:\/\//.test(link.trim()) ? link.trim() : undefined }}
+          captured={Boolean(captured)}
+          onCancel={() => { setPasteOpen(false); setCaptured(null); }}
+        />
+      )}
 
       {(running || log.length > 0) && (
         <section

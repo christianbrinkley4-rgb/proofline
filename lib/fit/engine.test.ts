@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { scoreFit, type CandidateProfile } from "./engine";
 import { parseGradWindow, parseRequirements } from "./requirements";
 import { FIT_COMPONENTS } from "./rubric";
+import { extractSkills } from "./skills";
 
 const AUDIT_INTERN = `About the role
 Join our audit team for Summer 2027.
@@ -56,6 +57,12 @@ describe("parseRequirements", () => {
     expect(req.minGpa).toBe(3.0);
     expect(req.gradWindow).toMatchObject({ from: "2027-12", to: "2028-08" });
     expect(req.noSponsorship).toBe(true);
+  });
+
+  it("does not treat a preferred degree as a requirement", () => {
+    const req = parseRequirements("Qualifications\nCustomer service experience required\nPreferred\nBachelor's degree in accounting");
+    expect(req.degreeFields).toEqual([]);
+    expect(parseRequirements("Qualifications\nCustomer service experience required\nBachelor's degree in accounting preferred").degreeFields).toEqual([]);
   });
 
   it("reads other graduation phrasings", () => {
@@ -116,6 +123,23 @@ describe("scoreFit", () => {
     expect(scoreFit(role, experienced).points.experience).toBeGreaterThan(scoreFit(role, newToWork).points.experience);
     expect(scoreFit(role, experienced).cappedBy).toBeNull();
     expect(scoreFit(role, experienced).details.experience.missing).toEqual([]);
-    expect(scoreFit(role, newToWork).nextSteps).toContainEqual(expect.stringMatching(/Add dates and details/));
+    expect(scoreFit(role, newToWork).nextSteps).toContainEqual(expect.stringMatching(/Add dates/));
+  });
+
+  it("suggests a different eligible search when a hard requirement is outside the person's profile", () => {
+    const fit = scoreFit(job, { ...student, gradDate: "2029-05", needsSponsorship: true });
+    expect(fit.nextSteps).toContainEqual(expect.stringMatching(/graduation year/));
+    expect(fit.nextSteps).toContainEqual(expect.stringMatching(/work authorization/));
+  });
+
+  it("recognizes concrete service and trade skills in a non-college profile", () => {
+    expect(extractSkills("Handled cash registers, counted inventory, and operated forklifts")).toEqual(
+      expect.arrayContaining(["Point-of-sale systems", "Forklift operation"]),
+    );
+    const role = { title: "Warehouse Associate", location: null, mode: "onsite" as const, level: "entry" as const, requirements: parseRequirements("Qualifications\nForklift operation required\nInventory management required") };
+    const worker = { ...student, degree: null, major: null, confirmedText: ["Operated forklifts and managed inventory control"], experienceTitles: ["Warehouse Associate"] };
+    const fit = scoreFit(role, worker);
+    expect(fit.details.requiredSkills.matched).toEqual(expect.arrayContaining(["Forklift operation", "Inventory management"]));
+    expect(fit.details.education.missing).toEqual([]);
   });
 });

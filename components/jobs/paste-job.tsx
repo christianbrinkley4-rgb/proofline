@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-/** For postings Proofline can't open: the student pastes the details and gets the full treatment. */
-export function PasteJob({ initial, onCancel }: { initial?: { company?: string; title?: string; url?: string }; onCancel?: () => void }) {
+/** Review details from a browser capture or enter a posting Proofline cannot open. */
+export function PasteJob({ initial, onCancel, captured = false }: { initial?: { company?: string; title?: string; location?: string; url?: string; description?: string }; onCancel?: () => void; captured?: boolean }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -37,7 +37,9 @@ export function PasteJob({ initial, onCancel }: { initial?: { company?: string; 
       }}
     >
       <p className="text-[12.5px] leading-5 text-muted-foreground sm:col-span-2">
-        For jobs on Handshake, LinkedIn, or anywhere we can&apos;t open: copy the posting and paste it here. You&apos;ll get a fit score, tailored resumes, and a packet like any other job.
+        {captured
+          ? "Check the company, title, location, and description captured from the page. Add anything missing before you score and save it."
+          : "For jobs on Handshake, LinkedIn, or anywhere we can't open: copy the posting and paste it here. You'll get a fit score, tailored resumes, and a packet like any other job."}
       </p>
       <label className="space-y-1.5 text-[12.5px]">
         <span>Company</span>
@@ -51,7 +53,7 @@ export function PasteJob({ initial, onCancel }: { initial?: { company?: string; 
         <span>
           Location <span className="text-muted-foreground">(optional)</span>
         </span>
-        <Input name="location" maxLength={160} placeholder="City, ST or Remote" className="bg-background" />
+        <Input name="location" maxLength={160} defaultValue={initial?.location} placeholder="City, ST or Remote" className="bg-background" />
       </label>
       <label className="space-y-1.5 text-[12.5px]">
         <span>
@@ -61,7 +63,7 @@ export function PasteJob({ initial, onCancel }: { initial?: { company?: string; 
       </label>
       <label className="space-y-1.5 text-[12.5px] sm:col-span-2">
         <span>Job description</span>
-        <Textarea name="description" required minLength={200} maxLength={40000} rows={8} placeholder="Paste the whole posting: responsibilities, qualifications, pay, and anything else it says." className="bg-background" />
+        <Textarea name="description" required minLength={200} maxLength={40000} rows={8} defaultValue={initial?.description} placeholder="Paste the whole posting: responsibilities, qualifications, pay, and anything else it says." className="bg-background" />
       </label>
       {error && (
         <p role="alert" className="text-[12.5px] text-destructive sm:col-span-2">

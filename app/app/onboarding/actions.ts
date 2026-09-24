@@ -93,7 +93,7 @@ export async function saveBasicsAction(input: BasicsInput): Promise<{ ok: true }
 }
 
 const GoalsSchema = z.object({
-  targetRoles: z.array(z.string().trim().min(1)).min(1, "Pick at least one kind of role"),
+  targetRoles: z.array(z.string().trim().min(1)),
   targetTerm: z.string().trim(),
   targetLocations: z.array(z.string().trim().min(1)),
   workModes: z.array(z.enum(["remote", "hybrid", "onsite"])),

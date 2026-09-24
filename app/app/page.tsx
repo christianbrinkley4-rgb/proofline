@@ -3,10 +3,13 @@ import { after } from "next/server";
 import { ArrowRight, BellRing, CalendarClock, FileText, MessagesSquare, Search, SquareKanban, UserRound } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
+import { RoleExplorer } from "@/components/jobs/role-explorer";
 import { requireSession } from "@/lib/auth";
 import { nextMoves, type NextMove } from "@/lib/agent/next-moves";
 import { refreshDue, watchedWithNews } from "@/lib/jobs/saved";
-import { factCounts } from "@/lib/kb/facts";
+import { recommendRoles } from "@/lib/jobs/recommend";
+import { listExperiences } from "@/lib/kb/experiences";
+import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { listResumes } from "@/lib/resume/store";
 import { trackerStats } from "@/lib/tracker/model";
@@ -32,9 +35,10 @@ const ICON: Record<NextMove["kind"], typeof UserRound> = {
 export default async function TodayPage() {
   const session = await requireSession();
   const userId = session.user.id;
-  const [profile, facts, applications, resumes, moves, watched] = await Promise.all([
+  const [profile, profileFacts, experiences, applications, resumes, moves, watched] = await Promise.all([
     getProfile(userId),
-    factCounts(userId),
+    listFacts(userId),
+    listExperiences(userId),
     listApplications(userId),
     listResumes(userId),
     nextMoves(userId),
@@ -46,6 +50,15 @@ export default async function TodayPage() {
   const stats = trackerStats(applications);
   const onboarded = Boolean(profile?.onboardingCompletedAt);
   const news = watched.filter((w) => w.fresh.length);
+  const facts = {
+    confirmed: profileFacts.filter((fact) => fact.verificationState === "confirmed").length,
+    toReview: profileFacts.filter((fact) => fact.verificationState !== "confirmed").length,
+  };
+  const roleIdeas = recommendRoles({
+    targetRoles: profile?.targetRoles ?? [],
+    confirmedFacts: profileFacts.filter((fact) => fact.verificationState === "confirmed"),
+    experiences,
+  });
 
   return (
     <PageBody>
@@ -114,6 +127,8 @@ export default async function TodayPage() {
           </div>
         </section>
       )}
+
+      {onboarded && <RoleExplorer roles={roleIdeas} />}
 
       <section className="mt-8 grid gap-3 sm:grid-cols-3">
         <Stat label="Confirmed facts" value={facts.confirmed} href="/app/profile" />

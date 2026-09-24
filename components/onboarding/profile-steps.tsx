@@ -168,7 +168,7 @@ export function GoalsStep({ initial, onBack, onSaved }: { initial: GoalsInput; o
           });
         }}
       >
-        <Field label="Kinds of roles" htmlFor="roles">
+        <Field label="Kinds of roles (optional)" htmlFor="roles" hint="Not sure yet? Leave this blank. We'll suggest paths from what you've done.">
           <ChipInput id="roles" value={values.targetRoles} onChange={(v) => update("targetRoles", v)} suggestions={ROLE_SUGGESTIONS} placeholder="Type a role and press Enter" />
         </Field>
         <Field label="When (optional)" htmlFor="targetTerm" hint="Leave blank if you're open to roles posted now.">

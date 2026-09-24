@@ -48,10 +48,10 @@ export function parseRequirements(description: string | null | undefined): Requi
     if (short && PREFERRED_HEADING.test(head)) mode = "preferred";
     else if (short && REQUIRED_HEADING.test(head)) mode = "required";
     else if (short && OTHER_HEADING.test(head)) mode = "other";
-    else if (mode === "required") requiredLines.push(line);
-    else if (mode === "preferred") preferredLines.push(line);
     else if (/\b(preferred|a plus|nice to have|bonus)\b/i.test(line)) preferredLines.push(line);
     else if (/\b(required|must have|must be|minimum of|you have)\b/i.test(line)) requiredLines.push(line);
+    else if (mode === "required") requiredLines.push(line);
+    else if (mode === "preferred") preferredLines.push(line);
   }
 
   const requiredText = requiredLines.join("\n");
@@ -79,7 +79,7 @@ export function parseRequirements(description: string | null | undefined): Requi
   if (/\b(series (7|63|65|66|79))\b[^.\n]{0,60}(required|must)/i.test(text)) licensesRequired.push("FINRA license");
 
   const degreeFields = FIELDS.filter((f) =>
-    new RegExp(`(degree|major|majoring|pursuing|studying|bachelor'?s?|b\\.?s\\.?|b\\.?a\\.?)[^.\\n]{0,80}\\b${f}\\b|\\b${f}\\b[^.\\n]{0,30}(degree|major)`, "i").test(text),
+    new RegExp(`(degree|major|majoring|pursuing|studying|bachelor'?s?|b\\.?s\\.?|b\\.?a\\.?)[^.\\n]{0,80}\\b${f}\\b|\\b${f}\\b[^.\\n]{0,30}(degree|major)`, "i").test(requiredText),
   ).filter((f, _, all) => !(f === "business" && all.includes("business administration")) && !(f === "math" && all.includes("mathematics")));
 
   // "Power BI or Tableau" is one requirement either skill meets; "reconciliations and journal entries" is two.

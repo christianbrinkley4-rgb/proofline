@@ -239,11 +239,19 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   ].slice(0, 5);
 
   const nextSteps = [
-    ...(reqCov.missing.length ? [`Show evidence for ${reqCov.missing.slice(0, 2).join(" and ")}. If you have used them, add a specific example to your profile. Otherwise, build the skill before claiming it.`] : []),
-    ...(experienceMissing.length ? [`Add dates and details for relevant work you have done. If the years requirement is out of reach, compare roles with a lower requirement.`] : []),
-    ...(details.education.missing.length ? [`Check the education requirement in the posting. Add a credential you hold, or look for roles that accept equivalent experience.`] : []),
+    ...(req.gradWindow && candidate.gradDate && gates.some((gate) => gate.reason.includes("You graduate"))
+      ? ["This opening has a graduation window outside your date. Search for roles open to your graduation year or without a student-only window."]
+      : []),
+    ...(req.noSponsorship && candidate.needsSponsorship
+      ? ["This employer says it will not sponsor visas. Focus on postings that explicitly allow the work authorization you need."]
+      : []),
+    ...req.licensesRequired.filter((license) => !candidate.credentials.some((credential) => credential.toLowerCase().includes(license.toLowerCase())))
+      .map((license) => `This posting requires an active ${license}. Add it if you already hold it; otherwise look for a role that does not require it.`),
+    ...(reqCov.missing.length ? [`The posting asks for ${reqCov.missing.slice(0, 2).join(" and ")}. Add a specific example if you have done this work. If you have not, learn or practice it before putting it on a resume.`] : []),
+    ...(experienceMissing.length ? [`The posting asks for ${req.yearsExperience}+ years. Add dates for work already done; if you are short, compare roles with a lower experience requirement.`] : []),
+    ...(details.education.missing.length ? [`Check the listed education requirement. Add a credential you hold, or look for roles that accept equivalent experience.`] : []),
     ...(!candidate.confirmedText.length ? ["Describe work, projects, or volunteering on your profile so the comparison has evidence to use."] : []),
-  ].slice(0, 3);
+  ].slice(0, 4);
 
   return { ...result, points, details, gates, strengths, gaps, nextSteps };
 }

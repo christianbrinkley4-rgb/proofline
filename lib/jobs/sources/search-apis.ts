@@ -95,6 +95,14 @@ type MuseResponse = {
   }>;
 };
 
+/** Give each requested category its own small page budget. */
+export function planMuseSearches(levels: string[], categories: string[], locations: string[]) {
+  const selected = [...new Set(categories)].slice(0, 4);
+  return selected.length
+    ? selected.map((category) => ({ levels, categories: [category], locations, pages: selected.length > 1 ? 2 : 3 }))
+    : [{ levels, categories: [], locations, pages: 3 }];
+}
+
 export async function searchMuse(params: { levels: string[]; categories: string[]; locations: string[]; pages?: number }): Promise<NormalizedJob[]> {
   const out: NormalizedJob[] = [];
   const pages = params.pages ?? 3;

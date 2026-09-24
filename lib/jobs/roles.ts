@@ -93,3 +93,12 @@ export function titleWordsFor(roles: string[]): string[] {
   }
   return [...words];
 }
+
+/** Keep Workday's two-page budget while giving distinct requested roles a query each. */
+export function workdayQueriesFor(roles: string[], level: "internship" | "entry" | "any"): string[] {
+  const families = familiesFor(roles);
+  const terms = families.length ? families.map((family) => family.label) : roles;
+  const queries = [...new Set(terms.map((term) => term.replace(/ and .*/, "").trim()).filter(Boolean))].slice(0, 2);
+  if (!queries.length) return [level === "internship" ? "intern" : ""];
+  return queries.map((term) => level === "internship" ? `${term} intern` : term);
+}

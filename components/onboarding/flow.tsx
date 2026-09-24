@@ -261,7 +261,7 @@ function DoneStep({ data }: { data: OnboardingData }) {
   const confirmed =
     data.experiences.flatMap((e) => e.facts).filter((f) => f.state === "confirmed").length +
     data.skills.filter((f) => f.state === "confirmed").length;
-  const role = data.goals.targetRoles[0] ?? "jobs";
+  const role = data.goals.targetRoles[0];
   const where = data.goals.targetLocations[0];
   const query = [role, where ? `in ${where}` : "", data.goals.targetTerm ? `for ${data.goals.targetTerm}` : ""].filter(Boolean).join(" ");
 
@@ -269,12 +269,11 @@ function DoneStep({ data }: { data: OnboardingData }) {
     <div>
       <AgentSays>That&apos;s enough to start, {data.firstName}. I&apos;ll keep learning as we go.</AgentSays>
       <StepHint>
-        I know {confirmed} confirmed facts about you and {data.goals.targetRoles.length || "a few"} kinds of roles you want.
-        Every time you save a job, edit a bullet, or hear back from a company, I get better at picking for you.
+        I have {confirmed} confirmed facts to work with. You can add more experience or change your goals at any time.
       </StepHint>
       <div className="mt-8 rounded-xl border bg-background p-5 sm:ml-11">
-        <div className="text-[12px] text-subtle-foreground">First search</div>
-        <div className="mt-1 text-[15px] font-medium">&ldquo;{query}&rdquo;</div>
+        <div className="text-[12px] text-subtle-foreground">{role ? "First search" : "Next step"}</div>
+        <div className="mt-1 text-[15px] font-medium">{role ? <>&ldquo;{query}&rdquo;</> : "Explore roles based on your profile"}</div>
         <Button
           size="xl"
           className="mt-5"
@@ -282,12 +281,12 @@ function DoneStep({ data }: { data: OnboardingData }) {
           onClick={() =>
             startTransition(async () => {
               await finishOnboardingAction();
-              router.push(`/app/jobs?q=${encodeURIComponent(query)}`);
+              router.push(role ? `/app/jobs?q=${encodeURIComponent(query)}` : "/app");
             })
           }
         >
           {pending ? <LoaderCircle className="animate-spin" /> : <Search data-icon="inline-start" />}
-          Find my first jobs
+          {role ? "Find my first jobs" : "See role ideas"}
           <ArrowRight data-icon="inline-end" />
         </Button>
       </div>
