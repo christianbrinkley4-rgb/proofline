@@ -51,5 +51,7 @@ export type SearchStats = {
   scanned: number;
   matched: number;
   duplicatesMerged: number;
+  /** Aggregator postings skipped for being too old to still be open. */
+  staleDropped?: number;
   ms: number;
 };

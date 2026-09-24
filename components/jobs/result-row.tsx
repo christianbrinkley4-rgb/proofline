@@ -59,7 +59,11 @@ export function ResultRow({ result }: { result: JobResult }) {
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14px] leading-5 font-medium">{result.title}</span>
           <span className="mt-0.5 block truncate text-[13px] leading-5 text-muted-foreground">
-            {[result.company, result.location, result.mode !== "unknown" ? result.mode[0].toUpperCase() + result.mode.slice(1) : null]
+            {[
+              result.company,
+              result.location ? result.location + (result.alsoIn.length ? ` (+${result.alsoIn.length} more ${result.alsoIn.length === 1 ? "city" : "cities"})` : "") : null,
+              result.mode !== "unknown" ? result.mode[0].toUpperCase() + result.mode.slice(1) : null,
+            ]
               .filter(Boolean)
               .join(" · ")}
           </span>

@@ -45,6 +45,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
       cappedBy: fit.cappedBy?.reason ?? null,
       status: match.status,
       termMatch: false,
+      alsoIn: [],
     };
   });
 

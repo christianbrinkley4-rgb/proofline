@@ -54,6 +54,17 @@ export function parseIntent(query: string, defaults: IntentDefaults = {}): JobIn
     return " ";
   });
 
+  // "Remote or anywhere", "anywhere in the US", "any location": no place or setup limits, not even the profile's.
+  let anywhere = false;
+  q = q.replace(/\b(?:remote\s+or\s+)?(?:anywhere|any ?where|any location|any city|nationwide|all locations)(?:\s+in\s+the\s+(?:us|u\.s\.|usa|united states|country))?(?:\s+or\s+remote)?\b/g, () => {
+    anywhere = true;
+    return " ";
+  });
+  q = q.replace(/\bremote\s+or\s+(?:in[- ]person|on-?site|in[- ]office|hybrid)\b|\b(?:in[- ]person|on-?site|hybrid)\s+or\s+remote\b/g, () => {
+    anywhere = true;
+    return " ";
+  });
+
   // Work mode
   const modes = new Set<"remote" | "hybrid" | "onsite">();
   q = q.replace(/\bremote[- ]?(friendly|ok|okay|optional|possible)\b/g, () => {
@@ -119,8 +130,8 @@ export function parseIntent(query: string, defaults: IntentDefaults = {}): JobIn
     roles,
     level: level === "any" && (defaults.targetRoles ?? []).some((r) => /intern/i.test(r)) ? "internship" : level,
     term: term ?? defaults.targetTerm ?? null,
-    locations: locations.length ? dedupe(locations) : (defaults.targetLocations ?? []).filter((l) => !/^remote$/i.test(l)),
-    modes: modes.size ? [...modes] : (defaults.workModes ?? []),
+    locations: locations.length ? dedupe(locations) : anywhere ? [] : (defaults.targetLocations ?? []).filter((l) => !/^remote$/i.test(l)),
+    modes: modes.size ? [...modes] : anywhere ? [] : (defaults.workModes ?? []),
     exclude: dedupe(exclude),
     payFloor: payFloor ?? (defaults.payFloor ? { amount: defaults.payFloor, period: "hour" } : null),
   };

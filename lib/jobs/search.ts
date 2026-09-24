@@ -12,6 +12,7 @@ import { fetchBoard, fetchBoardDetail, type BoardRef } from "./sources/boards";
 import { mapLimit } from "./sources/http";
 import { adzunaConfigured, searchAdzuna, searchMuse, searchUsaJobs, searchWorkday, usajobsConfigured, workdayDetail } from "./sources/search-apis";
 import { saveMatches, upsertJobs, type JobRow } from "./store";
+import { collapseLocations, isStale, SOURCE_RANK } from "./collapse";
 import { dedupeKey } from "./text";
 import type { JobIntent, NormalizedJob, SearchProgress, SearchStats } from "./types";
 
@@ -34,11 +35,6 @@ async function boardJobs(ref: BoardRef): Promise<NormalizedJob[]> {
   boardCache.set(key, { at: Date.now(), jobs });
   return jobs;
 }
-
-/** Direct employer sources beat aggregators when the same role shows up twice. */
-const SOURCE_RANK: Record<NormalizedJob["source"], number> = {
-  greenhouse: 5, lever: 5, ashby: 5, workday: 5, smartrecruiters: 4, link: 4, themuse: 2, usajobs: 3, adzuna: 1,
-};
 
 const SEASONS = /\b(summer|fall|spring|winter)\s*'?(20\d{2}|\d{2})\b/i;
 
@@ -89,6 +85,8 @@ export type JobResult = {
   cappedBy: string | null;
   status: string;
   termMatch: boolean;
+  /** Other cities where the same role is posted. */
+  alsoIn: string[];
 };
 
 export function formatPay(job: Pick<JobRow, "payMin" | "payMax" | "payPeriod">): string | null {
@@ -180,8 +178,19 @@ export async function searchJobs(
       byKey.set(key, job);
     }
   }
-  const unique = [...byKey.values()];
-  const duplicatesMerged = candidates.length - unique.length;
+  const deduped = [...byKey.values()];
+
+  // Aggregator listings linger after a role closes; employer boards only list open roles, so age isn't a signal there.
+  const now = Date.now();
+  const current = deduped.filter((j) => !isStale(j, now));
+  const staleDropped = deduped.length - current.length;
+
+  // One role posted in several cities becomes one result, shown where it best fits the search.
+  const { kept: unique, alsoIn } = collapseLocations(current, (job) => {
+    const valid = places.filter((p) => p !== null);
+    return valid.some((p) => matchesPlace(job.location, p)) ? 2 : job.mode === "remote" ? 1 : 0;
+  });
+  const duplicatesMerged = candidates.length - deduped.length + (current.length - unique.length);
 
   // Most promising first, then fetch full descriptions so they can be scored properly
   unique.sort((a, b) => {
@@ -223,6 +232,7 @@ export async function searchJobs(
     scanned,
     matched: scored.length,
     duplicatesMerged,
+    staleDropped,
     ms: Date.now() - started,
   };
   emit({ type: "done", stats });
@@ -247,6 +257,7 @@ export async function searchJobs(
       cappedBy: fit.cappedBy?.reason ?? null,
       status: "new",
       termMatch,
+      alsoIn: alsoIn.get(`${job.source}|${job.sourceId}`) ?? [],
     })),
   };
 }

@@ -31,6 +31,19 @@ describe("parseIntent", () => {
     expect(intent.roles).toEqual(["tax"]);
   });
 
+  it.each([
+    "audit and accounting internships, remote or anywhere in the US",
+    "accounting internships anywhere",
+    "accounting internships, remote or in person",
+    "accounting internships nationwide",
+  ])("lifts place and setup limits for %s", (query) => {
+    const intent = parseIntent(query, { targetLocations: ["Durham, NC"], workModes: ["hybrid"] });
+    expect(intent.locations).toEqual([]);
+    expect(intent.modes).toEqual([]);
+    expect(intent.level).toBe("internship");
+    expect(intent.roles).toContain("accounting");
+  });
+
   it("falls back to the profile when the query leaves things out", () => {
     const intent = parseIntent("anything good this week", {
       targetRoles: ["Audit intern"],

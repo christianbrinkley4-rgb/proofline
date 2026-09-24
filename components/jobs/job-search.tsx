@@ -231,7 +231,7 @@ export function JobSearch({
             <p className="text-[13px] text-muted-foreground">
               <span className="font-medium text-foreground">{results.length} matches</span>
               {stats
-                ? ` from ${stats.scanned.toLocaleString()} postings on ${stats.boardsSearched} employer boards and ${stats.sourcesSearched - 1} job ${stats.sourcesSearched - 1 === 1 ? "site" : "sites"}${stats.duplicatesMerged ? ` · ${stats.duplicatesMerged} duplicate${stats.duplicatesMerged === 1 ? "" : "s"} merged` : ""}`
+                ? ` from ${stats.scanned.toLocaleString()} postings on ${stats.boardsSearched} employer boards and ${stats.sourcesSearched - 1} job ${stats.sourcesSearched - 1 === 1 ? "site" : "sites"}${stats.duplicatesMerged ? ` · ${stats.duplicatesMerged} duplicate${stats.duplicatesMerged === 1 ? "" : "s"} merged` : ""}${stats.staleDropped ? ` · ${stats.staleDropped} old listing${stats.staleDropped === 1 ? "" : "s"} skipped` : ""}`
                 : " from your last searches"}
             </p>
             <div className="flex items-center gap-1.5">
