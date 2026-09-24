@@ -77,8 +77,9 @@ Proactive work: daily scans of saved searches, deadline and follow-up reminders,
 | 5 | Live job discovery and fit engine | Done |
 | 6 | Three per-job resume strategies, comparison, PDF and DOCX export, quality gate | Done |
 | 7 | Tracker with drag and drop, notes, fit guidance, follow-up drafts | Done |
-| 8 | Personal agent: workbench and learning signals done; chat and MCP connector planned | In progress |
+| 8 | Personal agent: workbench, learning signals, tool layer, and MCP connector done; in-app chat planned | In progress |
 | 9 | Landing page refresh | Done |
+| 10 | Application packet: grounded cover letters (PDF/DOCX), interview prep with the student's own stories | Done |
 
 ## September 23 continuation
 
@@ -86,4 +87,13 @@ The personal history is a living profile, not a one-time intake. Students can ad
 
 For each job, a student can build and compare experience-first, skills-first, and keyword-match resume versions. Each version is saved as a snapshot. The tracker connects the chosen version with an application and records stage changes, strengths, gaps, action steps, notes, deadlines, follow-up reminders, editable draft emails, and a record of what the student says they sent. Proofline does not submit job applications or send emails.
 
-Next: make profile capture even more fluid with a timeline and bulk import; add saved-search scheduling and alerts, personalized interview prep, more job sources, and the student-owned AI connector. Add real outcome analysis only after enough consented application history exists.
+## September 24 continuation
+
+- **Resume import reads real layouts.** PDF text is rebuilt from item positions, so flush-right dates and places stay in their own column and wrapped bullets rejoin; DOCX list items keep their bullets. Proofline's own PDF and DOCX exports re-import exactly (tested).
+- **Experiences are editable.** Name, role, kind, place, and dates can be corrected or the experience removed; facts and bullets stay attached.
+- **Application packet** (`/app/jobs/[id]/packet`). The cover letter is drafted from confirmed evidence only, shows the facts behind each paragraph, and never invents why someone wants the job: that part stays a bracketed prompt until they write it, and downloads are refused until every check passes. With a key, Claude writes the middle paragraphs and every number is verified against cited facts. Interview prep pairs likely questions with the student's strongest story and flags required skills they haven't shown.
+- **Bring your own AI.** `lib/agent/tools.ts` is the one tool layer for any AI; `/api/mcp` serves it over MCP with revocable personal access tokens (Settings). Proposals from an outside AI are unconfirmed and credited to it.
+- **Search quality.** "Remote or anywhere" lifts place limits, aggregator listings older than 120 days are skipped, and one role in several cities shows once.
+- **Local database safety.** Tests and `next build` use in-memory PGlite; a lock file stops a second process from opening `.data/pglite` (the cause of two corruptions). `/api/dev/seed` builds a full sample profile in development.
+
+Next: in-app chat on the same tool layer; OAuth for browser-based connectors (claude.ai, ChatGPT); saved searches that refresh and report what changed; a profile timeline and bulk import; short-answer drafts for application questions; more job sources. Add outcome analysis only after enough consented application history exists.
