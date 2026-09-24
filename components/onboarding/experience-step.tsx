@@ -41,8 +41,8 @@ export function ExperienceStep({
     <div>
       <AgentSays>
         {experiences.length === 0
-          ? "Tell me about a job, club, or project. Write it the way you'd explain it to a friend."
-          : "Anything else I should know about? Jobs, clubs, projects, and volunteer work all count."}
+          ? "What have you done? Paid work, helping family, projects, training, and volunteering all count. Write it the way you'd explain it to a friend."
+          : "Anything else I should know about? Work, projects, responsibilities, and things you've learned all count."}
       </AgentSays>
       <StepHint>
         Don&apos;t worry about sounding professional. I&apos;ll ask for the numbers that make it strong, and I&apos;ll never make one up.
@@ -86,8 +86,8 @@ export function ExperienceStep({
         )}
 
         <div className="flex items-center gap-3 border-t pt-6">
-          <Button size="xl" onClick={onContinue} disabled={experiences.length === 0}>
-            {experiences.length === 0 ? "Add one to continue" : "That's everything for now"}
+          <Button size="xl" onClick={onContinue}>
+            {experiences.length === 0 ? "Continue for now" : "That's everything for now"}
             <ArrowRight data-icon="inline-end" />
           </Button>
           <button type="button" onClick={onBack} className="text-[13.5px] text-muted-foreground hover:text-foreground">
@@ -123,7 +123,7 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
       <PillChoice options={KINDS} value={[values.kind]} onChange={(v) => v[0] && setValues((s) => ({ ...s, kind: v[0] }))} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Where" htmlFor="org">
-          <Input id="org" value={values.org} onChange={set("org")} placeholder="Company, club, or project name" required className="h-10" />
+          <Input id="org" value={values.org} onChange={set("org")} placeholder="Employer, household, group, or project" required className="h-10" />
         </Field>
         <Field label="Your role" htmlFor="title">
           <Input id="title" value={values.title} onChange={set("title")} placeholder="Bookkeeping assistant" className="h-10" />

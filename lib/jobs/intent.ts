@@ -4,7 +4,7 @@ import type { JobIntent } from "./types";
 
 /**
  * Plain-language job search -> structured intent. Rules only, so it's instant and
- * free; it covers how students actually phrase searches. The profile fills gaps
+ * free; it covers how people actually phrase searches. The profile fills gaps
  * the query leaves (no location typed? use the ones from onboarding).
  */
 
@@ -133,7 +133,7 @@ export function parseIntent(query: string, defaults: IntentDefaults = {}): JobIn
     locations: locations.length ? dedupe(locations) : anywhere ? [] : (defaults.targetLocations ?? []).filter((l) => !/^remote$/i.test(l)),
     modes: modes.size ? [...modes] : anywhere ? [] : (defaults.workModes ?? []),
     exclude: dedupe(exclude),
-    payFloor: payFloor ?? (defaults.payFloor ? { amount: defaults.payFloor, period: "hour" } : null),
+    payFloor: payFloor ?? (defaults.payFloor ? { amount: defaults.payFloor, period: defaults.payFloor < 500 ? "hour" : "year" } : null),
   };
 }
 

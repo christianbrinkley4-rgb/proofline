@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { describeIntent, parseIntent } from "./intent";
+import { titleWordsFor } from "./roles";
 import { matchesPlace, resolvePlace } from "./locations";
 import { dedupeKey, detectLevel, detectMode, htmlToText, parsePay } from "./text";
 
@@ -61,6 +62,13 @@ describe("parseIntent", () => {
   it("describes intent as short chips", () => {
     const chips = describeIntent(parseIntent("remote data analyst internships"));
     expect(chips).toEqual(expect.arrayContaining([{ label: "Level", value: "Internship" }, { label: "Mode", value: "Remote" }]));
+  });
+
+  it("keeps broader role searches and annual pay floors usable", () => {
+    const intent = parseIntent("customer service roles near Raleigh", { payFloor: 70000 });
+    expect(intent.roles).toContain("customer-service");
+    expect(titleWordsFor(intent.roles)).toContain("customer support");
+    expect(intent.payFloor).toEqual({ amount: 70000, period: "year" });
   });
 });
 

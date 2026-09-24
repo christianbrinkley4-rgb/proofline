@@ -83,9 +83,9 @@ export default async function ProfilePage() {
           <div className="mt-4 space-y-4">
             {experiences.length === 0 && (
               <div className="rounded-xl border border-dashed p-8 text-center text-[14px] text-muted-foreground">
-                No experience yet.{" "}
+                No experience recorded yet.{" "}
                 <Link href="/app/onboarding" className="font-medium text-foreground underline-offset-4 hover:underline">
-                  Tell your agent about a job, club, or project
+                  Tell your agent about work, a project, or volunteering
                 </Link>
                 .
               </div>
@@ -124,11 +124,15 @@ export default async function ProfilePage() {
           <SideCard title="About you" edit="/app/onboarding?step=basics">
             <dl className="space-y-2 text-[13.5px]">
               <Row label="Name" value={profile?.fullName} />
-              <Row label="School" value={profile?.school} />
-              <Row label="Degree" value={[profile?.degree, profile?.major].filter(Boolean).join(", ")} />
-              <Row label="Graduation" value={profile?.gradDate ? formatMonth(profile.gradDate) : null} />
-              <Row label="GPA" value={profile?.gpa != null ? String(profile.gpa) : null} />
               <Row label="Location" value={[profile?.city, profile?.region].filter(Boolean).join(", ")} />
+              {(profile?.school || profile?.degree || profile?.major || profile?.gradDate || profile?.gpa != null) && (
+                <>
+                  <Row label="School" value={profile?.school} />
+                  <Row label="Degree" value={[profile?.degree, profile?.major].filter(Boolean).join(", ")} />
+                  <Row label="Graduation" value={profile?.gradDate ? formatMonth(profile.gradDate) : null} />
+                  <Row label="GPA" value={profile?.gpa != null ? String(profile.gpa) : null} />
+                </>
+              )}
             </dl>
           </SideCard>
           <SideCard title="What you want" edit="/app/onboarding?step=goals">

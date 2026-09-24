@@ -5,17 +5,16 @@ import type { Requirements } from "./requirements";
 import { computeFit, ELIGIBILITY_CAP, type EligibilityGate, type FitComponentKey, type FitPoints, type FitResult } from "./rubric";
 import { extractSkills, isHardSkill } from "./skills";
 
-/**
- * Scores one student against one posting with the six-part rubric, rules only.
- * Every component says what matched and what's missing, and hard requirements
- * the student can't meet become eligibility gates that cap the score.
- */
+/** Scores the evidence in one person's profile against a posting, rules only. */
 
 export type CandidateProfile = {
   /** Every confirmed fact and active bullet, as plain text. */
   confirmedText: string[];
   experienceTitles: string[];
   hasInternship: boolean;
+  /** Dated work and internships documented in the profile; overlapping months count once. */
+  documentedYearsExperience?: number | null;
+  hasUndatedWork?: boolean;
   major: string | null;
   minor: string | null;
   degree: string | null;
@@ -44,6 +43,7 @@ export type FitReport = FitResult & {
   gates: EligibilityGate[];
   strengths: string[];
   gaps: string[];
+  nextSteps: string[];
 };
 
 export type CandidateIndex = { skills: Set<string>; corpus: string };
@@ -55,7 +55,7 @@ export function indexCandidate(c: CandidateProfile): CandidateIndex {
 
 const round = (n: number) => Math.round(n);
 
-/** Coverage by requirement: a group is met when the student has any skill in it ("Excel or Google Sheets"). */
+/** Coverage by requirement: a group is met when the person has any skill in it ("Excel or Google Sheets"). */
 function coverage(groups: string[][], have: Set<string>) {
   const hard = groups.map((g) => g.filter(isHardSkill)).filter((g) => g.length > 0);
   const label = (g: string[]) => g.join(" or ");
@@ -100,19 +100,27 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const relevance = titleHits.length ? 15 : textHits.length >= 2 ? 11 : textHits.length ? 7 : titleFamilies.length ? 3 : 8;
   let seniority = 6;
   let seniorityNote = "";
+  const documentedYears = candidate.documentedYearsExperience ?? null;
+  const experienceMissing: string[] = [];
   if (job.level === "internship") {
-    seniority = 10;
-    seniorityNote = "Internships are built for where you are.";
+    seniority = 9;
+    seniorityNote = "This posting is an internship; check its student eligibility rules.";
   } else if (job.level === "entry") {
-    seniority = candidate.hasInternship ? 9 : 7;
-    seniorityNote = candidate.hasInternship ? "Entry level, and you have internship experience." : "Entry level. An internship would make this stronger.";
+    seniority = candidate.experienceTitles.length ? 9 : 6;
+    seniorityNote = candidate.experienceTitles.length ? "Your recorded experience counts for this entry-level role." : "Add work, projects, or volunteering to show what you can do.";
   } else if (job.level === "experienced") {
-    seniority = 1;
-    seniorityNote = "This role is aimed at experienced hires.";
+    seniority = documentedYears !== null && documentedYears >= 3 ? 9 : 4;
+    seniorityNote = documentedYears !== null && documentedYears >= 3 ? `Your profile documents about ${documentedYears} years of work.` : "This role is aimed at experienced hires.";
   }
   if (req.yearsExperience && req.yearsExperience >= 2 && job.level !== "internship") {
-    seniority = Math.min(seniority, 2);
-    seniorityNote = `Asks for ${req.yearsExperience}+ years of experience.`;
+    if (documentedYears !== null && documentedYears >= req.yearsExperience) {
+      seniority = 10;
+      seniorityNote = `Your profile documents about ${documentedYears} years; the posting asks for ${req.yearsExperience}+.`;
+    } else {
+      seniority = Math.min(seniority, candidate.hasUndatedWork ? 5 : 3);
+      seniorityNote = `The posting asks for ${req.yearsExperience}+ years. Your profile ${candidate.hasUndatedWork ? "has work without dates" : `documents ${documentedYears ?? 0}`}; add missing work history if you have it.`;
+      experienceMissing.push(`${req.yearsExperience}+ years of experience requested`);
+    }
   }
   points.experience = Math.min(25, relevance + seniority);
   details.experience = {
@@ -127,24 +135,24 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
       .filter(Boolean)
       .join(" "),
     matched: titleHits.slice(0, 3),
-    missing: req.yearsExperience && req.yearsExperience >= 2 ? [`${req.yearsExperience}+ years of experience`] : [],
+    missing: experienceMissing,
   };
 
   // ── Education (15)
   const studies = [candidate.major, candidate.minor, candidate.degree].filter(Boolean).join(" ").toLowerCase();
   const fieldMatch = req.degreeFields.length ? req.degreeFields.filter((f) => studies.includes(f.split(" ")[0])) : [];
-  const fieldPoints = req.degreeFields.length ? (fieldMatch.length ? 8 : studies ? 2 : 4) : 6;
+  const fieldPoints = req.degreeFields.length ? (fieldMatch.length ? 8 : 0) : 8;
   const gpaOk = req.minGpa == null || candidate.gpa == null ? null : candidate.gpa >= req.minGpa;
-  const gpaPoints = gpaOk === false ? 0 : req.minGpa != null && gpaOk ? 4 : 3;
-  const degreePoints = studies ? 3 : 1;
-  points.education = Math.min(15, fieldPoints + gpaPoints + degreePoints + (req.degreeFields.length ? 0 : 1));
+  const gpaPoints = req.minGpa == null ? 4 : gpaOk ? 4 : gpaOk === false ? 0 : 1;
+  const gradPoints = req.gradWindow ? (candidate.gradDate ? 3 : 1) : 3;
+  points.education = Math.min(15, fieldPoints + gpaPoints + gradPoints);
   details.education = {
     note: [
       req.degreeFields.length
         ? fieldMatch.length
           ? `Your ${candidate.major ?? "degree"} matches what they list.`
           : `They list ${req.degreeFields.slice(0, 3).join(", ")}.`
-        : "No specific major required.",
+        : "No specific field of study required.",
       req.minGpa != null ? (gpaOk === false ? `Minimum GPA ${req.minGpa}; yours is ${candidate.gpa}.` : gpaOk ? `Clears their ${req.minGpa} GPA minimum.` : `Minimum GPA ${req.minGpa}.`) : "",
     ]
       .filter(Boolean)
@@ -215,25 +223,29 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
       gates.push({ reason: `Requires an active ${license}.`, cap: ELIGIBILITY_CAP });
     }
   }
-  if (req.yearsExperience && req.yearsExperience >= 3 && job.level !== "internship") {
-    gates.push({ reason: `Asks for ${req.yearsExperience}+ years of full-time experience.`, cap: 50 });
-  }
-
   const result = computeFit(points, gates);
 
   const strengths = [
     ...reqCov.matched.slice(0, 2).map((s) => `${s}, which they ask for`),
     ...(titleHits.length ? [`Relevant experience: ${titleHits[0]}`] : []),
-    ...(fieldMatch.length ? [`Your major (${candidate.major}) fits`] : []),
+    ...(fieldMatch.length ? [`Your field of study (${candidate.major ?? candidate.degree}) fits`] : []),
     ...(placeHit ? [`Location works: ${placeHit.label}`] : []),
   ].slice(0, 4);
   const gaps = [
     ...gates.map((g) => g.reason),
     ...reqCov.missing.slice(0, 3),
+    ...experienceMissing,
     ...prefCov.missing.slice(0, 2).map((s) => `${s} (nice to have)`),
   ].slice(0, 5);
 
-  return { ...result, points, details, gates, strengths, gaps };
+  const nextSteps = [
+    ...(reqCov.missing.length ? [`Show evidence for ${reqCov.missing.slice(0, 2).join(" and ")}. If you have used them, add a specific example to your profile. Otherwise, build the skill before claiming it.`] : []),
+    ...(experienceMissing.length ? [`Add dates and details for relevant work you have done. If the years requirement is out of reach, compare roles with a lower requirement.`] : []),
+    ...(details.education.missing.length ? [`Check the education requirement in the posting. Add a credential you hold, or look for roles that accept equivalent experience.`] : []),
+    ...(!candidate.confirmedText.length ? ["Describe work, projects, or volunteering on your profile so the comparison has evidence to use."] : []),
+  ].slice(0, 3);
+
+  return { ...result, points, details, gates, strengths, gaps, nextSteps };
 }
 
 /** A quick relevance check used while searching, before full scoring: does the title fit the role words? */

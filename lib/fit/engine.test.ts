@@ -101,4 +101,21 @@ describe("scoreFit", () => {
     const fit = scoreFit(job, student);
     expect(fit.details.requiredSkills.missing).not.toContain("Communication");
   });
+
+  it("does not penalize a person for skipping college when the job does not require it", () => {
+    const role = { title: "Customer Service Representative", location: "Raleigh, NC", mode: "onsite" as const, level: "entry" as const, requirements: parseRequirements("Help customers and resolve issues.") };
+    const withoutCollege = { ...student, degree: null, major: null, minor: null, gpa: null, gradDate: null, experienceTitles: ["Customer Service Associate"] };
+    expect(scoreFit(role, withoutCollege).points.education).toBe(scoreFit(role, student).points.education);
+    expect(scoreFit(role, withoutCollege).details.education.missing).toEqual([]);
+  });
+
+  it("credits documented work and does not cap every experienced role", () => {
+    const role = { title: "Senior Customer Service Representative", location: "Raleigh, NC", mode: "onsite" as const, level: "experienced" as const, requirements: { ...parseRequirements("Qualifications\n3 years of experience"), yearsExperience: 3 } };
+    const experienced = { ...student, degree: null, major: null, experienceTitles: ["Customer Service Lead"], documentedYearsExperience: 6 };
+    const newToWork = { ...experienced, documentedYearsExperience: 0 };
+    expect(scoreFit(role, experienced).points.experience).toBeGreaterThan(scoreFit(role, newToWork).points.experience);
+    expect(scoreFit(role, experienced).cappedBy).toBeNull();
+    expect(scoreFit(role, experienced).details.experience.missing).toEqual([]);
+    expect(scoreFit(role, newToWork).nextSteps).toContainEqual(expect.stringMatching(/Add dates and details/));
+  });
 });

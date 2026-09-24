@@ -24,7 +24,7 @@ const FAQS = [
   },
   {
     q: "Who is it for right now?",
-    a: "Students and recent grads going after internships and entry-level roles in accounting, finance, business, and tech. More fields are coming.",
+    a: "Built first for students and recent grads, but you don't need to be in college to use it. Add paid work, projects, volunteering, training, or other experience, then search for roles and see where your evidence fits. Live job coverage is strongest in our current fields; you can paste a posting from any field.",
   },
   {
     q: "What does it cost?",

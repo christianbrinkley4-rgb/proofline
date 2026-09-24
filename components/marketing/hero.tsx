@@ -16,7 +16,7 @@ export function Hero() {
               className="inline-flex items-center gap-2 rounded-full border bg-background py-1 pr-2.5 pl-3 text-[13px] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
             >
               <span className="size-1.5 rounded-full bg-brand" />
-              Free for students and recent grads during beta
+              Free during beta. Built first for students.
               <ArrowRight className="size-3.5" />
             </a>
             {/* Keep the promise visible before the product tour. */}

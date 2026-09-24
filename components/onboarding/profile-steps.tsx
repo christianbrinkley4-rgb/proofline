@@ -41,8 +41,8 @@ export function BasicsStep({ initial, onSaved }: { initial: BasicsInput; onSaved
 
   return (
     <div>
-      <AgentSays>Let&apos;s get the basics right. This goes at the top of every resume.</AgentSays>
-      <StepHint>Only your name is required. Skip anything you&apos;d rather add later.</StepHint>
+      <AgentSays>Let&apos;s start with who you are. We can fill in the details later.</AgentSays>
+      <StepHint>Only your name is required. School and training are optional.</StepHint>
       <form
         className="mt-8 space-y-5 sm:pl-11"
         onSubmit={(e) => {
@@ -69,26 +69,30 @@ export function BasicsStep({ initial, onSaved }: { initial: BasicsInput; onSaved
           </Field>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <details className="rounded-lg border p-4" open={Boolean(initial.school || initial.degree || initial.major || initial.gradDate)}>
+          <summary className="cursor-pointer text-[13.5px] font-medium">Education or training (optional)</summary>
+          <p className="mt-2 text-[12.5px] text-muted-foreground">High school, college, a trade program, a certificate, or nothing yet. Your job matches won&apos;t require a degree unless the posting does.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="School" htmlFor="school">
             <Input id="school" value={values.school} onChange={set("school")} className="h-10" />
           </Field>
-          <Field label="Degree" htmlFor="degree">
-            <Input id="degree" value={values.degree} onChange={set("degree")} placeholder="Bachelor of Science" className="h-10" />
+          <Field label="Degree or credential" htmlFor="degree">
+            <Input id="degree" value={values.degree} onChange={set("degree")} placeholder="Diploma, GED, certificate, or degree" className="h-10" />
           </Field>
-          <Field label="Major" htmlFor="major">
-            <Input id="major" value={values.major} onChange={set("major")} placeholder="Accounting" className="h-10" />
+          <Field label="Field or program" htmlFor="major">
+            <Input id="major" value={values.major} onChange={set("major")} placeholder="Accounting, welding, nursing..." className="h-10" />
           </Field>
           <Field label="Minor" htmlFor="minor">
             <Input id="minor" value={values.minor} onChange={set("minor")} className="h-10" />
           </Field>
-          <Field label="Graduation" htmlFor="gradDate" hint="Expected is fine.">
+          <Field label="Completed or expected" htmlFor="gradDate">
             <Input id="gradDate" type="month" value={values.gradDate} onChange={set("gradDate")} className="h-10" />
           </Field>
-          <Field label="GPA" htmlFor="gpa" hint="Leave it off if it's under 3.0. Fewer employers screen on it every year.">
+          <Field label="GPA (optional)" htmlFor="gpa" hint="Only useful when a posting asks for it.">
             <Input id="gpa" inputMode="decimal" value={values.gpa} onChange={set("gpa")} placeholder="3.6" className="h-10" />
           </Field>
-        </div>
+          </div>
+        </details>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="LinkedIn" htmlFor="linkedinUrl">
@@ -119,14 +123,13 @@ const ROLE_SUGGESTIONS = [
   "Marketing intern",
   "Consulting intern",
   "Staff accountant",
-] as const;
-
-const TERMS = [
-  { value: "Summer 2027", label: "Summer 2027" },
-  { value: "Spring 2027", label: "Spring 2027" },
-  { value: "Fall 2026", label: "Fall 2026" },
-  { value: "Full-time 2027", label: "Full-time 2027" },
-  { value: "Full-time 2028", label: "Full-time 2028" },
+  "Customer service representative",
+  "Administrative assistant",
+  "Retail associate",
+  "Medical assistant",
+  "Warehouse associate",
+  "Electrician apprentice",
+  "Project coordinator",
 ] as const;
 
 const MODES = [
@@ -168,8 +171,8 @@ export function GoalsStep({ initial, onBack, onSaved }: { initial: GoalsInput; o
         <Field label="Kinds of roles" htmlFor="roles">
           <ChipInput id="roles" value={values.targetRoles} onChange={(v) => update("targetRoles", v)} suggestions={ROLE_SUGGESTIONS} placeholder="Type a role and press Enter" />
         </Field>
-        <Field label="When">
-          <PillChoice options={TERMS} value={values.targetTerm ? [values.targetTerm] : []} onChange={(v) => update("targetTerm", v[0] ?? "")} />
+        <Field label="When (optional)" htmlFor="targetTerm" hint="Leave blank if you're open to roles posted now.">
+          <Input id="targetTerm" value={values.targetTerm} onChange={(e) => update("targetTerm", e.target.value)} placeholder="Now, summer 2027, after graduation..." className="h-10" />
         </Field>
         <Field label="Where" htmlFor="locations" hint='Cities, states, or "Remote". I search within about 50 miles of each place.'>
           <ChipInput id="locations" value={values.targetLocations} onChange={(v) => update("targetLocations", v)} suggestions={["Remote"]} placeholder="Raleigh, NC" />
@@ -181,7 +184,7 @@ export function GoalsStep({ initial, onBack, onSaved }: { initial: GoalsInput; o
           <ChipInput id="industries" value={values.industries} onChange={(v) => update("industries", v)} suggestions={INDUSTRIES} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Lowest pay you'd take (optional)" htmlFor="pay" hint="Per hour for internships.">
+          <Field label="Lowest pay you'd take (optional)" htmlFor="pay" hint="Enter an hourly rate or annual salary. We'll infer the unit from the amount.">
             <div className="relative">
               <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[14px] text-subtle-foreground">$</span>
               <Input id="pay" inputMode="numeric" value={values.payFloor} onChange={(e) => update("payFloor", e.target.value.replace(/\D/g, ""))} className="h-10 pl-6" />

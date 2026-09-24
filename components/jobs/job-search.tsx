@@ -20,8 +20,8 @@ type Sort = "fit" | "newest";
 const EXAMPLES = [
   "accounting internships in Raleigh for summer 2027, remote-friendly",
   "entry-level finance roles that don't require the CPA",
-  "remote data analyst internships",
-  "tax internships near Charlotte, NC",
+  "customer service jobs near Charlotte, NC",
+  "project coordinator roles that fit my experience",
 ];
 
 export function JobSearch({

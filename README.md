@@ -1,8 +1,8 @@
 # Proofline
 
-Proofline helps someone turn their full life story into a job search they can understand and manage. They can record work, classes, research, projects, volunteering, and wins; review inferred facts; find roles; compare tailored resume versions; draft cover letters and prepare for interviews; and track every application and follow-up. Every exported resume bullet and cover letter claim cites confirmed source facts.
+Proofline is built first for students and recent grads, and works for job seekers who never attended college or are changing careers later in life. A person records work, classes, training, projects, volunteering, and wins; reviews inferred facts; describes what they want next; finds roles; sees how their evidence fits each role and what they could improve; prepares tailored documents and interviews; and tracks applications. Every exported resume bullet and cover letter claim cites confirmed source facts. The fit score explains alignment with a posting. It does not estimate the probability of being hired.
 
-Proofline drafts but never sends email or submits applications. Students can connect their own AI (Claude, Cursor, and other MCP apps) with a personal access token, or chat with the in-app agent.
+Proofline drafts but never sends email or submits applications. Users can connect their own AI (Claude, Cursor, and other MCP apps) with a personal access token, or chat with the in-app agent.
 
 ## Run locally
 

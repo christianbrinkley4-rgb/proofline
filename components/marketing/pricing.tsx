@@ -40,6 +40,7 @@ export function Pricing() {
             <span className="text-[48px] leading-none font-semibold tracking-[-0.04em]">$0</span>
             <span className="text-[14px] text-muted-foreground">during beta</span>
           </div>
+          <p className="mt-3 text-[13px] text-muted-foreground">You do not need to be in college to sign up.</p>
           <ul className="mt-8 grid gap-3 sm:grid-cols-2">
             {STUDENT_FEATURES.map((f) => (
               <li key={f} className="flex gap-2.5 text-[14px] leading-6">

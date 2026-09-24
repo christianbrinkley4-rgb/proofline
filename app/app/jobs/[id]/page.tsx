@@ -94,6 +94,7 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
             <span className={cn("size-1.5 rounded-full", band === "strong" || band === "good" ? "bg-brand" : "bg-border-strong")} />
             {FIT_BAND_LABEL[band]}
           </span>
+          <span className="ml-3 max-w-44 text-[11.5px] leading-4 text-muted-foreground sm:ml-0 sm:mt-1 sm:text-right">Profile fit, not your chance of being hired</span>
         </div>
       </header>
 
@@ -125,7 +126,7 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
         <div className="mt-6 flex items-start gap-2 rounded-lg border border-pending/40 bg-pending-soft px-4 py-3 text-[13.5px] text-pending-ink">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
           <span>
-            <span className="font-medium">Capped at {fit.score} from {fit.raw}.</span> {fit.cappedBy.reason} Probably not worth a tailored resume.
+            <span className="font-medium">Capped at {fit.score} from {fit.raw}.</span> {fit.cappedBy.reason} Check this requirement before tailoring.
           </span>
         </div>
       )}
@@ -166,6 +167,15 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
             </div>
             <p className="mt-1">Confirm more of what you&apos;ve done on your profile and this score updates the next time you open it.</p>
           </section>
+          {fit.nextSteps.length > 0 && (
+            <section className="rounded-xl border bg-background p-4">
+              <h2 className="text-[13.5px] font-semibold">What you can improve</h2>
+              <ol className="mt-2 list-decimal space-y-2 pl-4 text-[13px] leading-5 text-muted-foreground">
+                {fit.nextSteps.map((step) => <li key={step}>{step}</li>)}
+              </ol>
+              <Link href="/app/profile" className="mt-3 inline-block text-[13px] font-medium underline-offset-4 hover:underline">Update your profile</Link>
+            </section>
+          )}
         </aside>
       </div>
 

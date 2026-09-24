@@ -68,10 +68,10 @@ export function OnboardingFlow({ data }: { data: OnboardingData }) {
           />
         )}
         {step === "review" && <ReviewStep experiences={data.experiences} looseFacts={data.looseFacts} onContinue={() => go("basics")} />}
-        {step === "basics" && <BasicsStep initial={basics} onSaved={() => go("goals")} />}
-        {step === "goals" && <GoalsStep initial={data.goals} onBack={() => go("basics")} onSaved={() => go("experience")} />}
-        {step === "experience" && <ExperienceStep experiences={data.experiences} onBack={() => go("goals")} onContinue={() => go("skills")} />}
-        {step === "skills" && <SkillsStep skills={data.skills} onBack={() => go("experience")} onSaved={() => go("done")} />}
+        {step === "basics" && <BasicsStep initial={basics} onSaved={() => go("experience")} />}
+        {step === "experience" && <ExperienceStep experiences={data.experiences} onBack={() => go("basics")} onContinue={() => go("skills")} />}
+        {step === "skills" && <SkillsStep skills={data.skills} onBack={() => go("experience")} onSaved={() => go("goals")} />}
+        {step === "goals" && <GoalsStep initial={data.goals} onBack={() => go("skills")} onSaved={() => go("done")} />}
         {step === "done" && <DoneStep data={data} />}
       </div>
     </div>
@@ -92,8 +92,8 @@ function StartStep({ name, onUpload, onScratch }: { name: string; onUpload: () =
     <div>
       <AgentSays>Hi {name}. I&apos;m your agent. Before I go looking for jobs, I need to know what you&apos;ve done.</AgentSays>
       <StepHint>
-        Everything you tell me becomes a fact you confirm. I only use confirmed facts on your resumes, so you&apos;ll be able to
-        back up every line. You can stop anytime and I&apos;ll remember where we were.
+        Tell me what you have done, then what you want to do next. Jobs, care work, projects, training, and volunteer work all count.
+        I only use confirmed facts on your resumes. You can stop anytime and come back.
       </StepHint>
       <div className="mt-8 grid gap-3 pl-0 sm:grid-cols-2 sm:pl-11">
         <ChoiceCard
@@ -105,7 +105,7 @@ function StartStep({ name, onUpload, onScratch }: { name: string; onUpload: () =
         <ChoiceCard
           icon={MessageSquareText}
           title="Start from scratch"
-          text="No resume yet? Tell me about your jobs, clubs, and projects in your own words."
+          text="No resume needed. Tell me about work, projects, responsibilities, or things you've learned."
           onClick={onScratch}
         />
       </div>
@@ -261,7 +261,7 @@ function DoneStep({ data }: { data: OnboardingData }) {
   const confirmed =
     data.experiences.flatMap((e) => e.facts).filter((f) => f.state === "confirmed").length +
     data.skills.filter((f) => f.state === "confirmed").length;
-  const role = data.goals.targetRoles[0] ?? "internships";
+  const role = data.goals.targetRoles[0] ?? "jobs";
   const where = data.goals.targetLocations[0];
   const query = [role, where ? `in ${where}` : "", data.goals.targetTerm ? `for ${data.goals.targetTerm}` : ""].filter(Boolean).join(" ");
 

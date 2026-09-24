@@ -7,8 +7,10 @@ Living document. Updated as slices land.
 1. **Every account gets a personal agent** that learns and grows with the user.
 2. **Users can bring their own AI** (Claude, ChatGPT, Gemini) instead of paying for ours.
 3. **Free first.** The core loop has to work at $0.
-4. **Be better than every competitor** at what they do (see `research/COMPETITORS.md`).
+4. **Measure against competitors** on job relevance, application time, document quality, and outcomes (see `research/COMPETITORS.md`).
 5. **Only recommend the best bullets and templates** (see `research/RESUME-STANDARDS.md`).
+
+6. **Students first, everyone welcome.** Students and recent graduates are the primary audience. School, degree, and internship history are optional; paid work, caregiving, training, projects, and volunteering can support a profile. The core path is: who you are and what you have done, what you want next, suggested roles, fit and gaps, then concrete steps to improve. A fit score is not a hiring probability.
 
 ## Architecture
 

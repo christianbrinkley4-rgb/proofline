@@ -1,5 +1,5 @@
 /**
- * Role families: what a student types, and the title words that count as a match.
+ * Role families: what a person types, and the title words that count as a match.
  * "accounting" should find "Audit Intern" and "Staff Accountant", not only titles
  * that literally say "accounting".
  */
@@ -64,6 +64,13 @@ export const ROLE_FAMILIES: Array<{ id: string; label: string; triggers: string[
   { id: "sales", label: "Sales", triggers: ["sales", "business development", "bdr", "sdr"], titleWords: ["sales", "account executive", "business development", "sdr", "bdr"], museCategory: "Sales" },
   { id: "product", label: "Product", triggers: ["product management", "product manager", "pm", "product"], titleWords: ["product manager", "product management", "associate product"], museCategory: "Product Management" },
   { id: "hr", label: "People and HR", triggers: ["hr", "human resources", "people", "recruiting"], titleWords: ["human resources", "hr", "people", "recruit", "talent"] },
+  { id: "customer-service", label: "Customer Service", triggers: ["customer-service", "customer service", "call center", "customer support"], titleWords: ["customer service", "customer support", "call center", "client service"], museCategory: "Customer Service" },
+  { id: "administration", label: "Administration", triggers: ["administration", "administrative", "admin assistant", "office assistant", "receptionist"], titleWords: ["administrative", "office assistant", "receptionist", "office coordinator"], museCategory: "Administration and Office" },
+  { id: "retail", label: "Retail", triggers: ["retail", "store associate", "cashier", "merchandising"], titleWords: ["retail", "store associate", "cashier", "merchandis", "sales associate"], museCategory: "Retail" },
+  { id: "healthcare", label: "Healthcare", triggers: ["medical assistant", "patient care", "healthcare", "nursing assistant"], titleWords: ["medical assistant", "patient care", "healthcare", "nursing assistant", "care coordinator"], museCategory: "Healthcare" },
+  { id: "warehouse", label: "Warehouse", triggers: ["warehouse", "inventory associate", "fulfillment", "logistics"], titleWords: ["warehouse", "inventory", "fulfillment", "logistics", "distribution"], museCategory: "Manufacturing and Warehouse" },
+  { id: "trades", label: "Trades", triggers: ["trades", "electrician", "plumber", "welder", "skilled trades", "apprentice"], titleWords: ["electrician", "plumber", "welder", "apprentice", "technician"], museCategory: "Construction" },
+  { id: "project", label: "Project Management", triggers: ["project", "project coordinator", "project manager", "project management"], titleWords: ["project coordinator", "project manager", "project management"], museCategory: "Project Management" },
 ];
 
 export function familiesFor(words: string[]) {

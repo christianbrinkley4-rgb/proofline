@@ -86,7 +86,7 @@ export async function saveBasicsAction(input: BasicsInput): Promise<{ ok: true }
     minor: v.minor || null,
     gradDate: v.gradDate || null,
     gpa: v.gpa ? Number(v.gpa) : null,
-    onboardingStep: "goals",
+    onboardingStep: "experience",
   });
   refresh();
   return { ok: true };
@@ -119,7 +119,7 @@ export async function saveGoalsAction(input: GoalsInput): Promise<{ ok: true } |
     payFloor: v.payFloor ? Number(v.payFloor) : null,
     workAuthorization: v.workAuthorization || null,
     dealBreakers: v.dealBreakers,
-    onboardingStep: "experience",
+    onboardingStep: "done",
   });
   refresh();
   return { ok: true };
@@ -202,7 +202,7 @@ export async function saveSkillsAction(skills: string[]) {
       await rejectFact(id, fact.id, "removed during onboarding");
     }
   }
-  await updateProfile(id, { onboardingStep: "done" });
+  await updateProfile(id, { onboardingStep: "goals" });
   refresh();
 }
 

@@ -137,7 +137,7 @@ export async function searchJobs(
 
   // Big employers on Workday, searched by keyword
   const families = familiesFor(intent.roles);
-  const keyword = [families[0]?.label ?? intent.roles[0] ?? "", intent.level === "internship" ? "intern" : intent.level === "entry" ? "analyst" : ""]
+  const keyword = [families[0]?.label ?? intent.roles[0] ?? "", intent.level === "internship" ? "intern" : ""]
     .join(" ")
     .trim()
     .replace(/ and .*/, "");
@@ -153,7 +153,7 @@ export async function searchJobs(
 
   // Aggregators
   let sourcesSearched = 2;
-  const museLevels = intent.level === "internship" ? ["Internship"] : intent.level === "entry" ? ["Entry Level"] : ["Internship", "Entry Level"];
+  const museLevels = intent.level === "internship" ? ["Internship"] : intent.level === "entry" ? ["Entry Level"] : [];
   const museCategories = [...new Set(families.map((f) => f.museCategory).filter((c): c is string => Boolean(c)))];
   const museLocations = [
     ...places.filter((p) => p !== null).map((p) => (p.state && p.cities[0] ? `${p.cities[0].replace(/\b\w/g, (c) => c.toUpperCase())}, ${p.state}` : p.label)),
