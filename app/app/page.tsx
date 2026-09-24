@@ -4,13 +4,11 @@ import { ArrowRight, BellRing, SquareKanban } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { JourneyRail } from "@/components/coach/journey-rail";
 import { MoveList } from "@/components/coach/move-list";
-import { RoleExplorer } from "@/components/jobs/role-explorer";
+import { PasteJobBox } from "@/components/coach/paste-job-box";
 import { requireSession } from "@/lib/auth";
 import { loadJourney } from "@/lib/agent/coach";
 import { nextMoves } from "@/lib/agent/next-moves";
 import { refreshDue, watchedWithNews } from "@/lib/jobs/saved";
-import { recommendRoles } from "@/lib/jobs/recommend";
-import { listExperiences } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { trackerStats } from "@/lib/tracker/model";
@@ -26,10 +24,9 @@ function greeting(name: string) {
 export default async function TodayPage() {
   const session = await requireSession();
   const userId = session.user.id;
-  const [profile, profileFacts, experiences, applications, moves, watched, journey] = await Promise.all([
+  const [profile, profileFacts, applications, moves, watched, journey] = await Promise.all([
     getProfile(userId),
     listFacts(userId),
-    listExperiences(userId),
     listApplications(userId),
     nextMoves(userId),
     watchedWithNews(userId),
@@ -43,11 +40,10 @@ export default async function TodayPage() {
   const news = watched.filter((w) => w.fresh.length);
   const confirmed = profileFacts.filter((fact) => fact.verificationState === "confirmed");
   const toReview = profileFacts.length - confirmed.length;
-  const roleIdeas = recommendRoles({ targetRoles: profile?.targetRoles ?? [], confirmedFacts: confirmed, experiences });
 
   // Before onboarding, the story step is setup itself.
   const action =
-    !onboarded && journey.current === "story"
+    !onboarded && journey.current === "resume"
       ? {
           title: profile?.onboardingStep ? "Pick up where you left off" : "Let your agent get to know you",
           detail: "Upload a resume or answer a few questions. Everything you say becomes a fact you confirm, and only those facts reach a resume.",
@@ -64,12 +60,26 @@ export default async function TodayPage() {
     <PageBody>
       <PageHeader
         title={greeting(profile?.fullName || session.user.name)}
-        description={journey.current === "done" ? "Nice work. That application is out. Here's what's next." : "One step at a time. Here's the next one."}
+        description={
+          journey.current === "done"
+            ? "That resume is as strong as your evidence allows. Paste the next job whenever you're ready."
+            : "The best resume for every job, one step at a time."
+        }
       />
 
       <div className="mt-8">
-        <JourneyRail journey={journey} action={action} />
+        <JourneyRail journey={journey} action={action}>
+          {!action && (journey.current === "job" || journey.current === "done") ? <PasteJobBox /> : null}
+        </JourneyRail>
       </div>
+
+      {/* Once the first resume exists, another job is always one paste away. */}
+      {!action && journey.current !== "job" && journey.current !== "done" && journey.current !== "resume" && (
+        <section className="mt-8">
+          <h2 className="text-[15px] font-semibold tracking-tight">Have another job in mind?</h2>
+          <PasteJobBox className="mt-3" compact />
+        </section>
+      )}
 
       {news.length > 0 && (
         <section className="mt-8 rounded-2xl border border-brand/30 bg-background p-5 sm:p-6">
@@ -106,8 +116,6 @@ export default async function TodayPage() {
           </div>
         </section>
       )}
-
-      {onboarded && (journey.current === "find" || journey.current === "fit") && <RoleExplorer roles={roleIdeas} />}
 
       {onboarded && (
         <section className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">

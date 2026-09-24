@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { jobPlan, loadJobProgress, loadJourney, storyReady } from "@/lib/agent/coach";
+import { loadJobProgress, loadJourney, storyReady } from "@/lib/agent/coach";
+import { declinedSkills } from "@/lib/agent/gap-store";
+import { hardGaps, skillGaps } from "@/lib/fit/gaps";
 import { logEvent } from "@/lib/agent/events";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
@@ -240,8 +242,8 @@ export const TOOLS: AgentTool[] = [
     name: "plan_application",
     title: "Plan the next step",
     description:
-      "The coach's single next step. Without a jobId: where the student's current application stands in the loop (story, find, fit, resume, packet, track) and the one action to take now. With a jobId: the next step for that job. Call this before suggesting what to do, and offer to do the step with your tools when you can.",
-    input: { jobId: z.uuid().optional().describe("A job from search results or the tracker.") },
+      "The coach's single next step toward the best resume for a job. Without a jobId: where the student is in the loop (your resume, paste a job, three resumes, close the gaps) and the one action to take now. With a jobId: that job's fit, the skills it asks for that the student hasn't shown (as questions to ask them), and whether their tailored resumes need building or rebuilding. Call this before suggesting what to do.",
+    input: { jobId: z.uuid().optional().describe("A job from search results, a pasted link, or the tracker.") },
     readOnly: true,
     run: async (args, ctx) => {
       if (!args.jobId) {
@@ -253,30 +255,34 @@ export const TOOLS: AgentTool[] = [
           next: { ...journey.action, url: link(journey.action.href) },
         };
       }
-      const [jobs, facts, experiences, data] = await Promise.all([
+      const [jobs, facts, experiences, data, declined, candidate] = await Promise.all([
         loadJobProgress(ctx.userId),
         factCounts(ctx.userId),
         listExperiences(ctx.userId),
         getJobForUser(ctx.userId, args.jobId),
+        declinedSkills(ctx.userId),
+        loadCandidate(ctx.userId),
       ]);
       if (!data) throw new Error("Job not found.");
+      const { job } = data;
+      const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements: requirementsOf(job) }, candidate);
       const progress = jobs.find((j) => j.jobId === args.jobId);
-      const plan = jobPlan({
-        resumes: progress?.resumes ?? 0,
-        letter: progress?.letter ?? "none",
-        stage: progress?.stage ?? null,
-        capped: false,
-        storyReady: storyReady({ confirmedFacts: facts.confirmed, experiences: experiences.length }),
-      });
-      const url = {
-        story: link("/app/profile#start"),
-        resume: link(`/app/resumes/compare?job=${args.jobId}`),
-        packet: link(`/app/jobs/${args.jobId}/packet#letter`),
-        prep: link(`/app/jobs/${args.jobId}/packet#interview`),
-        apply: link(`/app/jobs/${args.jobId}/packet#tracking`),
-      }[plan.primary];
-      const tool = { story: "save_story_note", resume: "tailor_resume", packet: "draft_cover_letter", prep: "interview_prep", apply: "track_job" }[plan.primary];
-      return { company: data.job.company, title: data.job.title, next: plan.primary, note: plan.note, url, toolThatHelps: tool, tracked: Boolean(progress?.stage) };
+      const gaps = skillGaps(fit, declined);
+      const ready = storyReady({ confirmedFacts: facts.confirmed, experiences: experiences.length });
+      const next = !ready ? "add_story" : !progress?.resumes ? "build_resumes" : gaps.length ? "close_gaps" : progress.stale ? "rebuild_resumes" : "done";
+      return {
+        company: job.company,
+        title: job.title,
+        fit: fit.score,
+        strengths: fit.strengths,
+        next,
+        gapQuestions: gaps.map((g) => ({ skill: g.skill, ask: g.question, why: g.why })),
+        cantFixWithASentence: hardGaps(fit),
+        resumesBuilt: progress?.resumes ?? 0,
+        resumesNeedRebuild: Boolean(progress?.stale),
+        url: link(`/app/jobs/${job.id}${next === "close_gaps" ? "#strengthen" : "#resumes"}`),
+        note: "Ask the gap questions one at a time. When the student answers, save their words with propose_fact and send them to the url to confirm and rebuild; never answer for them.",
+      };
     },
   }),
 

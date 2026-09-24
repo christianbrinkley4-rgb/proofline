@@ -196,9 +196,9 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
     push(
       {
         kind: "resume",
-        title: `Prepare for ${app.company}`,
-        detail: `Compare evidence-backed resume versions and draft a cover letter for ${app.title}.`,
-        href: `/app/jobs/${app.jobId}/packet`,
+        title: `Build your resumes for ${app.company}`,
+        detail: `Three one-page versions for ${app.title}, built from your confirmed facts, with the best one picked.`,
+        href: `/app/jobs/${app.jobId}?build=1#resumes`,
       },
       urgency("resume"),
     );
@@ -213,7 +213,7 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
           kind: "resume",
           title: `Build a resume for ${job.company}`,
           detail: `Compare three one-page versions for ${job.title}, built from your confirmed facts.`,
-          href: `/app/resumes/compare?job=${job.jobId}`,
+          href: `/app/jobs/${job.jobId}?build=1#resumes`,
         },
         urgency("resume"),
       );
@@ -235,7 +235,7 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
 
   if (input.applications.length === 0 && !(input.jobs ?? []).length) {
     push(
-      { kind: "explore", title: "Find roles worth your time", detail: "Search live postings and save one to start tracking your search.", href: "/app/jobs" },
+      { kind: "explore", title: "Paste a job you want", detail: "A link from anywhere, or the description. You get your fit and three tailored resumes.", href: "/app#paste" },
       urgency("explore"),
     );
   }

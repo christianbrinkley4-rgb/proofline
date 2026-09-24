@@ -21,8 +21,8 @@ export function Hero() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-[38rem] text-[17px] leading-7 text-pretty text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:160ms] sm:text-[19px] sm:leading-8">
-          {site.name} is a job search coach. It finds roles worth your time, shows how you fit, and builds every resume and
-          cover letter from facts you&apos;ve confirmed. One clear next step at a time.
+          {site.name} builds your resume from what you&apos;ve actually done. Paste any job and get your fit, three tailored
+          one-page versions, and exactly what would make them stronger.
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 motion-safe:animate-rise motion-safe:[animation-delay:240ms] sm:flex-row">
@@ -64,8 +64,8 @@ function CoachNote() {
         <span className="size-1.5 rounded-full bg-brand" />
         Your next step
       </div>
-      <p className="mt-1.5 text-[14px] leading-5 font-semibold">Tailor a resume for Whitfield &amp; Lowe</p>
-      <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">It&apos;s your best fit at 87. Two of your confirmed facts cover what they ask for most.</p>
+      <p className="mt-1.5 text-[14px] leading-5 font-semibold">Show journal entries on your resume</p>
+      <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">Whitfield &amp; Lowe requires it and your resume doesn&apos;t show it yet. One sentence from you closes the gap.</p>
     </div>
   );
 }

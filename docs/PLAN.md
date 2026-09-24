@@ -136,3 +136,16 @@ Next: OAuth for browser-based connectors (claude.ai, ChatGPT); a profile timelin
 - **Dev**: `/api/dev/login?fresh=1&next=/app` signs in a brand-new student to walk the first-run path.
 
 Next: measure whether students finish the loop (step reached per week); give the coach rail a "switch job" control; a scroll-driven version of the landing walkthrough; widen the employer registry for business and operations roles.
+
+## September 24 resume-first focus
+
+Proofline now leads with the resume, not the search. Students find jobs on LinkedIn, Indeed, and Handshake anyway; Proofline's edge is building the best true resume for each one.
+
+- **Loop** (`lib/agent/coach.ts`): Your resume (confirmed facts and a general resume), Paste a job, Three resumes, Close the gaps. Cover letter, tracking, and prep follow. A student who pastes a job before building a general resume isn't sent back for one.
+- **Paste box** (`components/coach/paste-job-box.tsx`) on Today and Jobs: a link is fetched when the site allows; otherwise the pasted posting's title, company, and place are read from the text (`lib/jobs/guess-posting.ts`) for the student to check. Either way they land on the job with three resumes building.
+- **Job workspace** (`/app/jobs/[id]`): fit strengths and gaps, the three resumes with the best one picked by how many requirements it visibly shows (`screeningReport`), then "Make it stronger".
+- **Gap loop** (`lib/fit/gaps.ts`, `app/app/jobs/[id]/gap-actions.ts`): each required, preferred, or posting skill the student hasn't shown becomes a question. An answer is saved as their own confirmed facts (the experience in their words, plus the skill), bullets are written and verified against those facts, and the fit is rescored. "Not yet" is remembered across jobs (agent events) and can be undone. Degree, years, and eligibility gaps show as advice. Resumes built before new evidence are flagged for a one-click rebuild.
+- **Agent**: `plan_application` with a job returns fit, gap questions, and rebuild status; `chat.v2` coaches through the gaps without writing claims for the student.
+- Verified in the browser: a Staff Accountant Intern posting went from 4 of 6 requirements shown to 5 of 6 (fit 80 to 86) after one gap answer and a rebuild; a pasted posting's title, company, and place were read correctly and its three resumes built on arrival.
+
+Next: resume polish checks from career-center guidance (contact info, quantified bullets, tense consistency, typos, buzzwords); per-job keyword mirroring in the skills line; a way to switch which job the coach is focused on.

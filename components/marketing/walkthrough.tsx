@@ -1,74 +1,86 @@
-import { ArrowUpRight, Check, CircleAlert, FileText, Mic, Search } from "lucide-react";
+import { Check, ClipboardPaste, FileText, MessagesSquare, Mic, PenLine, SquareKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Section, SectionHeading } from "./section";
 
 /**
  * The loop the in-app coach walks every student through, in the same order:
- * Story, Find, Fit, Resume, Packet, Track. Each step shows a small slice of the real screen.
+ * your resume, paste a job, three resumes, close the gaps. Each step shows a small
+ * slice of the real screen.
  */
 const STEPS = [
   {
     id: "story",
-    title: "Tell your story",
-    text: "Upload a resume, talk it out, or type a few lines. Every claim becomes a fact you confirm.",
+    title: "Build your resume",
+    text: "Upload an old resume, talk it out, or type a few lines. Every claim becomes a fact you confirm, and your first one-page resume comes from those.",
     visual: <StoryVisual />,
   },
   {
-    id: "find",
-    title: "Find roles worth your time",
-    text: "Describe the job like you'd text a friend. It searches live employer boards and merges duplicates.",
-    visual: <FindVisual />,
+    id: "paste",
+    title: "Paste any job",
+    text: "A link from LinkedIn, Indeed, Handshake, or a company site, or the description itself. You get a fit score with the math shown.",
+    visual: <PasteVisual />,
   },
   {
-    id: "fit",
-    title: "See how you fit",
-    text: "A score out of 100 with the math shown: what you have, what's missing, and what to do about it.",
-    visual: <FitVisual />,
+    id: "resumes",
+    title: "Get three tailored resumes",
+    text: "Experience-first, skills-first, and keyword-matched, each one page. It tells you which one shows the most of what they ask for.",
+    visual: <TrioVisual />,
   },
   {
-    id: "resume",
-    title: "Build the resume",
-    text: "Three one-page versions for each job, written only from confirmed facts. Pick the one you can defend.",
-    visual: <ResumeVisual />,
+    id: "gaps",
+    title: "Close the gaps",
+    text: "For each thing the posting wants that your resume doesn't show, it asks where you've done it. Your answer becomes a bullet, and the resumes rebuild.",
+    visual: <GapVisual />,
   },
-  {
-    id: "packet",
-    title: "Finish the packet",
-    text: "A cover letter from your evidence, plus the one part only you can write: why this job.",
-    visual: <PacketVisual />,
-  },
-  {
-    id: "track",
-    title: "Apply and follow up",
-    text: "You apply on the employer's site. It tracks the stage, reminds you when to follow up, and drafts the email.",
-    visual: <TrackVisual />,
-  },
+];
+
+const THEN = [
+  { icon: PenLine, title: "Cover letter", text: "Drafted from the same confirmed facts, with a spot for why you want the job." },
+  { icon: SquareKanban, title: "Track and follow up", text: "Every application in one place, with reminders and follow-up drafts." },
+  { icon: MessagesSquare, title: "Interview prep", text: "Likely questions paired with stories you already have." },
 ];
 
 export function Walkthrough() {
   return (
     <Section id="how" className="relative">
-      <SectionHeading eyebrow="How it works" title="A coach for the whole search, one step at a time.">
-        Most tools hand you a dashboard and wish you luck. Proofline walks you through each application in order, and
-        always tells you the one thing to do next.
+      <SectionHeading eyebrow="How it works" title="The best resume for every job you want.">
+        Most resume tools grade what you already wrote. Proofline builds each version from what you&apos;ve actually done,
+        shows you what&apos;s missing for this job, and helps you close the gap honestly.
       </SectionHeading>
 
-      <ol className="relative mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+      <ol className="relative mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-5">
         {STEPS.map((step, i) => (
           <li key={step.id} className="group flex min-w-0 flex-col rounded-2xl border bg-background p-2 transition-colors hover:border-border-strong">
-            <div aria-hidden="true" className="relative flex h-44 items-center overflow-hidden rounded-xl atmosphere-soft bg-muted/60 p-4">
+            <div aria-hidden="true" className="relative flex h-48 items-center overflow-hidden rounded-xl atmosphere-soft bg-muted/60 p-4 sm:p-5">
               {step.visual}
             </div>
             <div className="px-3 pt-4 pb-3">
               <div className="flex items-center gap-2.5">
                 <span className="grid size-6 place-items-center rounded-full bg-ink font-mono text-[11px] text-ink-foreground tabular-nums">{i + 1}</span>
-                <h3 className="text-[16.5px] font-semibold tracking-tight">{step.title}</h3>
+                <h3 className="text-[17px] font-semibold tracking-tight">{step.title}</h3>
               </div>
               <p className="mt-2 text-[14.5px] leading-6 text-muted-foreground">{step.text}</p>
             </div>
           </li>
         ))}
       </ol>
+
+      <div className="mt-8 rounded-2xl border bg-muted/30 p-5 sm:p-6">
+        <p className="text-[13px] font-medium text-muted-foreground">Then, when your resume is right</p>
+        <ul className="mt-3 grid gap-4 sm:grid-cols-3">
+          {THEN.map(({ icon: Icon, title, text }) => (
+            <li key={title} className="flex gap-3">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-background ring-1 ring-border">
+                <Icon className="size-4 text-muted-foreground" />
+              </span>
+              <span>
+                <span className="block text-[14px] font-semibold">{title}</span>
+                <span className="block text-[13px] leading-5 text-muted-foreground">{text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </Section>
   );
 }
@@ -99,44 +111,24 @@ function StoryVisual() {
   );
 }
 
-function FindVisual() {
-  return (
-    <Card>
-      <div className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-muted-foreground">
-        <Search className="size-3" />
-        business internships near Raleigh
-      </div>
-      <ul className="mt-2.5 space-y-1.5">
-        {[
-          ["Business Operations Intern", "Carrow Partners", 84],
-          ["Business Analyst Intern", "Brightline Health", 79],
-          ["Rotational Program Intern", "Oakridge Credit Union", 71],
-        ].map(([title, company, score]) => (
-          <li key={title} className="flex items-center justify-between gap-3">
-            <span className="min-w-0 truncate">
-              <span className="font-medium">{title}</span> <span className="text-muted-foreground">· {company}</span>
-            </span>
-            <span className="font-semibold tabular-nums">{score}</span>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function FitVisual() {
+function PasteVisual() {
   const rows = [
-    ["Required skills", 27, 30],
-    ["Experience", 21, 25],
-    ["Education", 15, 15],
+    ["Required skills", 20, 30],
+    ["Experience", 24, 25],
   ] as const;
   return (
     <Card>
-      <div className="flex items-baseline justify-between">
-        <span className="text-subtle-foreground">Audit Intern · Whitfield &amp; Lowe</span>
-        <span className="font-display text-[20px] font-semibold tabular-nums">87</span>
+      <div className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-muted-foreground">
+        <ClipboardPaste className="size-3 shrink-0" />
+        <span className="truncate">linkedin.com/jobs/view/staff-accountant-intern</span>
       </div>
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-2.5 flex items-baseline justify-between">
+        <span className="min-w-0 truncate">
+          <span className="font-medium">Staff Accountant Intern</span> <span className="text-muted-foreground">· Whitfield &amp; Lowe</span>
+        </span>
+        <span className="font-display text-[20px] font-semibold tabular-nums">80</span>
+      </div>
+      <div className="mt-1.5 space-y-1.5">
         {rows.map(([label, pts, max]) => (
           <div key={label}>
             <div className="flex justify-between text-[11px]">
@@ -155,76 +147,49 @@ function FitVisual() {
   );
 }
 
-function ResumeVisual() {
+function TrioVisual() {
+  const versions = [
+    ["Experience first", "5/6", true],
+    ["Skills first", "4/6", false],
+    ["Keyword match", "4/6", false],
+  ] as const;
   return (
-    <div className="mx-auto w-44 rounded-md border bg-background p-3 shadow-xs">
-      <div className="h-2 w-20 rounded bg-foreground/80" />
-      <div className="mt-1 h-1 w-28 rounded bg-muted-foreground/30" />
-      <div className="mt-3 space-y-1.5">
-        <div className="h-1 w-full rounded bg-muted-foreground/25" />
-        <div className="relative -mx-1 rounded bg-brand-soft px-1 py-1 ring-1 ring-brand/30">
-          <div className="h-1 w-full rounded bg-brand/60" />
-          <div className="mt-1 h-1 w-3/4 rounded bg-brand/60" />
+    <div className="grid w-full grid-cols-3 gap-2">
+      {versions.map(([label, shown, best]) => (
+        <div key={label} className={cn("min-w-0 rounded-md border bg-background p-2 shadow-xs", best && "border-brand/50 ring-1 ring-brand/30")}>
+          <div className="h-1.5 w-2/3 rounded bg-foreground/70" />
+          <div className="mt-2 space-y-1">
+            <div className={cn("h-1 rounded", best ? "bg-brand/60" : "bg-muted-foreground/25")} />
+            <div className="h-1 w-5/6 rounded bg-muted-foreground/25" />
+            <div className="h-1 rounded bg-muted-foreground/25" />
+            <div className="h-1 w-2/3 rounded bg-muted-foreground/25" />
+          </div>
+          <p className="mt-2 truncate text-[10.5px] font-medium">{label}</p>
+          <p className={cn("flex items-center gap-1 text-[10px]", best ? "text-brand-ink" : "text-subtle-foreground")}>
+            {best ? <Check className="size-2.5" strokeWidth={3} /> : <FileText className="size-2.5" />}
+            {shown} shown
+          </p>
         </div>
-        <div className="h-1 w-5/6 rounded bg-muted-foreground/25" />
-        <div className="h-1 w-full rounded bg-muted-foreground/25" />
-        <div className="h-1 w-2/3 rounded bg-muted-foreground/25" />
-      </div>
-      <div className="mt-3 flex items-center gap-1 text-[10px] font-medium text-brand-ink">
-        <FileText className="size-2.5" />
-        From 2 confirmed facts
-      </div>
+      ))}
     </div>
   );
 }
 
-function PacketVisual() {
-  const items = [
-    ["Resume attached", "done"],
-    ["Cover letter drafted", "done"],
-    ["Why you want this job", "you"],
-  ] as const;
+function GapVisual() {
   return (
-    <Card className="space-y-1.5">
-      {items.map(([label, state]) => (
-        <div
-          key={label}
-          className={cn(
-            "flex items-center justify-between gap-2 rounded-md px-2 py-1.5",
-            state === "you" ? "bg-pending-soft text-pending-ink ring-1 ring-pending/40" : "bg-muted/60",
-          )}
-        >
-          <span className={state === "you" ? "font-medium" : ""}>{label}</span>
-          {state === "done" ? <Check className="size-3.5 text-brand" strokeWidth={3} /> : <CircleAlert className="size-3.5" strokeWidth={2.5} />}
-        </div>
-      ))}
-    </Card>
-  );
-}
-
-function TrackVisual() {
-  return (
-    <div className="grid w-full grid-cols-3 gap-1.5 text-[11px]">
-      {[
-        ["Saved", []],
-        ["Applied", ["Carrow Partners"]],
-        ["Interview", ["Whitfield & Lowe"]],
-      ].map(([stage, cards]) => (
-        <div key={stage as string} className="rounded-lg bg-background/70 p-1.5 ring-1 ring-border">
-          <div className="px-1 pb-1 text-subtle-foreground">{stage as string}</div>
-          {(cards as string[]).map((c) => (
-            <div key={c} className="rounded-md border bg-background p-1.5 shadow-xs">
-              <div className="truncate font-medium">{c}</div>
-              {stage === "Applied" && (
-                <div className="mt-1 flex items-center gap-1 text-pending-ink">
-                  <ArrowUpRight className="size-2.5" />
-                  Follow up Thu
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
+    <div className="w-full space-y-2">
+      <Card className="space-y-1.5">
+        <span className="inline-block rounded bg-pending-soft px-1.5 py-0.5 text-[10.5px] font-medium text-pending-ink">Required</span>
+        <p className="font-medium">They require journal entries. Where have you used it?</p>
+        <p className="rounded-md bg-muted/70 px-2 py-1.5 text-muted-foreground">Recorded journal entries in QuickBooks for 40 vendor accounts at month-end.</p>
+      </Card>
+      <div className="flex items-center justify-between rounded-lg border border-brand/30 bg-brand-soft/70 px-3 py-2 text-[12px]">
+        <span className="flex items-center gap-1.5 font-medium">
+          <Check className="size-3.5 text-brand-ink" strokeWidth={3} />
+          New bullet added
+        </span>
+        <span className="font-medium text-brand-ink tabular-nums">Fit 80 → 86</span>
+      </div>
     </div>
   );
 }

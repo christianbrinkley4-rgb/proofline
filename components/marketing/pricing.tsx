@@ -5,10 +5,11 @@ import { site } from "@/lib/site";
 import { Section, SectionHeading } from "./section";
 
 const STUDENT_FEATURES = [
-  "Job search across live company job boards",
-  "Watched searches that surface new matches daily",
-  "Fit scores with the full breakdown",
+  "A one-page resume built from your confirmed facts",
+  "Paste any job for a fit score with the full breakdown",
   "Three tailored resume strategies per job, with PDF and DOCX export",
+  "Gap questions that turn what you've done into new bullets",
+  "Live job search and watched searches",
   "Cover letters and form answers built only from facts you confirm",
   "Interview prep with stories from your own experience",
   "Application tracker with notes, reminders, and follow-up drafts",

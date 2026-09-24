@@ -8,7 +8,7 @@ const FAQS = [
   },
   {
     q: "Where do the jobs come from?",
-    a: "Straight from employers: company job boards on Greenhouse, Lever, Ashby, and SmartRecruiters, large employers' own career sites, and The Muse. Duplicates are merged so each opening shows up once, and stale listings are skipped.",
+    a: "Anywhere you find them. Paste a link from LinkedIn, Indeed, Handshake, or a company site, or paste the description itself when a site needs a sign-in. You can also search employer career sites live from inside Proofline.",
   },
   {
     q: "Does it apply for me?",

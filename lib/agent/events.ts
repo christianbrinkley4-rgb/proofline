@@ -26,7 +26,9 @@ export type AgentEventType =
   | "cover_letter_drafted"
   | "cover_letter_edited"
   | "preference_learned"
-  | "connector_call";
+  | "connector_call"
+  | "gap_answered"
+  | "gap_declined";
 
 export async function logEvent(userId: string, type: AgentEventType, data: Record<string, unknown> = {}) {
   await db.insert(schema.agentEvent).values({ userId, type, data });

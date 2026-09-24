@@ -45,7 +45,7 @@ Still banned: purple or indigo glows, neon, glassmorphism panels, dark mode by d
 
 Every signed-in screen answers "what do I do now?" with one primary action.
 
-- The loop is always Story, Find, Fit, Resume, Packet, Track, in that order ([`lib/agent/coach.ts`](lib/agent/coach.ts)). Today shows it as a six-segment rail with one action card (`components/coach/journey-rail.tsx`).
+- The loop is Your resume, Paste a job, 3 resumes, Close gaps ([`lib/agent/coach.ts`](lib/agent/coach.ts)). Cover letter, tracking, and prep come after. Today shows it as a rail with one action card, and the paste box sits inside the card when pasting is the step (`components/coach/journey-rail.tsx`).
 - One `size="xl"` primary button per screen. Everything else is `ghost` or `outline` and sits after it.
 - Sequences (the packet) use `StepSection`: the current step is open and lifted; done steps collapse to one line with a green check; extras sit below under "When you need them".
 - Empty states are a single coach entry with a few clear choices, never every tool at once (`components/coach/story-start.tsx`).

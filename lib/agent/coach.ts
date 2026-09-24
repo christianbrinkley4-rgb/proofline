@@ -1,30 +1,35 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import type { FitReport } from "@/lib/fit/engine";
+import { skillGaps } from "@/lib/fit/gaps";
 import { listMatches } from "@/lib/jobs/store";
 import { listExperiences } from "@/lib/kb/experiences";
 import { factCounts } from "@/lib/kb/facts";
-import { getProfile } from "@/lib/kb/profile";
 import { letterStatus, type LetterStatus } from "@/lib/packet/cover-letter";
 import { readLetter } from "@/lib/packet/service";
 import { listApplications, type Application } from "@/lib/tracker/service";
+import { declinedSkills } from "./gap-store";
 import { storyReady } from "./story-ready";
 
 export { storyReady };
 
 /**
- * The coach: one application walked through Story, Find, Fit, Resume, Packet,
- * Track, with exactly one next step at a time. Pure rules over the student's
- * own state, so Today, the job page, the packet, and chat all agree on what
- * comes next.
+ * The coach: the best possible resume for each job, one step at a time.
+ *
+ *   1. Your resume: confirmed facts and a general one-page resume
+ *   2. Paste a job: a link from anywhere, or the posting itself
+ *   3. Three resumes: tailored versions, with the best one picked
+ *   4. Close the gaps: answer what the posting asks for, then rebuild
+ *
+ * Cover letters, tracking, and interview prep follow once the resume is right.
+ * Pure rules over the student's own state, so Today, the job page, and chat agree.
  */
 
 export const JOURNEY = [
-  { id: "story", label: "Story" },
-  { id: "find", label: "Find" },
-  { id: "fit", label: "Fit" },
-  { id: "resume", label: "Resume" },
-  { id: "packet", label: "Packet" },
-  { id: "track", label: "Track" },
+  { id: "resume", label: "Your resume" },
+  { id: "job", label: "Paste a job" },
+  { id: "tailor", label: "3 resumes" },
+  { id: "strengthen", label: "Close gaps" },
 ] as const;
 
 export type JourneyStepId = (typeof JOURNEY)[number]["id"];
@@ -33,7 +38,7 @@ export type StepState = "done" | "current" | "upcoming";
 /** Stages after the student has applied. */
 const SENT = new Set(["applied", "assessment", "interview", "offer", "rejected"]);
 
-/** The one job the coach is walking the student through. */
+/** The one job the coach is working on with the student. */
 export type FocusJob = {
   jobId: string;
   company: string;
@@ -43,16 +48,18 @@ export type FocusJob = {
   /** Resume versions built for this job. */
   resumes: number;
   letter: LetterStatus;
+  /** Skills the posting asks for that the student hasn't answered or ruled out. */
+  openGaps: number;
+  /** New confirmed facts since the resumes were built. */
+  stale: boolean;
 };
 
 export type JourneyInput = {
   confirmedFacts: number;
   pendingFacts: number;
   experiences: number;
-  /** True once any search has produced matches. */
-  searched: boolean;
-  /** A first search built from the student's goals, e.g. "business internships in Raleigh". */
-  suggestedQuery: string | null;
+  /** A general (not job-specific) resume exists. */
+  baseResume: boolean;
   focus: FocusJob | null;
 };
 
@@ -67,100 +74,94 @@ export type CoachAction = {
 
 export type Journey = {
   steps: Array<{ id: JourneyStepId; label: string; state: StepState }>;
-  /** The step in progress, or "done" when the focus job has been sent. */
+  /** The step in progress, or "done" when the focus job's resume is as strong as the evidence allows. */
   current: JourneyStepId | "done";
   action: CoachAction;
   focus: FocusJob | null;
-  /** 1-based position of the current step, for "Step 4 of 6". */
+  /** 1-based position of the current step, for "Step 3 of 4". */
   position: number;
 };
+
+/** Where the paste box lives. */
+export const PASTE_HREF = "/app#paste";
 
 function stepDone(id: JourneyStepId, input: JourneyInput): boolean {
   const f = input.focus;
   switch (id) {
-    case "story":
-      return storyReady(input);
-    case "find":
-      return input.searched || Boolean(f);
-    case "fit":
-      return Boolean(f);
     case "resume":
+      // A general resume is the start, but someone who went straight to a job needn't go back for one.
+      return storyReady(input) && (input.baseResume || Boolean(f));
+    case "job":
+      return Boolean(f);
+    case "tailor":
       return Boolean(f && f.resumes > 0);
-    case "packet":
-      return Boolean(f && f.letter === "ready");
-    case "track":
-      return Boolean(f?.stage && SENT.has(f.stage));
+    case "strengthen":
+      return Boolean(f && f.openGaps === 0 && !f.stale);
   }
 }
 
 function actionFor(id: JourneyStepId | "done", input: JourneyInput): CoachAction {
   const f = input.focus;
-  const at = f ? ` for ${f.company}` : "";
   switch (id) {
-    case "story":
-      return input.pendingFacts > 0 && input.confirmedFacts === 0
-        ? {
-            title: "Check what I found about you",
-            detail: `${input.pendingFacts} ${input.pendingFacts === 1 ? "fact is" : "facts are"} waiting for a yes. Only confirmed facts can go on a resume, so this comes first.`,
-            href: "/app/profile",
-            cta: "Review facts",
-          }
-        : {
-            title: "Tell me about one thing you've done",
-            detail: "A job, a class project, a club, volunteering. Talk it out or upload a resume. I need a little real evidence before I can match or write anything.",
-            href: "/app/profile#start",
-            cta: "Add your story",
-          };
-    case "find":
-      return {
-        title: input.suggestedQuery ? "Run your first search" : "Search for roles worth your time",
-        detail: input.suggestedQuery
-          ? `I'll start with "${input.suggestedQuery}" and score every posting against your confirmed facts.`
-          : "Describe the job you want in plain words. I'll search live employer boards and score what I find.",
-        href: input.suggestedQuery ? `/app/jobs?q=${encodeURIComponent(input.suggestedQuery)}` : "/app/jobs",
-        cta: "Search jobs",
-      };
-    case "fit":
-      return {
-        title: "Pick one job worth your time",
-        detail: "Open your best match, read why it scored the way it did, and save it. One careful application beats ten rushed ones.",
-        href: "/app/jobs",
-        cta: "Review matches",
-      };
     case "resume":
+      if (input.pendingFacts > 0 && input.confirmedFacts === 0) {
+        return {
+          title: "Check what I found about you",
+          detail: `${input.pendingFacts} ${input.pendingFacts === 1 ? "fact is" : "facts are"} waiting for a yes. Only confirmed facts go on your resume, so this comes first.`,
+          href: "/app/profile",
+          cta: "Review facts",
+        };
+      }
+      if (!storyReady(input)) {
+        return {
+          title: "Tell me about one thing you've done",
+          detail: "A job, a class project, a club, volunteering. Upload a resume or talk it out, and I'll turn it into facts you confirm.",
+          href: "/app/profile#start",
+          cta: "Add your story",
+        };
+      }
       return {
-        title: `Build your resume${at}`,
-        detail: "Compare three one-page versions built from your confirmed facts, then keep the one you can defend line by line.",
-        href: `/app/resumes/compare?job=${f!.jobId}`,
-        cta: "Compare resumes",
+        title: "Build your resume",
+        detail: "One page from your confirmed facts, checked line by line. It's the base every tailored version starts from.",
+        href: "/app/resumes/new",
+        cta: "Build my resume",
       };
-    case "packet":
-      return f!.letter === "needs_you"
+    case "job":
+      return {
+        title: "Paste a job you want",
+        detail: "A link from LinkedIn, Indeed, Handshake, or any company site, or the description itself. I'll score your fit and build three versions of your resume for it.",
+        href: PASTE_HREF,
+        cta: "Paste a job",
+      };
+    case "tailor":
+      return {
+        title: `Build your three resumes for ${f!.company}`,
+        detail: "Experience-first, skills-first, and keyword-matched, each one page and built only from your confirmed facts. I'll tell you which one fits best.",
+        href: `/app/jobs/${f!.jobId}?build=1#resumes`,
+        cta: "Build them",
+      };
+    case "strengthen":
+      return f!.openGaps === 0
         ? {
-            title: `Say why you want ${f!.company}`,
-            detail: "Your cover letter is drafted from your evidence. The one part I won't write is why you want this job. A sentence or two in your words finishes it.",
-            href: `/app/jobs/${f!.jobId}/packet#letter`,
-            cta: "Finish the letter",
+            title: "Rebuild with what you just added",
+            detail: "You've added evidence since these resumes were built. Rebuild them so your new answers make it onto the page.",
+            href: `/app/jobs/${f!.jobId}#resumes`,
+            cta: "Rebuild resumes",
           }
         : {
-            title: `Draft your cover letter${at}`,
-            detail: "It's built from the same confirmed facts as your resume, and shows the fact behind every paragraph.",
-            href: `/app/jobs/${f!.jobId}/packet#letter`,
-            cta: "Open the packet",
+            title: `Make your ${f!.company} resume stronger`,
+            detail: `${f!.openGaps} ${f!.openGaps === 1 ? "thing the posting asks for isn't" : "things the posting asks for aren't"} on your resume yet. Tell me where you've done ${f!.openGaps === 1 ? "it" : "them"}, or mark ${f!.openGaps === 1 ? "it" : "them"} as not yet.`,
+            href: `/app/jobs/${f!.jobId}#strengthen`,
+            cta: "Close the gaps",
           };
-    case "track":
-      return {
-        title: `Apply to ${f!.company}, then mark it applied`,
-        detail: "You submit on the employer's site. Mark it applied here and I'll remind you when to follow up and draft the email.",
-        href: `/app/jobs/${f!.jobId}/packet#tracking`,
-        cta: "Apply and track",
-      };
     case "done":
       return {
-        title: "Start your next application",
-        detail: f ? `${f.company} is in motion. I'll remind you when a follow-up is due. Meanwhile, line up the next role.` : "Line up the next role.",
-        href: input.suggestedQuery ? `/app/jobs?q=${encodeURIComponent(input.suggestedQuery)}` : "/app/jobs",
-        cta: "Find another role",
+        title: "Paste your next job",
+        detail: f
+          ? `Your ${f.company} resume is as strong as your evidence allows. Download it, write the cover letter when you're ready, or line up the next role.`
+          : "Paste a job to get your fit and three tailored resumes.",
+        href: PASTE_HREF,
+        cta: "Paste a job",
       };
   }
 }
@@ -182,33 +183,16 @@ export function buildJourney(input: JourneyInput): Journey {
 export type FocusCandidate = FocusJob & { updatedAt: Date };
 
 /**
- * The job to walk through next: an unsent one furthest along (has a resume, then a
- * ready letter), newest first. When everything is sent, the newest sent one, so
- * the rail can show a finished loop.
+ * The job to work on: an unsent one, newest first, so pasting a job makes it the
+ * focus. When everything is sent, the newest sent one.
  */
 export function pickFocus(candidates: FocusCandidate[]): FocusJob | null {
-  const progress = (c: FocusCandidate) => (c.resumes > 0 ? 2 : 0) + (c.letter === "ready" ? 1 : 0);
   const open = candidates.filter((c) => !c.stage || !SENT.has(c.stage));
   const pool = open.length ? open : candidates.filter((c) => c.stage !== "rejected");
-  const best = [...pool].sort((a, b) => progress(b) - progress(a) || b.updatedAt.getTime() - a.updatedAt.getTime())[0];
+  const best = [...pool].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
   if (!best) return null;
-  return { jobId: best.jobId, company: best.company, title: best.title, stage: best.stage, resumes: best.resumes, letter: best.letter };
-}
-
-/** What the job page should put first, given how far this job has come. */
-export type JobPlan = {
-  primary: "resume" | "packet" | "apply" | "prep" | "story";
-  /** Short label for the coach line above the actions. */
-  note: string;
-};
-
-export function jobPlan(input: { resumes: number; letter: LetterStatus; stage: string | null; capped: boolean; storyReady: boolean }): JobPlan {
-  if (input.stage === "interview") return { primary: "prep", note: "You have an interview. Practice with the stories you already have." };
-  if (input.stage && SENT.has(input.stage)) return { primary: "apply", note: "Applied. Your tracker has the follow-up reminder." };
-  if (!input.storyReady) return { primary: "story", note: "Add a little evidence first. Your score and resume both come from confirmed facts." };
-  if (input.resumes === 0 && !input.capped) return { primary: "resume", note: "Next: build a resume for this role." };
-  if (input.letter !== "ready") return { primary: "packet", note: input.letter === "needs_you" ? "Next: add why you want this job, then your letter is ready." : "Next: draft your cover letter." };
-  return { primary: "apply", note: "Your packet is ready. Apply on their site, then mark it applied." };
+  const { jobId, company, title, stage, resumes, letter, openGaps, stale } = best;
+  return { jobId, company, title, stage, resumes, letter, openGaps, stale };
 }
 
 /** Packet order: attach a resume, write the letter and the why, then apply and track. */
@@ -221,55 +205,82 @@ export function packetStep(input: { resumes: number; attached: boolean; letter: 
   return "track";
 }
 
-/** Every saved or tracked job with how far its application has come. */
-export async function loadJobProgress(userId: string, applications?: Application[]): Promise<FocusCandidate[]> {
-  const [apps, saved] = await Promise.all([applications ?? listApplications(userId), listMatches(userId, ["saved"], 20)]);
-  const byJob = new Map<string, FocusCandidate>();
-  for (const a of apps) {
-    if (!a.jobId) continue;
-    byJob.set(a.jobId, { jobId: a.jobId, company: a.company, title: a.title, stage: a.stage, resumes: a.resumeId ? 1 : 0, letter: "none", updatedAt: a.updatedAt });
-  }
-  for (const { job, match } of saved) {
-    if (byJob.has(job.id)) continue;
-    byJob.set(job.id, { jobId: job.id, company: job.company, title: job.title, stage: null, resumes: 0, letter: "none", updatedAt: match.updatedAt });
-  }
-  const jobIds = [...byJob.keys()];
-  if (jobIds.length) {
-    const [resumes, packets] = await Promise.all([
-      db.query.resume.findMany({ where: and(eq(schema.resume.userId, userId), inArray(schema.resume.jobId, jobIds)), columns: { jobId: true } }),
-      db.query.applicationPacket.findMany({ where: and(eq(schema.applicationPacket.userId, userId), inArray(schema.applicationPacket.jobId, jobIds)) }),
-    ]);
-    for (const r of resumes) {
-      const c = r.jobId ? byJob.get(r.jobId) : undefined;
-      if (c) c.resumes += 1;
-    }
-    for (const p of packets) {
-      const c = byJob.get(p.jobId);
-      if (c) c.letter = letterStatus(readLetter(p));
-    }
-  }
-  return [...byJob.values()];
-}
-
 export function isSent(stage: string | null): boolean {
   return Boolean(stage && SENT.has(stage));
 }
 
+/** When the newest confirmed fact landed, to tell whether a resume predates new evidence. */
+export async function latestFactAt(userId: string): Promise<Date | null> {
+  const row = await db.query.fact.findFirst({
+    where: and(eq(schema.fact.userId, userId), eq(schema.fact.verificationState, "confirmed")),
+    orderBy: [desc(schema.fact.createdAt)],
+    columns: { createdAt: true },
+  });
+  return row?.createdAt ?? null;
+}
+
+/** Every saved or tracked job with how far its resume and packet have come. */
+export async function loadJobProgress(userId: string, applications?: Application[]): Promise<FocusCandidate[]> {
+  const [apps, saved, declined, factAt] = await Promise.all([
+    applications ?? listApplications(userId),
+    listMatches(userId, ["saved"], 20),
+    declinedSkills(userId),
+    latestFactAt(userId),
+  ]);
+  const byJob = new Map<string, FocusCandidate>();
+  const fitByJob = new Map<string, FitReport | null>();
+  for (const { job, match } of saved) {
+    byJob.set(job.id, { jobId: job.id, company: job.company, title: job.title, stage: null, resumes: 0, letter: "none", openGaps: 0, stale: false, updatedAt: match.updatedAt });
+    fitByJob.set(job.id, (match.fit as FitReport | null) ?? null);
+  }
+  for (const a of apps) {
+    if (!a.jobId) continue;
+    const prior = byJob.get(a.jobId);
+    byJob.set(a.jobId, { ...(prior ?? { openGaps: 0, stale: false, letter: "none" as const }), jobId: a.jobId, company: a.company, title: a.title, stage: a.stage, resumes: a.resumeId ? 1 : 0, updatedAt: prior && prior.updatedAt > a.updatedAt ? prior.updatedAt : a.updatedAt });
+  }
+  const jobIds = [...byJob.keys()];
+  if (!jobIds.length) return [];
+
+  const [resumes, packets, matches] = await Promise.all([
+    db.query.resume.findMany({ where: and(eq(schema.resume.userId, userId), inArray(schema.resume.jobId, jobIds)), columns: { jobId: true, createdAt: true } }),
+    db.query.applicationPacket.findMany({ where: and(eq(schema.applicationPacket.userId, userId), inArray(schema.applicationPacket.jobId, jobIds)) }),
+    db.query.jobMatch.findMany({ where: and(eq(schema.jobMatch.userId, userId), inArray(schema.jobMatch.jobId, jobIds)), columns: { jobId: true, fit: true } }),
+  ]);
+  for (const m of matches) if (!fitByJob.get(m.jobId)) fitByJob.set(m.jobId, (m.fit as FitReport | null) ?? null);
+  const newestResume = new Map<string, Date>();
+  for (const r of resumes) {
+    const c = r.jobId ? byJob.get(r.jobId) : undefined;
+    if (!c || !r.jobId) continue;
+    c.resumes += 1;
+    const prev = newestResume.get(r.jobId);
+    if (!prev || r.createdAt > prev) newestResume.set(r.jobId, r.createdAt);
+  }
+  for (const p of packets) {
+    const c = byJob.get(p.jobId);
+    if (c) c.letter = letterStatus(readLetter(p));
+  }
+  for (const c of byJob.values()) {
+    const fit = fitByJob.get(c.jobId);
+    c.openGaps = fit?.details ? skillGaps(fit, declined).length : 0;
+    const built = newestResume.get(c.jobId);
+    c.stale = Boolean(built && factAt && factAt > built);
+  }
+  return [...byJob.values()];
+}
+
 /** Loads the student's journey. Reads only; safe to call on every Today render. */
 export async function loadJourney(userId: string): Promise<Journey> {
-  const [facts, experiences, jobs, anyMatch, profile] = await Promise.all([
+  const [facts, experiences, jobs, base] = await Promise.all([
     factCounts(userId),
     listExperiences(userId),
     loadJobProgress(userId),
-    db.query.jobMatch.findFirst({ where: eq(schema.jobMatch.userId, userId), columns: { id: true } }),
-    getProfile(userId),
+    db.query.resume.findFirst({ where: and(eq(schema.resume.userId, userId), isNull(schema.resume.jobId)), columns: { id: true } }),
   ]);
   return buildJourney({
     confirmedFacts: facts.confirmed,
     pendingFacts: facts.toReview,
     experiences: experiences.length,
-    searched: Boolean(anyMatch),
-    suggestedQuery: firstSearch(profile),
+    baseResume: Boolean(base),
     focus: pickFocus(jobs),
   });
 }

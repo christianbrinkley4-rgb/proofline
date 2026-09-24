@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { after } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { PageBody, PageHeader } from "@/components/app/page-header";
+import { PasteJobBox } from "@/components/coach/paste-job-box";
 import { db, schema } from "@/lib/db";
 import { AgentSuggestions } from "@/components/jobs/agent-suggestions";
 import { JobSearch } from "@/components/jobs/job-search";
@@ -74,9 +75,11 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
     <PageBody>
       <PageHeader
         title="Jobs"
-        description="Tell your agent what you want. It searches employer career sites and job boards live, merges duplicates, and scores every opening against your confirmed profile."
+        description="Paste any job to get your fit and three tailored resumes. Or search employer career sites live."
       />
-      <div className="mt-8">
+      <PasteJobBox className="mt-8" />
+      <div className="mt-12">
+        <h2 className="mb-3 text-[15px] font-semibold tracking-tight">Or search live job boards</h2>
         <AgentSuggestions suggestions={suggestions.map((s) => ({ key: s.key, question: s.question, because: s.because }))} />
         <WatchedSearches searches={watched.map((w) => ({ id: w.id, query: w.query, fresh: w.newJobIds.length, lastRunAt: w.lastRunAt?.toISOString() ?? null }))} />
           {/* Keyed by the query so opening a watched search starts it fresh. */}

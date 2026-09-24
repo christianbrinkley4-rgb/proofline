@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildJourney, firstSearch, jobPlan, packetStep, pickFocus, type FocusCandidate, type JourneyInput } from "./coach";
+import { buildJourney, firstSearch, packetStep, pickFocus, type FocusCandidate, type JourneyInput } from "./coach";
 
-const base: JourneyInput = { confirmedFacts: 0, pendingFacts: 0, experiences: 0, searched: false, suggestedQuery: null, focus: null };
+const base: JourneyInput = { confirmedFacts: 0, pendingFacts: 0, experiences: 0, baseResume: false, focus: null };
+const ready: JourneyInput = { ...base, confirmedFacts: 6, experiences: 2, baseResume: true };
 const job = (over: Partial<FocusCandidate> = {}): FocusCandidate => ({
   jobId: "job-1",
   company: "Carrow Partners",
@@ -9,16 +10,17 @@ const job = (over: Partial<FocusCandidate> = {}): FocusCandidate => ({
   stage: null,
   resumes: 0,
   letter: "none",
+  openGaps: 0,
+  stale: false,
   updatedAt: new Date("2026-09-20"),
   ...over,
 });
 
 describe("buildJourney", () => {
-  it("starts a brand-new student on their story, with one action", () => {
+  it("starts a brand-new student on their story, one action, four steps", () => {
     const j = buildJourney(base);
-    expect(j.current).toBe("story");
-    expect(j.position).toBe(1);
-    expect(j.steps.map((s) => s.state)).toEqual(["current", "upcoming", "upcoming", "upcoming", "upcoming", "upcoming"]);
+    expect(j.current).toBe("resume");
+    expect(j.steps.map((s) => s.label)).toEqual(["Your resume", "Paste a job", "3 resumes", "Close gaps"]);
     expect(j.action.href).toBe("/app/profile#start");
   });
 
@@ -28,39 +30,34 @@ describe("buildJourney", () => {
     expect(j.action.detail).toContain("7 facts");
   });
 
-  it("moves to a first search built from goals once there is evidence", () => {
-    const j = buildJourney({ ...base, confirmedFacts: 4, experiences: 1, suggestedQuery: "business internships in Raleigh" });
-    expect(j.current).toBe("find");
-    expect(j.action.href).toBe("/app/jobs?q=business%20internships%20in%20Raleigh");
+  it("builds a general resume once there's evidence, then asks for a job", () => {
+    expect(buildJourney({ ...ready, baseResume: false }).action).toMatchObject({ title: "Build your resume", href: "/app/resumes/new" });
+    const paste = buildJourney(ready);
+    expect(paste.current).toBe("job");
+    expect(paste.action.href).toBe("/app#paste");
   });
 
-  it("walks one job through resume, packet, and track in order", () => {
-    const ready = { ...base, confirmedFacts: 5, experiences: 2, searched: true };
-    expect(buildJourney({ ...ready }).current).toBe("fit");
-    expect(buildJourney({ ...ready, focus: job() }).action.href).toBe("/app/resumes/compare?job=job-1");
-    expect(buildJourney({ ...ready, focus: job({ resumes: 1 }) }).action.title).toBe("Draft your cover letter for Carrow Partners");
-    expect(buildJourney({ ...ready, focus: job({ resumes: 1, letter: "needs_you" }) }).action.title).toBe("Say why you want Carrow Partners");
-    const track = buildJourney({ ...ready, focus: job({ resumes: 1, letter: "ready", stage: "saved" }) });
-    expect(track.current).toBe("track");
-    expect(track.position).toBe(6);
-    const done = buildJourney({ ...ready, focus: job({ resumes: 1, letter: "ready", stage: "applied" }) });
+  it("walks a pasted job through three resumes, then its gaps, then a rebuild", () => {
+    expect(buildJourney({ ...ready, focus: job() }).action.href).toBe("/app/jobs/job-1?build=1#resumes");
+    const gaps = buildJourney({ ...ready, focus: job({ resumes: 3, openGaps: 2 }) });
+    expect(gaps.current).toBe("strengthen");
+    expect(gaps.action.detail).toContain("2 things the posting asks for");
+    expect(buildJourney({ ...ready, focus: job({ resumes: 3, stale: true }) }).action.title).toBe("Rebuild with what you just added");
+    const done = buildJourney({ ...ready, focus: job({ resumes: 3 }) });
     expect(done.current).toBe("done");
     expect(done.steps.every((s) => s.state === "done")).toBe(true);
-  });
-
-  it("keeps the story step current when a job is saved but there is no evidence", () => {
-    expect(buildJourney({ ...base, searched: true, focus: job({ resumes: 1 }) }).current).toBe("story");
+    expect(done.action.href).toBe("/app#paste");
   });
 });
 
 describe("pickFocus", () => {
-  it("prefers the unsent job furthest along, then the newest", () => {
+  it("works on the newest unsent job, so a fresh paste becomes the focus", () => {
     const focus = pickFocus([
-      job({ jobId: "new", updatedAt: new Date("2026-09-23") }),
-      job({ jobId: "far", resumes: 2, updatedAt: new Date("2026-09-10") }),
-      job({ jobId: "sent", stage: "applied", resumes: 1, letter: "ready", updatedAt: new Date("2026-09-24") }),
+      job({ jobId: "old", resumes: 3, updatedAt: new Date("2026-09-10") }),
+      job({ jobId: "pasted", updatedAt: new Date("2026-09-23") }),
+      job({ jobId: "sent", stage: "applied", updatedAt: new Date("2026-09-24") }),
     ]);
-    expect(focus?.jobId).toBe("far");
+    expect(focus?.jobId).toBe("pasted");
   });
 
   it("falls back to the newest sent job, never a rejection", () => {
@@ -69,17 +66,7 @@ describe("pickFocus", () => {
   });
 });
 
-describe("jobPlan and packetStep", () => {
-  it("puts one primary action first, in loop order", () => {
-    const plan = (over: Partial<Parameters<typeof jobPlan>[0]>) => jobPlan({ resumes: 0, letter: "none", stage: null, capped: false, storyReady: true, ...over }).primary;
-    expect(plan({ storyReady: false })).toBe("story");
-    expect(plan({})).toBe("resume");
-    expect(plan({ resumes: 1 })).toBe("packet");
-    expect(plan({ resumes: 1, letter: "ready" })).toBe("apply");
-    expect(plan({ stage: "interview" })).toBe("prep");
-    expect(plan({ capped: true })).toBe("packet");
-  });
-
+describe("packetStep", () => {
   it("orders the packet: resume, then letter, then track", () => {
     expect(packetStep({ resumes: 0, attached: false, letter: "none", stage: null })).toBe("resume");
     expect(packetStep({ resumes: 2, attached: false, letter: "needs_you", stage: null })).toBe("letter");
@@ -94,5 +81,12 @@ describe("firstSearch", () => {
       "Business intern in Raleigh, NC for Summer 2027",
     );
     expect(firstSearch({ targetRoles: [] })).toBeNull();
+  });
+});
+
+describe("skipping the general resume", () => {
+  it("doesn't send someone who already pasted a job back to build a general resume", () => {
+    const j = buildJourney({ ...ready, baseResume: false, focus: job() });
+    expect(j.current).toBe("tailor");
   });
 });

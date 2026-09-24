@@ -75,7 +75,7 @@ describe("buildNextMoves", () => {
 
   it("keeps explore when the tracker is empty", () => {
     expect(buildNextMoves(empty)).toEqual([
-      expect.objectContaining({ kind: "explore", href: "/app/jobs" }),
+      expect.objectContaining({ kind: "explore", href: "/app#paste" }),
     ]);
   });
 });
@@ -94,7 +94,7 @@ describe("cold-start moves", () => {
 
   it("walks a saved job from resume to a finished letter", () => {
     const job = { jobId: "j1", company: "Carrow", title: "Business Intern", hasResume: false, letter: "none" as const, sent: false };
-    expect(buildNextMoves({ ...empty, confirmedFacts: 5, experiences: 1, jobs: [job] })[0]).toMatchObject({ kind: "resume", href: "/app/resumes/compare?job=j1" });
+    expect(buildNextMoves({ ...empty, confirmedFacts: 5, experiences: 1, jobs: [job] })[0]).toMatchObject({ kind: "resume", href: "/app/jobs/j1?build=1#resumes" });
     const letter = buildNextMoves({ ...empty, confirmedFacts: 5, experiences: 1, jobs: [{ ...job, hasResume: true, letter: "needs_you" }] })[0];
     expect(letter).toMatchObject({ kind: "packet", title: "Say why you want Carrow" });
     expect(buildNextMoves({ ...empty, jobs: [{ ...job, hasResume: true, letter: "ready" }] })).toEqual([]);

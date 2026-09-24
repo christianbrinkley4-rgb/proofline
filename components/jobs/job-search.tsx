@@ -211,7 +211,7 @@ export function JobSearch({
                 if (/paste/i.test(r.error)) setPasteOpen(true);
                 return;
               }
-              router.push(`/app/jobs/${r.jobId}`);
+              router.push(`/app/jobs/${r.jobId}?build=1#resumes`);
             });
           }}
         >

@@ -32,7 +32,7 @@ export function PasteJob({ initial, onCancel, captured = false }: { initial?: { 
             setError(result.error);
             return;
           }
-          router.push(`/app/jobs/${result.jobId}`);
+          router.push(`/app/jobs/${result.jobId}?build=1#resumes`);
         });
       }}
     >
