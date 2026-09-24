@@ -96,4 +96,14 @@ For each job, a student can build and compare experience-first, skills-first, an
 - **Search quality.** "Remote or anywhere" lifts place limits, aggregator listings older than 120 days are skipped, and one role in several cities shows once.
 - **Local database safety.** Tests and `next build` use in-memory PGlite; a lock file stops a second process from opening `.data/pglite` (the cause of two corruptions). `/api/dev/seed` builds a full sample profile in development.
 
-Next: in-app chat on the same tool layer; OAuth for browser-based connectors (claude.ai, ChatGPT); saved searches that refresh and report what changed; a profile timeline and bulk import; short-answer drafts for application questions; more job sources. Add outcome analysis only after enough consented application history exists.
+Later on September 24:
+
+- **Chat with the agent** on the Agent page, over the same tool layer. With a key it's a streaming Claude tool loop; without one, a rules-based agent handles the common requests (next moves, search, watch a search, status, cover letter, prep, follow-up, saving a story).
+- **Application questions** in the packet: grounded drafts for a form's short-answer questions, with bracketed prompts for what only the student knows.
+- **Watched searches** rerun daily (on Today visits, "Check now", and `/api/cron/refresh-searches`), remember what they've shown, and surface new postings on Today.
+- **Learning from dismissals**: repeated patterns become suggestions (skip on-site roles, a pay floor, a company, a kind of role) that change nothing until accepted. Search now applies deal-breakers and never re-shows a dismissed job.
+- **Your data**: export everything as JSON or delete the account from Settings.
+- **Import**: two-column PDFs and LinkedIn's Save to PDF read correctly; pasted text works too.
+- **Database**: opened lazily, so Next's helper processes never touch it (the real cause of the corruption).
+
+Next: OAuth for browser-based connectors (claude.ai, ChatGPT); a profile timeline; email delivery for reminders and watched-search news; more job sources; outcome analysis once enough consented application history exists.
