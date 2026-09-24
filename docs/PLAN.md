@@ -149,3 +149,13 @@ Proofline now leads with the resume, not the search. Students find jobs on Linke
 - Verified in the browser: a Staff Accountant Intern posting went from 4 of 6 requirements shown to 5 of 6 (fit 80 to 86) after one gap answer and a rebuild; a pasted posting's title, company, and place were read correctly and its three resumes built on arrival.
 
 Next: resume polish checks from career-center guidance (contact info, quantified bullets, tense consistency, typos, buzzwords); per-job keyword mirroring in the skills line; a way to switch which job the coach is focused on.
+
+## September 24 resume polish
+
+Career-center guidance (Harvard's "Create a strong resume" and common recruiter tips the founder collected) mapped onto the engine. Already enforced: single column, standard fonts, one page, X-Y-Z bullets, action verbs, tailoring, relevance cuts. Added:
+
+- Tailoring fixes form automatically: past tense for roles that ended, spacing and capitals, repeated skills merged, soft skills kept off the Skills line.
+- Seven more quality checks (12 total): contact line with LinkedIn, share of bullets with numbers, tense, proofreading, repeated skills, requirements shown on the page, and a longer buzzword list. Tailored resumes show "N of 12 checks passed" and the next fix on the job page.
+- Why no summary, and how keyword mirroring stays honest: see docs/research/RESUME-STANDARDS.md.
+
+Next: let a student edit a tailored bullet inline and have the checks rerun live; suggest the specific number question for each unmeasured bullet from the resume page.

@@ -17,6 +17,10 @@ export type TrioResume = {
   covered: number;
   total: number;
   checksOk: boolean;
+  /** Quality checks passed, of the total, and the first one to fix. */
+  passed: number;
+  totalChecks: number;
+  fixFirst: string | null;
   top: string[];
 };
 
@@ -163,7 +167,12 @@ export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked }
                   </li>
                 ))}
               </ul>
-              <p className={cn("mt-3 text-[12px]", r.checksOk ? "text-brand-ink" : "text-pending-ink")}>{r.checksOk ? "Every line checked against your facts" : "Needs a look before you send it"}</p>
+              <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-[12px] leading-5">
+                <p className={cn("font-medium", !r.checksOk ? "text-pending-ink" : r.passed === r.totalChecks ? "text-brand-ink" : "text-foreground")}>
+                  {!r.checksOk ? "Needs a look before you send it" : r.passed === r.totalChecks ? `All ${r.totalChecks} resume checks passed` : `${r.passed} of ${r.totalChecks} resume checks passed`}
+                </p>
+                {r.fixFirst && <p className="text-muted-foreground">Next fix: {r.fixFirst}</p>}
+              </div>
               <div className="mt-auto flex gap-2 pt-4">
                 <Button size="sm" variant={best ? "default" : "outline"} asChild>
                   <Link href={`/app/resumes/${r.id}`}>Open</Link>

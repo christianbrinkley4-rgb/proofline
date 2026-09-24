@@ -435,7 +435,7 @@ export const DEMO_LEADERSHIP: ResumeRole = {
         whitfield: "Work well on a team",
         carrow: "Work well on a team",
         brightline: "Collaborate across teams",
-        oakridge: "Team player",
+        oakridge: "Works well with others",
       },
       why: "Leadership with a result attached, from a group recruiters know.",
       facts: ["5-person team", "2nd of 18"],

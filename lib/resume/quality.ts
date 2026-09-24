@@ -1,6 +1,9 @@
 import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
 import { repeatedOpeners } from "./bullet-score";
+import type { Requirements } from "@/lib/fit/requirements";
 import { documentBullets, type ResumeDocument } from "./document";
+import { hasNumber, presentTenseOpener, proofread, repeatedSkills, roleEnded, skillName } from "./polish";
+import { screeningReport } from "./screening";
 import type { LayoutResult } from "./layout";
 import { verifyBullet } from "./verify";
 
@@ -9,7 +12,7 @@ import { verifyBullet } from "./verify";
  * The same checks run on the live preview and right before a file is built.
  */
 export type QualityCheck = {
-  id: "facts" | "one-page" | "em-dash" | "openers" | "repeats" | "filler" | "pronouns";
+  id: "facts" | "one-page" | "em-dash" | "openers" | "repeats" | "filler" | "pronouns" | "contact" | "numbers" | "tense" | "proofread" | "requirements";
   label: string;
   status: "pass" | "warn" | "fail";
   detail: string;
@@ -23,6 +26,8 @@ export function runQualityGate(
   layout: LayoutResult,
   facts: Map<string, string>,
   activeBulletIds: Set<string>,
+  /** The posting's requirements, for a resume tailored to a job. */
+  requirements?: Requirements | null,
 ): QualityCheck[] {
   const bullets = documentBullets(doc);
   const allText = [doc.header.name, ...bullets.map((b) => b.text)].join("\n");
@@ -39,6 +44,22 @@ export function runQualityGate(
   const dashes = voice.filter((v) => v.rule === "em-dash").length;
   const filler = [...new Set(voice.filter((v) => v.rule === "banned-phrase").map((v) => v.match.toLowerCase()))];
   const pronouns = bullets.filter((b) => PRONOUNS.test(b.text));
+
+  // Career-center top mistakes: missing contact details, duties without results, mixed tense, typos.
+  const contact = doc.header.contact.join(" ");
+  const missingContact = [
+    ...(/@/.test(contact) ? [] : ["email"]),
+    ...(/\d{3}\D{0,3}\d{3}\D?\d{4}/.test(contact) ? [] : ["phone"]),
+    ...(/linkedin\.com/i.test(contact) ? [] : ["LinkedIn URL"]),
+  ];
+  const measured = bullets.filter((b) => hasNumber(b.text)).length;
+  const wrongTense = doc.sections.flatMap((s) =>
+    s.kind === "entries" ? s.entries.filter((e) => roleEnded(e.dates)).flatMap((e) => e.bullets.map((b) => presentTenseOpener(b.text)).filter((w): w is string => Boolean(w))) : [],
+  );
+  const skillItems = doc.sections.flatMap((s) => (s.kind === "skills" ? s.lines.flatMap((l) => l.items) : []));
+  const twice = repeatedSkills(skillItems, skillName);
+  const typos = [...new Set([...bullets.flatMap((b) => proofread(b.text)), ...twice.map((s) => `${s.replace(/\s*\(.*$/, "")} listed twice in Skills`)])];
+  const screen = requirements ? screeningReport(doc, requirements) : null;
 
   return [
     {
@@ -87,6 +108,51 @@ export function runQualityGate(
       detail: filler.length ? `Filler words: ${filler.join(", ")}.` : "No filler words or buzzwords.",
       blocking: false,
     },
+    {
+      id: "contact",
+      label: "Email, phone, and LinkedIn at the top",
+      status: missingContact.length ? "warn" : "pass",
+      detail: missingContact.length
+        ? `Missing ${missingContact.join(", ")}. Add ${missingContact.length === 1 ? "it" : "them"} under About you on your profile.`
+        : "Recruiters can reach you and check your LinkedIn.",
+      blocking: false,
+    },
+    {
+      id: "numbers",
+      label: "Results you can count",
+      status: bullets.length && measured / bullets.length < 0.5 ? "warn" : "pass",
+      detail: bullets.length
+        ? `${measured} of ${bullets.length} bullets include a number.${measured / bullets.length < 0.5 ? " Answer the number questions on your profile to strengthen the rest." : ""}`
+        : "No bullets yet.",
+      blocking: false,
+    },
+    {
+      id: "tense",
+      label: "Consistent tense",
+      status: wrongTense.length ? "warn" : "pass",
+      detail: wrongTense.length ? `Past roles should use past tense: ${[...new Set(wrongTense)].join(", ")}.` : "Past roles in past tense throughout.",
+      blocking: false,
+    },
+    {
+      id: "proofread",
+      label: "Proofread",
+      status: typos.length ? "warn" : "pass",
+      detail: typos.length ? `Found ${typos.join("; ")}.` : "No doubled words, stray spaces, or lowercase starts.",
+      blocking: false,
+    },
+    ...(screen && screen.totalRequired
+      ? [
+          {
+            id: "requirements" as const,
+            label: "Shows what the posting requires",
+            status: (screen.notShown.length ? "warn" : "pass") as QualityCheck["status"],
+            detail: screen.notShown.length
+              ? `${screen.coveredRequired} of ${screen.totalRequired} requirements are on the page. Not shown: ${screen.notShown.slice(0, 3).join(", ")}. Close the gaps on the job page if you've done them.`
+              : `All ${screen.totalRequired} requirements are on the page.`,
+            blocking: false,
+          },
+        ]
+      : []),
     {
       id: "pronouns",
       label: "No pronouns",

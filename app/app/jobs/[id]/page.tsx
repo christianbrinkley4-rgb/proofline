@@ -108,10 +108,13 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
       covered: report.coveredRequired,
       total: report.totalRequired,
       checksOk: !r.checks.some((c) => c.blocking && c.status === "fail"),
+      passed: r.checks.filter((c) => c.status === "pass").length,
+      totalChecks: r.checks.length,
+      fixFirst: r.checks.find((c) => c.status !== "pass")?.detail ?? null,
       top: r.why.slice(0, 2).map((w) => w.text),
     };
   });
-  const best = [...trio].sort((a, b) => b.covered - a.covered || Number(b.checksOk) - Number(a.checksOk))[0] ?? null;
+  const best = [...trio].sort((a, b) => b.covered - a.covered || Number(b.checksOk) - Number(a.checksOk) || b.passed - a.passed)[0] ?? null;
   const newestBuilt = forJob[0]?.row.createdAt ?? null;
   const stale = Boolean(newestBuilt && factAt && factAt > newestBuilt);
 

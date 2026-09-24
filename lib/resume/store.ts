@@ -4,6 +4,7 @@ import { listFacts } from "@/lib/kb/facts";
 import { listBullets } from "./bullets/service";
 import type { ResumeDocument, VariantId } from "./document";
 import { layoutResume } from "./layout";
+import { requirementsOf } from "@/lib/jobs/store";
 import { runQualityGate, type QualityCheck } from "./quality";
 import type { CutItem, WhyItem } from "./tailor";
 import { TEMPLATES, type Template } from "./templates";
@@ -55,13 +56,18 @@ export async function listResumes(userId: string) {
  * Returns the layout so callers (preview, export) can reuse ops without measuring again.
  */
 export async function freshChecks(userId: string, stored: StoredResume) {
-  const [facts, bullets] = await Promise.all([listFacts(userId, { states: ["confirmed"] }), listBullets(userId, undefined, true)]);
+  const [facts, bullets, job] = await Promise.all([
+    listFacts(userId, { states: ["confirmed"] }),
+    listBullets(userId, undefined, true),
+    stored.row.jobId ? db.query.job.findFirst({ where: eq(schema.job.id, stored.row.jobId) }) : Promise.resolve(undefined),
+  ]);
   const layout = await layoutResume(stored.document, stored.template);
   const checks = runQualityGate(
     stored.document,
     layout,
     new Map(facts.map((f) => [f.id, f.content])),
     new Set(bullets.filter((b) => b.status === "active").map((b) => b.id)),
+    job ? requirementsOf(job) : null,
   );
   return { layout, checks };
 }

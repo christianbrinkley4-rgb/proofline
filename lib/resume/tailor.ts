@@ -11,9 +11,13 @@ import { listBullets, type Bullet } from "./bullets/service";
 import type { EducationEntry, ResumeDocument, ResumeEntry, ResumeSection, TemplateId, VariantId } from "./document";
 import { layoutResume, type LayoutResult } from "./layout";
 import { formatMonth, formatRange } from "./parse/dates";
+import { dedupeSkills, polishBullet, roleEnded, skillName } from "./polish";
 import { runQualityGate, type QualityCheck } from "./quality";
 import { TEMPLATES, TIGHTEN_STEPS, type Template } from "./templates";
 import { verifyBullet } from "./verify";
+
+/** One key per skill, so "SQL (basic)" and "SQL" count as the same thing. */
+const skillKey = skillName;
 
 /**
  * Builds a one-page resume for one job (or a general one), from confirmed facts
@@ -207,7 +211,8 @@ export async function tailorResume(
           title: e.title,
           location: e.location,
           dates: e.startDate || e.endDate ? formatRange(e.startDate, e.endDate) : "",
-          bullets: selected.get(e.id)!.map((s) => ({ id: s.bullet.id, text: s.bullet.text, factIds: s.bullet.factIds })),
+          // Form only: tense for past roles, spacing, capitals. Numbers and claims stay exactly as confirmed.
+          bullets: selected.get(e.id)!.map((s) => ({ id: s.bullet.id, text: polishBullet(s.bullet.text, { ended: roleEnded(formatRange(e.startDate, e.endDate)) }), factIds: s.bullet.factIds })),
         }));
       if (entries.length) sections.push({ kind: "entries", title, entries });
     }
@@ -217,13 +222,15 @@ export async function tailorResume(
       ? [...new Set([...selected.values()].flat().flatMap((item) => extractSkills(item.bullet.text)))].filter((skill) => !explicitCanonical.has(skill))
       : [];
     if (evidenceSkills.length) [...selected.values()].flat().forEach((item) => item.bullet.factIds.forEach((id) => sourceFactIds.add(id)));
-    const technical = [...confirmedSkills.filter((s) => skillCategory(extractSkills(s)[0] ?? "") !== "language"), ...evidenceSkills.filter((s) => skillCategory(s) !== "language")];
+    // Soft skills ("Leadership") are shown by the bullets, never listed; career centers and recruiters agree a list proves nothing.
+    const listable = (name: string) => !["language", "soft"].includes(skillCategory(name) ?? "");
+    const technical = [...confirmedSkills.filter((s) => listable(extractSkills(s)[0] ?? "")), ...evidenceSkills.filter(listable)];
     const languages = confirmedSkills.filter((s) => skillCategory(extractSkills(s)[0] ?? "") === "language");
     const relevantFirst = (items: string[]) =>
       [...items].sort((a, b) => Number(extractSkills(b).some((k) => labels.mentioned.has(k))) - Number(extractSkills(a).some((k) => labels.mentioned.has(k))));
     const lines = [
-      { label: "Technical", items: relevantFirst(technical).slice(0, 12) },
-      { label: "Languages", items: languages },
+      { label: "Technical", items: dedupeSkills(relevantFirst(technical), skillKey).slice(0, 12) },
+      { label: "Languages", items: dedupeSkills(languages, skillKey) },
       { label: "Certifications", items: certs },
     ].filter((l) => l.items.length);
     if (lines.length) {
@@ -231,8 +238,9 @@ export async function tailorResume(
       if (variant === "skills") sections.splice(sections[0]?.kind === "education" ? 1 : 0, 0, section);
       else sections.push(section);
     }
-    const included = new Set(lines.flatMap((line) => line.items));
-    facts.filter((f) => ["skill", "tool", "certification"].includes(f.category) && included.has(f.content)).forEach((f) => sourceFactIds.add(f.id));
+    // Merged lines ("Excel (pivot tables, XLOOKUP, VLOOKUP)") still trace to every fact behind them.
+    const included = new Set(lines.flatMap((line) => line.items.map(skillKey)));
+    facts.filter((f) => ["skill", "tool", "certification"].includes(f.category) && included.has(skillKey(f.content))).forEach((f) => sourceFactIds.add(f.id));
 
     return {
       sourceFactIds: [...sourceFactIds],
@@ -310,7 +318,7 @@ export async function tailorResume(
   });
 
   const factText = new Map(facts.map((f) => [f.id, f.content]));
-  const checks = runQualityGate(document, layout, factText, new Set(active.map((b) => b.id)));
+  const checks = runQualityGate(document, layout, factText, new Set(active.map((b) => b.id)), req);
   return { document, template: activeTemplate, layout, why, cuts, checks, adjustments };
 }
 

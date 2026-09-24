@@ -64,7 +64,16 @@ We don't ship creative, multi-column, or graphic templates. They look good in bu
 - `lib/resume/bullet-score.ts`: scores every bullet 0 to 100 against the table above, with a reason for each point lost.
 - `lib/resume/templates.ts`: the two templates as layout specs.
 - `lib/resume/layout.ts`: measures text with real font metrics so "one page" is exact, not a guess, and cuts the weakest bullets when content overflows.
-- `lib/voice/rules.ts`: em dashes, filler, weak openers. Shared with the export quality gate.
+- `lib/voice/rules.ts`: em dashes, filler, weak openers, and the resume buzzwords recruiters complain about most (results-oriented, detail-oriented, team player, hard-working, proven track record). Shared with the export quality gate.
+- `lib/resume/polish.ts`: fixes that change form, never claims. Tailoring puts past roles in past tense ("Manage" to "Managed"), tidies spacing and capitals, merges repeated skills ("Excel (pivot tables, XLOOKUP)" and "Excel (pivot tables, VLOOKUP)"), and keeps soft skills off the Skills line so bullets prove them instead.
+- `lib/resume/quality.ts`: the quality gate. Blocking: every line traces to a confirmed fact, and it fits one page. Warnings, shown as "N of 12 checks passed" on every tailored resume: action-verb openers, varied verbs, no em dashes, plain language, no pronouns, email and phone and LinkedIn in the header, at least half the bullets carry a number, consistent tense, proofreading (doubled words, stray spacing, lowercase starts, unclosed parentheses, a skill listed twice), and how many of the posting's requirements the page visibly shows.
+- `lib/fit/gaps.ts`: the requirements a page doesn't show become questions; answers become confirmed facts and new bullets.
+
+### Deliberate choices against common advice
+
+- **No summary for students.** Popular advice says a 40 to 60 word summary helps. Harvard's student format has none, and for a candidate with under two years of experience the space does more work as one more quantified bullet. A summary may come later for experienced users.
+- **Keyword mirroring only where true.** "Copy the posting's exact words" is right when the student has done the thing. The keyword-match version uses the posting's terms for confirmed skills; it never adds a term the student hasn't backed.
+- **ATS statistics.** Claims like "ATS can't read columns" and "99% of Fortune 500 companies auto-reject" are overstated: modern parsers read most single-column PDFs and humans still make most decisions. The single-column, standard-heading rules stand because they are safe everywhere, not because of those figures.
 
 ## Sources
 

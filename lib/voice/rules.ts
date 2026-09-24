@@ -46,6 +46,18 @@ export const BANNED_PHRASES = [
   "in today's fast-paced",
   "tapestry",
   "testament to",
+  // Resume buzzwords recruiters name as their top frustration. Show it with a result instead.
+  "results-oriented",
+  "detail-oriented",
+  "team player",
+  "think outside the box",
+  "outside-the-box",
+  "proven track record",
+  "hard-working",
+  "hardworking",
+  "go-getter",
+  "go-to person",
+  "highly motivated",
 ] as const;
 
 /** Openers that make a bullet sound passive or vague. A bullet must not start with any of these. */
