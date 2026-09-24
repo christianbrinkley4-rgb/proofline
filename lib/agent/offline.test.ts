@@ -34,6 +34,8 @@ describe("offline agent routing", () => {
     ["Last summer I tutored three students in algebra twice a week", "story"],
     ["I organized a food drive that collected 120 boxes for families", "story"],
     ["tell me a joke", "unknown"],
+    ["business", "search"],
+    ["buisness internships", "search"],
     ["keep an eye on accounting internships in Raleigh for me", "watch"],
     ["let me know when new tax internships open up", "watch"],
   ])("%s -> %s", (message, intent) => {
@@ -74,5 +76,19 @@ describe("offline agent routing", () => {
     expect(order).toEqual(["emit:search_jobs", "run:search_jobs"]);
     expect(reply.tools).toEqual([{ name: "search_jobs", ok: true }]);
     expect(reply.text).toContain("Acme");
+  });
+
+  it("offers wider searches and notes the typo when a search comes back thin", async () => {
+    vi.mocked(runTool).mockImplementation(async () => ({
+      scanned: 812,
+      thin: true,
+      readAs: ['"buisness" as "business"'],
+      widerSearches: [{ label: "Sales", query: "sales internships", why: "A neighboring role that uses the same skills" }],
+      results: [],
+    }));
+    const reply = await offlineReply("buisness internships", { userId: "u", email: "e@example.com", client: "Proofline" });
+    expect(reply.text).toContain('I read "buisness" as "business"');
+    expect(reply.text).toContain("812 postings");
+    expect(reply.text).toContain("[Sales](/app/jobs?q=sales%20internships)");
   });
 });

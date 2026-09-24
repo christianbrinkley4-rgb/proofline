@@ -12,9 +12,9 @@ const kinds = [
   ["work", "Work"], ["internship", "Internship"], ["project", "Project"], ["leadership", "Leadership"], ["volunteer", "Volunteering"], ["research", "Research"],
 ] as const;
 
-export function LifeNote() {
+export function LifeNote({ defaultOpen = false }: { defaultOpen?: boolean } = {}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   return <section className="mt-8 overflow-hidden rounded-xl border bg-background">

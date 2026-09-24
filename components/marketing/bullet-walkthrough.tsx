@@ -14,7 +14,7 @@ const FACTS = ["40+ accounts a month", "$3,200 in duplicates", "First quarter", 
 export function BulletWalkthrough() {
   return (
     <Section id="proof">
-      <SectionHeading eyebrow="How a bullet gets written" title="Every line on your resume has proof behind it.">
+      <SectionHeading eyebrow="Proof, not guesses" title="Every line on your resume has proof behind it.">
         Recruiters ask about the numbers on your resume. Proofline only writes what you&apos;ve confirmed, so you&apos;ll
         always have the answer.
       </SectionHeading>
@@ -87,9 +87,9 @@ export function BulletWalkthrough() {
 
 function Step({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border bg-muted/40 p-4 sm:p-5">
+    <div className="relative overflow-hidden rounded-2xl border bg-muted/40 p-4 sm:p-5">
       <div className="flex items-center gap-2 text-[13px]">
-        <span className="font-mono text-[12px] text-subtle-foreground">{n}</span>
+        <span className="grid size-6 place-items-center rounded-full bg-ink font-mono text-[11px] text-ink-foreground">{n.replace(/^0/, "")}</span>
         <span className="font-medium">{title}</span>
       </div>
       <div className="mt-4">{children}</div>

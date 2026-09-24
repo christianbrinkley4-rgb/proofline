@@ -1,12 +1,14 @@
 import { z } from "zod";
+import { jobPlan, loadJobProgress, loadJourney, storyReady } from "@/lib/agent/coach";
 import { logEvent } from "@/lib/agent/events";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { formatPay, searchJobs } from "@/lib/jobs/search";
+import { THIN_RESULTS, widerSearches } from "@/lib/jobs/widen";
 import { watchSearch } from "@/lib/jobs/saved";
 import { getJobForUser, listMatches, requirementsOf } from "@/lib/jobs/store";
 import { listExperiences } from "@/lib/kb/experiences";
-import { addFact, listFacts } from "@/lib/kb/facts";
+import { addFact, factCounts, listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { answerQuestion, listOpenQuestions } from "@/lib/kb/questions";
 import { createStoryNote } from "@/lib/kb/story";
@@ -212,9 +214,14 @@ export const TOOLS: AgentTool[] = [
       const { intent, results, stats } = await searchJobs(ctx.userId, args.query, (event) => {
         if (event.type === "status") ctx.onStatus?.(event.message);
       });
+      const thin = results.length < THIN_RESULTS;
       return {
         understood: { roles: intent.roles, level: intent.level, term: intent.term, places: intent.locations, modes: intent.modes },
+        ...(intent.corrections?.length ? { readAs: intent.corrections.map((c) => `"${c.from}" as "${c.to}"`) } : {}),
         scanned: stats.scanned,
+        matched: results.length,
+        thin,
+        ...(thin ? { widerSearches: widerSearches(intent, 4).map((w) => ({ label: w.label, query: w.query, why: w.why })) } : {}),
         results: results.slice(0, args.limit ?? 10).map((r) => ({
           jobId: r.jobId,
           title: r.title,
@@ -226,6 +233,50 @@ export const TOOLS: AgentTool[] = [
           url: link(`/app/jobs/${r.jobId}`),
         })),
       };
+    },
+  }),
+
+  tool({
+    name: "plan_application",
+    title: "Plan the next step",
+    description:
+      "The coach's single next step. Without a jobId: where the student's current application stands in the loop (story, find, fit, resume, packet, track) and the one action to take now. With a jobId: the next step for that job. Call this before suggesting what to do, and offer to do the step with your tools when you can.",
+    input: { jobId: z.uuid().optional().describe("A job from search results or the tracker.") },
+    readOnly: true,
+    run: async (args, ctx) => {
+      if (!args.jobId) {
+        const journey = await loadJourney(ctx.userId);
+        return {
+          focus: journey.focus ? { jobId: journey.focus.jobId, company: journey.focus.company, title: journey.focus.title } : null,
+          loop: journey.steps.map((s) => `${s.label}: ${s.state}`),
+          current: journey.current,
+          next: { ...journey.action, url: link(journey.action.href) },
+        };
+      }
+      const [jobs, facts, experiences, data] = await Promise.all([
+        loadJobProgress(ctx.userId),
+        factCounts(ctx.userId),
+        listExperiences(ctx.userId),
+        getJobForUser(ctx.userId, args.jobId),
+      ]);
+      if (!data) throw new Error("Job not found.");
+      const progress = jobs.find((j) => j.jobId === args.jobId);
+      const plan = jobPlan({
+        resumes: progress?.resumes ?? 0,
+        letter: progress?.letter ?? "none",
+        stage: progress?.stage ?? null,
+        capped: false,
+        storyReady: storyReady({ confirmedFacts: facts.confirmed, experiences: experiences.length }),
+      });
+      const url = {
+        story: link("/app/profile#start"),
+        resume: link(`/app/resumes/compare?job=${args.jobId}`),
+        packet: link(`/app/jobs/${args.jobId}/packet#letter`),
+        prep: link(`/app/jobs/${args.jobId}/packet#interview`),
+        apply: link(`/app/jobs/${args.jobId}/packet#tracking`),
+      }[plan.primary];
+      const tool = { story: "save_story_note", resume: "tailor_resume", packet: "draft_cover_letter", prep: "interview_prep", apply: "track_job" }[plan.primary];
+      return { company: data.job.company, title: data.job.title, next: plan.primary, note: plan.note, url, toolThatHelps: tool, tracked: Boolean(progress?.stage) };
     },
   }),
 

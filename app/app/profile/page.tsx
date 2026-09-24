@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
+import { StoryStart } from "@/components/coach/story-start";
 import { QuestionCard } from "@/components/onboarding/experience-step";
 import { FactRow } from "@/components/onboarding/fact-row";
 import { ExperienceCard } from "@/components/profile/experience-card";
@@ -38,21 +39,28 @@ export default async function ProfilePage() {
   const waitingFacts = facts.filter((f) => f.verificationState !== "confirmed" && !["skill", "tool"].includes(f.category));
   const skills = facts.filter((f) => ["skill", "tool"].includes(f.category) && f.verificationState === "confirmed");
   const confirmedCount = facts.filter((f) => f.verificationState === "confirmed").length;
+  const waitingCount = questions.length + waitingFacts.length;
+  // Nothing to show yet: one way in, not every capture tool at once.
+  const empty = experiences.length === 0 && confirmedCount === 0 && waitingCount === 0;
+  const firstName = (profile?.fullName || session.user.name).split(/\s+/)[0] ?? "";
 
   return (
     <PageBody>
       <PageHeader
         title="Profile"
-        description={`Everything your agent knows about you: ${confirmedCount} confirmed facts. Only confirmed facts ever reach a resume.`}
+        description={
+          empty
+            ? "Your agent learns about you here. Only facts you confirm ever reach a resume."
+            : `Everything your agent knows about you: ${confirmedCount} confirmed facts. Only confirmed facts ever reach a resume.`
+        }
       />
 
-      <StoryNotebook notes={storyNotes} />
-      <LifeNote />
-      <VoiceStory />
+      {empty && <StoryStart name={firstName} />}
 
-      {(questions.length > 0 || waitingFacts.length > 0) && (
-        <section className="mt-8">
-          <h2 className="text-[13px] font-medium text-pending-ink">Waiting on you ({questions.length + waitingFacts.length})</h2>
+      {waitingCount > 0 && (
+        <section className="mt-8 rounded-2xl border border-pending/30 bg-pending-soft/40 p-5 sm:p-6">
+          <h2 className="text-[15px] font-semibold">Check these first <span className="font-normal text-pending-ink">({waitingCount} waiting on you)</span></h2>
+          <p className="mt-1 text-[13px] text-muted-foreground">Say yes to what&apos;s true, fix what&apos;s close. Confirmed facts power your matches and resumes.</p>
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             {questions.slice(0, 6).map((q) => (
               <QuestionCard
@@ -72,11 +80,12 @@ export default async function ProfilePage() {
         </section>
       )}
 
+      {!empty && (
       <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <section>
           <div className="flex items-end justify-between">
             <h2 className="text-[18px] font-semibold tracking-tight">Experience</h2>
-            <Link href="/app/onboarding?step=experience" className="text-[13px] text-muted-foreground hover:text-foreground">
+            <Link href="#start" className="text-[13px] text-muted-foreground hover:text-foreground">
               Add experience
             </Link>
           </div>
@@ -84,7 +93,7 @@ export default async function ProfilePage() {
             {experiences.length === 0 && (
               <div className="rounded-xl border border-dashed p-8 text-center text-[14px] text-muted-foreground">
                 No experience recorded yet.{" "}
-                <Link href="/app/onboarding" className="font-medium text-foreground underline-offset-4 hover:underline">
+                <Link href="#start" className="font-medium text-foreground underline-offset-4 hover:underline">
                   Tell your agent about work, a project, or volunteering
                 </Link>
                 .
@@ -160,6 +169,19 @@ export default async function ProfilePage() {
           </SideCard>
         </aside>
       </div>
+      )}
+
+      {!empty && (
+        <section id="start" className="mt-12 border-t pt-10">
+          <h2 className="font-display text-[24px] font-semibold">Add to your story</h2>
+          <p className="mt-1 max-w-2xl text-[14px] leading-6 text-muted-foreground">
+            New job, class project, or win? Talk it out, write a structured entry, or jot a private note to organize later.
+          </p>
+          <VoiceStory />
+          <LifeNote />
+          <StoryNotebook notes={storyNotes} />
+        </section>
+      )}
     </PageBody>
   );
 }

@@ -9,7 +9,7 @@ import { trackJobAction } from "@/app/app/tracker/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function JobActions({ jobId, saved: initiallySaved }: { jobId: string; saved: boolean }) {
+export function JobActions({ jobId, saved: initiallySaved, tracked = false }: { jobId: string; saved: boolean; tracked?: boolean }) {
   const router = useRouter();
   const [saved, setSaved] = useState(initiallySaved);
   const [pending, startTransition] = useTransition();
@@ -17,7 +17,7 @@ export function JobActions({ jobId, saved: initiallySaved }: { jobId: string; sa
     <>
       <Button
         size="lg"
-        variant="outline"
+        variant="ghost"
         aria-pressed={saved}
         onClick={() => {
           setSaved(!saved);
@@ -27,7 +27,7 @@ export function JobActions({ jobId, saved: initiallySaved }: { jobId: string; sa
         <Star data-icon="inline-start" className={cn(saved && "fill-current")} />
         {saved ? "Saved" : "Save"}
       </Button>
-      <Button
+      {!tracked && <Button
         size="lg"
         variant="ghost"
         disabled={pending}
@@ -40,7 +40,7 @@ export function JobActions({ jobId, saved: initiallySaved }: { jobId: string; sa
       >
         <SquareKanban data-icon="inline-start" />
         Track it
-      </Button>
+      </Button>}
     </>
   );
 }

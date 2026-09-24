@@ -7,15 +7,17 @@
 /*
  * Proofline design tokens. See DESIGN.md for the rules behind them.
  *
- * Neutral base: white + zinc. One accent: --brand (green), used for
- * "confirmed", fit bars, focus rings, and little else. --pending (amber)
- * is a status color, reserved for facts that are waiting on the user.
+ * Neutrals lean slightly green so the whole product reads as one family.
+ * One accent: --brand (green) means "confirmed" or "worth your time".
+ * --pending (amber) is a status, reserved for things waiting on the user.
+ * --ink is the deep forest surface for primary buttons and dark bands.
+ * Washes are soft, low-chroma light behind hero and coach moments only.
  */
 
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-bricolage);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -44,6 +46,9 @@
   --color-pending: var(--pending);
   --color-pending-ink: var(--pending-ink);
   --color-pending-soft: var(--pending-soft);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -69,6 +74,12 @@
 
   --animate-bar-grow: bar-grow 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-view-in: view-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise: rise 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-draw: draw 1100ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  --animate-step-forward: step-forward 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-step-back: step-back 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-word-in: word-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-ring-out: ring-out 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes bar-grow {
     from {
@@ -76,6 +87,80 @@
     }
     to {
       transform: scaleX(1);
+    }
+  }
+
+  /* Entrance for hero and coach moments. Stagger with [animation-delay]. */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Onboarding: a step arrives from the direction you're moving. */
+  @keyframes step-forward {
+    from {
+      opacity: 0;
+      transform: translateX(28px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: blur(0);
+    }
+  }
+  @keyframes step-back {
+    from {
+      opacity: 0;
+      transform: translateX(-28px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: blur(0);
+    }
+  }
+
+  /* Onboarding: the agent's words settle in one at a time. */
+  @keyframes word-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.35em);
+      filter: blur(3px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: blur(0);
+    }
+  }
+
+  /* A single ring that leaves the agent's avatar when it speaks. Plays once. */
+  @keyframes ring-out {
+    from {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1.9);
+    }
+  }
+
+  /* The proof line: an SVG stroke with pathLength="1" draws itself once. */
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
     }
   }
 
@@ -92,52 +177,62 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
 
-  /* zinc scale */
+  /* green-grey neutrals */
   --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.2 0.014 170);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
+  --card-foreground: oklch(0.2 0.014 170);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.141 0.005 285.823);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.975 0.001 286.375);
-  --muted-foreground: oklch(0.442 0.017 285.786);
-  --subtle-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.2 0.014 170);
+  --primary: oklch(0.255 0.035 166);
+  --primary-foreground: oklch(0.985 0.004 160);
+  --secondary: oklch(0.965 0.007 160);
+  --secondary-foreground: oklch(0.255 0.035 166);
+  --muted: oklch(0.973 0.006 160);
+  --muted-foreground: oklch(0.44 0.018 168);
+  --subtle-foreground: oklch(0.56 0.016 168);
+  --accent: oklch(0.965 0.007 160);
+  --accent-foreground: oklch(0.255 0.035 166);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --border-strong: oklch(0.871 0.006 286.286);
-  --input: oklch(0.92 0.004 286.32);
+  --border: oklch(0.918 0.008 160);
+  --border-strong: oklch(0.868 0.011 160);
+  --input: oklch(0.905 0.009 160);
   --ring: oklch(0.56 0.13 158);
 
   /* the one accent */
   --brand: oklch(0.56 0.13 158);
-  --brand-ink: oklch(0.46 0.105 158);
-  --brand-soft: oklch(0.965 0.028 158);
+  --brand-ink: oklch(0.44 0.1 160);
+  --brand-soft: oklch(0.962 0.034 158);
 
   /* status: waiting on the user */
   --pending: oklch(0.78 0.15 75);
   --pending-ink: oklch(0.5 0.11 60);
   --pending-soft: oklch(0.975 0.035 85);
 
+  /* deep forest surface */
+  --ink: oklch(0.235 0.034 166);
+  --ink-foreground: oklch(0.975 0.008 160);
+  --ink-muted: oklch(0.76 0.03 162);
+
+  /* atmosphere: soft light, never a glow */
+  --wash-mint: oklch(0.9 0.085 160 / 0.55);
+  --wash-sky: oklch(0.92 0.055 205 / 0.5);
+  --wash-sun: oklch(0.96 0.06 100 / 0.55);
+
   --chart-1: oklch(0.56 0.13 158);
-  --chart-2: oklch(0.552 0.016 285.938);
-  --chart-3: oklch(0.442 0.017 285.786);
-  --chart-4: oklch(0.37 0.013 285.805);
-  --chart-5: oklch(0.274 0.006 286.033);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
+  --chart-2: oklch(0.56 0.016 168);
+  --chart-3: oklch(0.44 0.018 168);
+  --chart-4: oklch(0.36 0.02 168);
+  --chart-5: oklch(0.27 0.02 168);
+  --sidebar: oklch(0.985 0.004 160);
+  --sidebar-foreground: oklch(0.2 0.014 170);
+  --sidebar-primary: oklch(0.255 0.035 166);
+  --sidebar-primary-foreground: oklch(0.985 0.004 160);
+  --sidebar-accent: oklch(0.965 0.007 160);
+  --sidebar-accent-foreground: oklch(0.255 0.035 166);
+  --sidebar-border: oklch(0.918 0.008 160);
   --sidebar-ring: oklch(0.56 0.13 158);
 }
 
@@ -177,6 +272,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.68 0.13 158);
+  --ink: oklch(0.2 0.03 166);
+  --ink-foreground: oklch(0.975 0.008 160);
+  --ink-muted: oklch(0.76 0.03 162);
+  --wash-mint: oklch(0.4 0.07 160 / 0.35);
+  --wash-sky: oklch(0.4 0.05 205 / 0.3);
+  --wash-sun: oklch(0.4 0.04 100 / 0.25);
 }
 
 @layer base {
@@ -207,6 +308,79 @@
       scroll-behavior: smooth;
     }
   }
+}
+
+/*
+ * Atmosphere: three soft washes of light behind a hero or coach moment.
+ * Put it on a positioned wrapper; content sits above it.
+ */
+@utility atmosphere {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(60% 55% at 12% 8%, var(--wash-mint), transparent 70%),
+    radial-gradient(50% 45% at 88% 12%, var(--wash-sky), transparent 72%),
+    radial-gradient(55% 50% at 55% 100%, var(--wash-sun), transparent 70%);
+}
+
+/* A quieter wash for in-app cards: one corner of mint light. */
+@utility atmosphere-soft {
+  background-image:
+    radial-gradient(80% 90% at 0% 0%, var(--wash-mint), transparent 60%),
+    radial-gradient(60% 70% at 100% 100%, var(--wash-sky), transparent 65%);
+}
+
+/* Film grain under the content of an atmosphere so gradients never band. Needs a positioned element. */
+@utility grain {
+  isolation: isolate;
+  &::after {
+    z-index: -1;
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.35;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+}
+
+/*
+ * Children rise in one after another: the hint, then the choices, then the form.
+ * Motion only when the person hasn't asked for less.
+ */
+@utility stagger-in {
+  @media (prefers-reduced-motion: no-preference) {
+    & > * {
+      animation: rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation-delay: calc(var(--stagger-start, 180ms) + var(--i, 0) * 80ms);
+    }
+    & > *:nth-child(2) { --i: 1; }
+    & > *:nth-child(3) { --i: 2; }
+    & > *:nth-child(4) { --i: 3; }
+    & > *:nth-child(5) { --i: 4; }
+    & > *:nth-child(6) { --i: 5; }
+    & > *:nth-child(n + 7) { --i: 6; }
+  }
+}
+
+/* Pair with animate-draw on an SVG path or line that has pathLength="1". */
+@utility proof-stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+/* One soft shadow for raised surfaces. Never stack more. */
+@utility shadow-lift {
+  box-shadow: 0 18px 50px -24px oklch(0.25 0.04 166 / 0.28);
+}
+
+/* Display type: the expressive face, tight and balanced. */
+@utility font-display {
+  font-family: var(--font-bricolage);
+  font-optical-sizing: auto;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
 }
 
 @utility scroll-thin {

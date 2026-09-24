@@ -1,29 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BellRing, Bot, CalendarClock, CircleCheck, FileText, MessagesSquare, Search, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, Bot, CircleCheck } from "lucide-react";
+import { MOVE_ICON } from "@/components/coach/move-list";
 import { AgentChat } from "@/components/agent/agent-chat";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { requireSession } from "@/lib/auth";
 import { listChat } from "@/lib/agent/chat-store";
-import { nextMoves, type NextMove } from "@/lib/agent/next-moves";
+import { nextMoves } from "@/lib/agent/next-moves";
 import { factCounts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { anthropicClient } from "@/lib/llm/provider";
 import { listApplications } from "@/lib/tracker/service";
 
 export const metadata: Metadata = { title: "Agent" };
-
-const ICON: Record<NextMove["kind"], typeof UserRound> = {
-  confirm_facts: UserRound,
-  answer_questions: UserRound,
-  follow_up: CalendarClock,
-  deadline: CalendarClock,
-  resume: FileText,
-  prep: MessagesSquare,
-  explore: Search,
-  news: BellRing,
-  prefs: Sparkles,
-};
 
 export default async function AgentPage() {
   const session = await requireSession();
@@ -56,7 +45,7 @@ export default async function AgentPage() {
             {moves.length ? (
               <div className="mt-3 space-y-2">
                 {moves.slice(0, 6).map((move, index) => {
-                  const Icon = ICON[move.kind];
+                  const Icon = MOVE_ICON[move.kind];
                   return (
                     <Link key={move.href + String(index)} href={move.href} className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/60">
                       <Icon className={`mt-0.5 size-4 shrink-0 ${move.kind === "follow_up" || move.kind === "deadline" ? "text-pending-ink" : "text-brand"}`} />

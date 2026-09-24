@@ -36,9 +36,27 @@ export const ROLE_FAMILIES: Array<{ id: string; label: string; triggers: string[
   {
     id: "business",
     label: "Business and operations",
-    triggers: ["business", "operations", "business analyst", "bizops", "strategy and operations"],
-    titleWords: ["business analyst", "operations", "business operations", "bizops", "strategy & operations", "program"],
+    triggers: ["business", "business administration", "business management", "operations", "business analyst", "bizops", "strategy and operations", "management trainee", "rotational program", "leadership development"],
+    // Bare "business" matters: "Business Intern" and "Business Development Associate" are the
+    // most common titles a student searching "business" expects to see.
+    titleWords: [
+      "business",
+      "business development",
+      "business analyst",
+      "operations",
+      "bizops",
+      "strategy & operations",
+      "strategy and operations",
+      "corporate development",
+      "management trainee",
+      "management associate",
+      "rotational",
+      "leadership development",
+      "general management",
+      "program",
+    ],
     museCategory: "Business Operations",
+    excludeTitle: /software|engineer|developer|\bdevops\b/i,
   },
   {
     id: "data",
@@ -74,9 +92,109 @@ export const ROLE_FAMILIES: Array<{ id: string; label: string; triggers: string[
 ];
 
 export function familiesFor(words: string[]) {
-  const text = ` ${words.join(" ").toLowerCase()} `;
+  const text = ` ${words.map(correctRoleWord).join(" ").toLowerCase()} `;
   return ROLE_FAMILIES.filter((f) => f.triggers.some((t) => text.includes(` ${t} `) || text.includes(` ${t}s `)));
 }
+
+/**
+ * Misspellings people actually type into a job search. Checked before the fuzzy
+ * fallback so the common ones never depend on edit distance.
+ */
+const TYPOS: Record<string, string> = {
+  buisness: "business",
+  busness: "business",
+  bussiness: "business",
+  bussines: "business",
+  busines: "business",
+  buissness: "business",
+  businesss: "business",
+  bizness: "business",
+  acounting: "accounting",
+  accouting: "accounting",
+  accounitng: "accounting",
+  acountant: "accountant",
+  finanace: "finance",
+  finace: "finance",
+  finnance: "finance",
+  marketting: "marketing",
+  markting: "marketing",
+  analyist: "analyst",
+  anaylst: "analyst",
+  analitics: "analytics",
+  consluting: "consulting",
+  consultng: "consulting",
+  opperations: "operations",
+  operatons: "operations",
+  managment: "management",
+  mangement: "management",
+  softwear: "software",
+  enginering: "engineering",
+  recuiting: "recruiting",
+  healtcare: "healthcare",
+  warehous: "warehouse",
+};
+
+/** Single-word triggers, the vocabulary a typo can be corrected toward. */
+const TRIGGER_WORDS = [...new Set(ROLE_FAMILIES.flatMap((f) => f.triggers).filter((t) => !t.includes(" ") && t.length >= 6))];
+
+/**
+ * Fix a likely misspelling of a role word ("buisness" to "business"). Only swaps,
+ * one extra letter, or one missing letter count, never a changed letter, so real
+ * words like "produce" are left alone instead of becoming "product".
+ */
+export function correctRoleWord(word: string): string {
+  const w = word.toLowerCase();
+  if (TYPOS[w]) return TYPOS[w];
+  if (w.length < 6 || TRIGGER_WORDS.includes(w)) return word;
+  const hit = TRIGGER_WORDS.find((t) => nearMiss(w, t) || nearMiss(w, `${t}s`));
+  return hit ?? word;
+}
+
+function nearMiss(a: string, b: string): boolean {
+  if (a === b) return false;
+  if (a.length === b.length) {
+    const diff = [...a].flatMap((c, i) => (c === b[i] ? [] : [i]));
+    return diff.length === 2 && diff[1] === diff[0] + 1 && a[diff[0]] === b[diff[1]] && a[diff[1]] === b[diff[0]];
+  }
+  const [short, long] = a.length < b.length ? [a, b] : [b, a];
+  if (long.length - short.length !== 1) return false;
+  for (let i = 0; i < long.length; i++) {
+    if (long.slice(0, i) + long.slice(i + 1) === short) return true;
+  }
+  return false;
+}
+
+/** Words from a query that were read as a different role word, for "Showing results for ..." notes. */
+export function roleCorrections(words: string[]): Array<{ from: string; to: string }> {
+  return words.flatMap((w) => {
+    const to = correctRoleWord(w);
+    return to.toLowerCase() !== w.toLowerCase() ? [{ from: w, to }] : [];
+  });
+}
+
+/** Families a thin search could widen into, closest first. Used to suggest the next query. */
+export const RELATED_FAMILIES: Record<string, string[]> = {
+  business: ["sales", "project", "consulting", "marketing", "data"],
+  accounting: ["audit", "tax", "finance"],
+  audit: ["accounting", "consulting"],
+  tax: ["accounting", "audit"],
+  finance: ["accounting", "banking", "business"],
+  banking: ["finance", "consulting"],
+  consulting: ["business", "finance", "project"],
+  data: ["business", "software", "finance"],
+  software: ["data", "product"],
+  marketing: ["sales", "business", "product"],
+  sales: ["business", "marketing", "customer-service"],
+  product: ["project", "business", "marketing"],
+  hr: ["administration", "business"],
+  "customer-service": ["sales", "retail", "administration"],
+  administration: ["customer-service", "hr", "project"],
+  retail: ["customer-service", "sales", "warehouse"],
+  healthcare: ["administration", "customer-service"],
+  warehouse: ["retail", "trades"],
+  trades: ["warehouse"],
+  project: ["business", "product", "administration"],
+};
 
 /** True when a title matches a role family's words but is really something else ("Quality Assurance Engineer"). */
 export function titleExcluded(title: string, roles: string[]): boolean {

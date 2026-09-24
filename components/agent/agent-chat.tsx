@@ -30,9 +30,10 @@ const TOOL_LABEL: Record<string, string> = {
   draft_application_answer: "Drafted an answer",
   interview_prep: "Built interview prep",
   draft_follow_up: "Drafted a follow-up",
+  plan_application: "Planned your next step",
 };
 
-const SUGGESTIONS = ["What should I do next?", "Find accounting internships for summer 2027", "Where do my applications stand?", "Help me prep for an interview"];
+const SUGGESTIONS = ["What should I do next?", "Find business internships for summer 2027", "Where do my applications stand?", "Help me prep for an interview"];
 
 export function AgentChat({ initial, mode }: { initial: ChatRecord[]; mode: "model" | "offline" }) {
   const router = useRouter();

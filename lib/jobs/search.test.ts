@@ -77,6 +77,24 @@ describe("boardsFor", () => {
     expect(accounting.length).toBeLessThan(full.length);
     expect(accounting.every((b) => b.tags.some((t) => ["accounting", "fintech", "finance"].includes(t)))).toBe(true);
   });
+
+  it("reaches wide for business searches instead of falling back by accident", () => {
+    const business = boardsFor(["business"]);
+    expect(business.length).toBeGreaterThan(boardsFor(["accounting"]).length);
+    expect(business.some((b) => b.tags.includes("operations"))).toBe(true);
+    expect(business.some((b) => b.tags.includes("consumer"))).toBe(true);
+  });
+});
+
+describe("business search end to end", () => {
+  it("keeps a Business Intern posting for a plain 'business' search", async () => {
+    const { titleWordsFor } = await import("./roles");
+    const intent = parseIntent("business internships");
+    const posting = { ...job("biz", "Raleigh, NC", "greenhouse"), title: "Business Intern" };
+    expect(passesSearchFilters(posting, intent, titleWordsFor(intent.roles), [])).toBe(true);
+    const typo = parseIntent("buisness internships");
+    expect(passesSearchFilters(posting, typo, titleWordsFor(typo.roles), [])).toBe(true);
+  });
 });
 
 describe("boardJobs cache", () => {

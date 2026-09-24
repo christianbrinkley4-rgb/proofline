@@ -1,6 +1,8 @@
 import { listMatches } from "@/lib/jobs/store";
+import { familiesFor } from "@/lib/jobs/roles";
 import { roleName } from "@/lib/jobs/text";
 import { listApplications } from "@/lib/tracker/service";
+import { loadJourney } from "./coach";
 import { nextMoves } from "./next-moves";
 import { TOOL_BY_NAME, runTool, type ToolContext } from "./tools";
 
@@ -26,6 +28,14 @@ const HELP = `Here's what I can do right now:
 - **Save something you did**: just tell me, like "Last summer I ran the front desk at a dental office and cut check-in time in half."
 
 For open conversation, add an Anthropic API key to Proofline or connect your own AI in [Settings](/app/settings#ai).`;
+
+type SearchResult = {
+  scanned: number;
+  thin?: boolean;
+  readAs?: string[];
+  widerSearches?: Array<{ label: string; query: string; why: string }>;
+  results: Array<{ title: string; company: string; location: string | null; fit: number; warning: string | null; url: string }>;
+};
 
 type JobRef = { company: string; title: string; jobId: string | null; applicationId?: string };
 
@@ -72,6 +82,9 @@ export function classify(message: string): Intent {
   if (/\b(find|search|look(ing)? for|show me|any)\b[^.?!]*\b(jobs?|internships?|roles?|positions?|openings?|co-?ops?)\b/.test(m) || /^(\w+\s){0,3}(internships?|jobs?)\b/.test(m)) return "search";
   if (/^(i|i'm|i've|i was|last (summer|year|semester|spring|fall)|this (summer|year|semester)|at my|in my|my (job|internship|club|team|class))\b/.test(m) && m.split(/\s+/).length >= 6) return "story";
   if (/^(hi|hey|hello|help|what can you do|how does this work)\b/.test(m)) return "help";
+  // A bare role, typos included ("business", "buisness internships"), is a search.
+  const words = m.replace(/[^a-z0-9&+ -]/g, " ").split(/\s+/).filter(Boolean);
+  if (words.length <= 4 && familiesFor(words).length) return "search";
   return "unknown";
 }
 
@@ -101,17 +114,30 @@ export async function offlineReply(message: string, ctx: ToolContext, emit: Offl
       return { text: HELP, tools };
 
     case "next": {
-      const moves = await nextMoves(ctx.userId);
-      if (!moves.length) return { text: "You're caught up. Add another experience to your story or run a new search to keep things moving.", tools };
-      return { text: `Here's what I'd do next:\n\n${list(moves.slice(0, 5).map((m) => `[${m.title}](${m.href}): ${m.detail}`))}`, tools };
+      const [journey, moves] = await Promise.all([loadJourney(ctx.userId), nextMoves(ctx.userId)]);
+      const { action } = journey;
+      const where =
+        journey.current === "done"
+          ? "Your last application is out."
+          : `You're on step ${journey.position} of 6 (${journey.steps.find((s) => s.state === "current")?.label}).`;
+      const urgent = moves.filter((m) => (m.kind === "deadline" || m.kind === "follow_up") && m.href !== action.href).slice(0, 2);
+      const also = urgent.length ? `\n\nAlso due:\n\n${list(urgent.map((m) => `[${m.title}](${m.href}): ${m.detail}`))}` : "";
+      return { text: `${where} Here's the one thing to do now:\n\n**[${action.title}](${action.href})**. ${action.detail}${also}`, tools };
     }
 
     case "search": {
       emitToolStart(emit, "search_jobs");
-      const result = await call<{ scanned: number; results: Array<{ title: string; company: string; location: string | null; fit: number; warning: string | null; url: string }> }>("search_jobs", { query: message, limit: 5 });
-      if (!result.results.length) return { text: `I scanned ${result.scanned.toLocaleString()} postings and nothing matched that exactly. Try a wider area or drop the season.`, tools };
+      const result = await call<SearchResult>("search_jobs", { query: message, limit: 5 });
+      const readAs = result.readAs?.length ? `I read ${result.readAs.join(" and ")}. ` : "";
+      const wider = result.widerSearches?.length
+        ? `\n\nWant to widen it? Pick one:\n\n${list(result.widerSearches.map((w) => `[${w.label}](/app/jobs?q=${encodeURIComponent(w.query)}): ${w.why.toLowerCase()}`))}`
+        : "";
+      if (!result.results.length) {
+        return { text: `${readAs}I scanned ${result.scanned.toLocaleString()} postings and nothing matched that exactly.${wider || " Try a wider area or drop the season."}`, tools };
+      }
       const lines = result.results.map((r) => `[${r.title}](${new URL(r.url).pathname}) at ${r.company}${r.location ? `, ${r.location}` : ""}: **${r.fit}** fit${r.warning ? ` (heads up: ${r.warning})` : ""}`);
-      return { text: `I scanned ${result.scanned.toLocaleString()} postings. The best fits for your confirmed story:\n\n${list(lines)}\n\nSee them all on [Jobs](/app/jobs).`, tools };
+      const next = result.thin ? wider : "\n\nNext: open the best one, read why it scored that way, and save it. Then I'll help you tailor a resume.";
+      return { text: `${readAs}I scanned ${result.scanned.toLocaleString()} postings. The best fits for your confirmed story:\n\n${list(lines)}${next}`, tools };
     }
 
     case "letter":

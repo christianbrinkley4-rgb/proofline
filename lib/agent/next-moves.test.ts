@@ -79,3 +79,24 @@ describe("buildNextMoves", () => {
     ]);
   });
 });
+
+describe("cold-start moves", () => {
+  it("puts one story step first when there is no evidence at all", () => {
+    const moves = buildNextMoves({ ...empty, confirmedFacts: 0, experiences: 0 });
+    expect(moves[0]).toMatchObject({ kind: "add_story", href: "/app/profile#start" });
+  });
+
+  it("asks to confirm imported facts instead of adding a story when some are waiting", () => {
+    const moves = buildNextMoves({ ...empty, confirmedFacts: 0, experiences: 1, factsToReview: 4 });
+    expect(moves.map((m) => m.kind)).not.toContain("add_story");
+    expect(moves[0].kind).toBe("confirm_facts");
+  });
+
+  it("walks a saved job from resume to a finished letter", () => {
+    const job = { jobId: "j1", company: "Carrow", title: "Business Intern", hasResume: false, letter: "none" as const, sent: false };
+    expect(buildNextMoves({ ...empty, confirmedFacts: 5, experiences: 1, jobs: [job] })[0]).toMatchObject({ kind: "resume", href: "/app/resumes/compare?job=j1" });
+    const letter = buildNextMoves({ ...empty, confirmedFacts: 5, experiences: 1, jobs: [{ ...job, hasResume: true, letter: "needs_you" }] })[0];
+    expect(letter).toMatchObject({ kind: "packet", title: "Say why you want Carrow" });
+    expect(buildNextMoves({ ...empty, jobs: [{ ...job, hasResume: true, letter: "ready" }] })).toEqual([]);
+  });
+});

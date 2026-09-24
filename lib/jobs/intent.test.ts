@@ -113,6 +113,47 @@ describe("posting text helpers", () => {
   });
 });
 
+describe("business searches", () => {
+  it("reads a bare 'business' search as the business family and matches common titles", async () => {
+    const { titleMatches } = await import("@/lib/fit/engine");
+    const intent = parseIntent("business");
+    expect(intent.roles).toEqual(["business"]);
+    const words = titleWordsFor(intent.roles);
+    expect(words).toContain("business");
+    for (const title of ["Business Intern", "Business Analyst Intern", "Business Development Associate", "Rotational Program Analyst", "Summer 2027 Business Operations Intern"]) {
+      expect(titleMatches(title, words), title).toBe(true);
+    }
+    expect(titleMatches("Staff Accountant", words)).toBe(false);
+  });
+
+  it("keeps engineering titles out of business searches", async () => {
+    const { titleExcluded } = await import("./roles");
+    expect(titleExcluded("Software Engineer, Business Platform", ["business"])).toBe(true);
+    expect(titleExcluded("Business Intern", ["business"])).toBe(false);
+  });
+
+  it.each(["buisness internships", "busness internships", "bussiness internships", "busines internships"])("maps the typo in %s to business", (query) => {
+    const intent = parseIntent(query);
+    expect(intent.roles).toEqual(["business"]);
+    expect(intent.level).toBe("internship");
+    expect(intent.corrections?.[0]?.to).toBe("business");
+  });
+
+  it("corrects swaps and dropped letters but leaves real words alone", async () => {
+    const { correctRoleWord } = await import("./roles");
+    expect(correctRoleWord("acounting")).toBe("accounting");
+    expect(correctRoleWord("marketting")).toBe("marketing");
+    expect(correctRoleWord("prodcut")).toBe("product");
+    expect(correctRoleWord("produce")).toBe("produce");
+    expect(correctRoleWord("business")).toBe("business");
+    expect(parseIntent("business internships").corrections).toBeUndefined();
+  });
+
+  it("labels the role chip with the family name", () => {
+    expect(describeIntent(parseIntent("business"))).toContainEqual({ label: "Role", value: "Business and operations" });
+  });
+});
+
 describe("role exclusions", () => {
   it("keeps Quality Assurance engineers out of accounting searches", async () => {
     const { titleExcluded } = await import("./roles");

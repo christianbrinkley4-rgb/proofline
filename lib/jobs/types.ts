@@ -37,6 +37,8 @@ export type JobIntent = {
   exclude: string[];
   /** Minimum pay in dollars, with its period. */
   payFloor: { amount: number; period: "hour" | "year" } | null;
+  /** Misspelled role words read as something else, e.g. [{ from: "buisness", to: "business" }]. */
+  corrections?: Array<{ from: string; to: string }>;
 };
 
 export type SearchProgress =

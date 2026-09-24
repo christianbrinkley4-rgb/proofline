@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { runTool, TOOLS, type ToolContext } from "@/lib/agent/tools";
-import { CHAT_V1 } from "./prompts/chat.v1";
+import { CHAT_V2 } from "./prompts/chat.v2";
 import { anthropicClient, chatModel } from "./provider";
 import { logLlmCall } from "./log";
 
@@ -66,7 +66,7 @@ export async function runChat(
       thinking: { type: "disabled" },
       output_config: { effort: "low" },
       system: [
-        { type: "text", text: CHAT_V1.system, cache_control: { type: "ephemeral" } },
+        { type: "text", text: CHAT_V2.system, cache_control: { type: "ephemeral" } },
         { type: "text", text: `The student's name is ${ctx.name || "unknown"}. Today is ${ctx.today}.` },
       ],
       tools,
@@ -114,6 +114,6 @@ export async function runChat(
     }
   }
 
-  await logLlmCall({ purpose: "agent.chat", promptVersion: CHAT_V1.version, model, ms: Date.now() - started, input: history.at(-1)?.text ?? "", output: { text, tools: used } });
+  await logLlmCall({ purpose: "agent.chat", promptVersion: CHAT_V2.version, model, ms: Date.now() - started, input: history.at(-1)?.text ?? "", output: { text, tools: used } });
   return { text: text.trim(), tools: used };
 }

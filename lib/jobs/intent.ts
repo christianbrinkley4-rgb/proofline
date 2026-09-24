@@ -1,4 +1,4 @@
-import { familiesFor } from "./roles";
+import { familiesFor, roleCorrections, ROLE_FAMILIES } from "./roles";
 import { METROS, STATES } from "./locations";
 import type { JobIntent } from "./types";
 
@@ -134,7 +134,16 @@ export function parseIntent(query: string, defaults: IntentDefaults = {}): JobIn
     modes: modes.size ? [...modes] : anywhere ? [] : (defaults.workModes ?? []),
     exclude: dedupe(exclude),
     payFloor: payFloor ?? (defaults.payFloor ? { amount: defaults.payFloor, period: defaults.payFloor < 500 ? "hour" : "year" } : null),
+    ...corrected(families.length ? roleCorrections(words) : []),
   };
+}
+
+function corrected(corrections: Array<{ from: string; to: string }>) {
+  return corrections.length ? { corrections } : {};
+}
+
+function roleLabel(role: string) {
+  return ROLE_FAMILIES.find((f) => f.id === role)?.label ?? role[0].toUpperCase() + role.slice(1);
 }
 
 function titleCase(s: string) {
@@ -148,7 +157,7 @@ function dedupe<T>(items: T[]): T[] {
 /** Short, readable chips for the UI: "Accounting", "Internship", "Summer 2027", "Raleigh area", "Remote or hybrid". */
 export function describeIntent(intent: JobIntent): Array<{ label: string; value: string }> {
   const chips: Array<{ label: string; value: string }> = [];
-  if (intent.roles.length) chips.push({ label: "Role", value: intent.roles.map((r) => r[0].toUpperCase() + r.slice(1)).join(", ") });
+  if (intent.roles.length) chips.push({ label: "Role", value: intent.roles.map(roleLabel).join(", ") });
   if (intent.level !== "any") chips.push({ label: "Level", value: intent.level === "internship" ? "Internship" : "Entry level" });
   if (intent.term) chips.push({ label: "When", value: intent.term });
   if (intent.locations.length) chips.push({ label: "Where", value: intent.locations.join(", ") });

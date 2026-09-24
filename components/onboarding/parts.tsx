@@ -7,18 +7,52 @@ import { cn } from "@/lib/utils";
 
 /** The agent's line at the top of each step. */
 export function AgentSays({ children, className }: { children: React.ReactNode; className?: string }) {
+  const text = plainText(children);
   return (
     <div className={cn("flex gap-3", className)}>
-      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground">
-        <LogoMark className="size-4 [&_rect]:fill-transparent" />
+      <span className="relative grid size-8 shrink-0 place-items-center rounded-full bg-ink">
+        <span aria-hidden="true" className="absolute inset-0 rounded-full bg-brand/40 opacity-0 motion-safe:animate-ring-out" />
+        <LogoMark className="relative size-4 [&_rect]:fill-transparent" />
       </span>
-      <div className="pt-1 text-[17px] leading-7 font-medium tracking-[-0.01em] text-balance">{children}</div>
+      <div className="pt-0.5 font-display text-[21px] leading-8 font-semibold tracking-[-0.02em] text-balance sm:text-[23px]">
+        {text === null ? (
+          children
+        ) : (
+          // Words settle in one at a time, like the agent is talking. Screen readers get the sentence whole.
+          <span aria-label={text}>
+            {text.split(/(\s+)/).map((part, i) =>
+              /^\s+$/.test(part) ? (
+                part
+              ) : (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className="inline-block motion-safe:animate-word-in"
+                  style={{ animationDelay: `${Math.min(i * 22, 900)}ms` }}
+                >
+                  {part}
+                </span>
+              ),
+            )}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
+/** The string inside simple JSX children ("Hi ", name, "."), or null when there's markup to keep. */
+function plainText(node: React.ReactNode): string | null {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) {
+    const parts = node.map(plainText);
+    return parts.every((p) => p !== null) ? parts.join("") : null;
+  }
+  return null;
+}
+
 export function StepHint({ children }: { children: React.ReactNode }) {
-  return <p className="mt-2 pl-11 text-[14px] leading-6 text-muted-foreground">{children}</p>;
+  return <p className="mt-3 pl-11 text-[14.5px] leading-6 text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:260ms]">{children}</p>;
 }
 
 /** Free-form chips with suggestions. Enter or comma adds; backspace on empty removes the last one. */

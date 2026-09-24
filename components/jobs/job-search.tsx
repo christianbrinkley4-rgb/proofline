@@ -8,6 +8,7 @@ import { importLinkAction, saveSearchAction } from "@/app/app/jobs/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { describeIntent } from "@/lib/jobs/intent";
+import { THIN_RESULTS, widerSearches } from "@/lib/jobs/widen";
 import type { JobResult } from "@/lib/jobs/search";
 import type { JobIntent, SearchStats } from "@/lib/jobs/types";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ const EXAMPLES = [
   "accounting internships in Raleigh for summer 2027, remote-friendly",
   "entry-level finance roles that don't require the CPA",
   "customer service jobs near Charlotte, NC",
-  "project coordinator roles that fit my experience",
+  "business internships for summer 2027",
 ];
 
 export function JobSearch({
@@ -84,6 +85,8 @@ export function JobSearch({
         if (event.type === "intent") {
           setIntent(event.intent);
           const chips = describeIntent(event.intent).map((c) => c.value);
+          const fixed = (event.intent as JobIntent).corrections ?? [];
+          if (fixed.length) push(`Read ${fixed.map((c) => `"${c.from}" as "${c.to}"`).join(", ")}`);
           push(`Understood: ${chips.join(" · ") || trimmed}`);
         } else if (event.type === "status") push(event.message);
         else if (event.type === "source") push(`${event.source}: ${event.found} ${event.found === 1 ? "match" : "matches"}`, "found");
@@ -139,6 +142,7 @@ export function JobSearch({
   }, [results, sort, hideLongShots]);
 
   const chips = intent ? describeIntent(intent) : [];
+  const wider = intent ? widerSearches(intent) : [];
 
   return (
     <div>
@@ -248,7 +252,7 @@ export function JobSearch({
         <section
           aria-live="polite"
           aria-label="Agent activity"
-          className={cn("mt-5 overflow-hidden rounded-xl border bg-zinc-950 text-zinc-100 transition-opacity", !running && "opacity-90")}
+          className={cn("mt-5 overflow-hidden rounded-2xl border border-ink bg-ink text-ink-foreground transition-opacity", !running && "opacity-90")}
         >
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
             <span className="flex items-center gap-2 font-mono text-[11.5px] tracking-wide text-zinc-400">
@@ -338,12 +342,33 @@ export function JobSearch({
         </section>
       )}
 
-      {!running && stats && results.length === 0 && (
-        <div className="mt-6 rounded-xl border border-dashed p-8 text-center">
-          <p className="text-[15px] font-medium">Nothing matched that exactly.</p>
-          <p className="mt-1 text-[14px] text-muted-foreground">
-            I scanned {stats.scanned.toLocaleString()} postings. Try a wider area, drop the season, or paste a link to a job you found.
+      {!running && stats && intent && results.length < THIN_RESULTS && (
+        <div className={cn("mt-6 rounded-2xl border p-5 sm:p-6", results.length === 0 ? "atmosphere-soft" : "bg-muted/30")}>
+          <p className="text-[15px] font-semibold">{results.length === 0 ? "Nothing matched that exactly." : `Only ${results.length} ${results.length === 1 ? "match" : "matches"} so far.`}</p>
+          <p className="mt-1 text-[13.5px] leading-6 text-muted-foreground">
+            I scanned {stats.scanned.toLocaleString()} postings. {wider.length ? "Try one of these next, or paste a link to a job you found." : "Try a wider area, drop the season, or paste a link to a job you found."}
           </p>
+          {wider.length > 0 && (
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {wider.map((w) => (
+                <button
+                  key={w.query}
+                  type="button"
+                  onClick={() => {
+                    setQuery(w.query);
+                    run(w.query);
+                  }}
+                  className="group rounded-xl border bg-background p-3 text-left transition-colors hover:border-border-strong"
+                >
+                  <span className="flex items-center justify-between gap-2 text-[14px] font-medium">
+                    {w.label}
+                    <ArrowRight className="size-3.5 text-subtle-foreground transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                  <span className="mt-0.5 block text-[12.5px] text-muted-foreground">{w.why}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

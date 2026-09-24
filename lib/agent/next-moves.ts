@@ -1,4 +1,7 @@
 import { preferenceSuggestions } from "@/lib/agent/preferences";
+import { isSent, loadJobProgress } from "@/lib/agent/coach";
+import { listExperiences } from "@/lib/kb/experiences";
+import type { LetterStatus } from "@/lib/packet/cover-letter";
 import { factCounts } from "@/lib/kb/facts";
 import { listOpenQuestions } from "@/lib/kb/questions";
 import { listWatched } from "@/lib/jobs/saved";
@@ -6,7 +9,7 @@ import { listApplications } from "@/lib/tracker/service";
 
 /** One thing the student should do next, with where to do it. */
 export type NextMove = {
-  kind: "confirm_facts" | "answer_questions" | "follow_up" | "resume" | "prep" | "deadline" | "explore" | "news" | "prefs";
+  kind: "add_story" | "confirm_facts" | "answer_questions" | "follow_up" | "resume" | "packet" | "prep" | "deadline" | "explore" | "news" | "prefs";
   title: string;
   detail: string;
   href: string;
@@ -25,6 +28,9 @@ type AppInput = {
 
 type WatchedInput = { query: string; newJobIds: string[] };
 
+/** A saved or tracked job and how far its application has come. */
+type JobProgress = { jobId: string; company: string; title: string; hasResume: boolean; letter: LetterStatus; sent: boolean };
+
 /** Inputs for building the list without hitting the DB (tests). */
 export type NextMovesInput = {
   factsToReview: number;
@@ -32,6 +38,11 @@ export type NextMovesInput = {
   applications: AppInput[];
   watched: WatchedInput[];
   prefsPending: number;
+  /** Cold-start signals. Leave unset to skip the story move. */
+  confirmedFacts?: number;
+  experiences?: number;
+  /** Saved or tracked jobs with their resume and letter state. */
+  jobs?: JobProgress[];
   now?: Date;
 };
 
@@ -43,6 +54,8 @@ const CAP = 6;
  */
 function urgency(kind: NextMove["kind"], deadlineToday = false): number {
   switch (kind) {
+    case "add_story":
+      return 3.5;
     case "deadline":
       return deadlineToday ? 0 : 1;
     case "follow_up":
@@ -58,6 +71,8 @@ function urgency(kind: NextMove["kind"], deadlineToday = false): number {
       return 6;
     case "resume":
       return 7;
+    case "packet":
+      return 7.5;
     case "explore":
       return 8;
   }
@@ -137,6 +152,20 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
     );
   }
 
+  // Cold start: nothing confirmed and nothing to confirm. Everything else depends on a first story.
+  const coldStart = input.confirmedFacts === 0 && input.experiences === 0;
+  if (coldStart && input.factsToReview === 0) {
+    push(
+      {
+        kind: "add_story",
+        title: "Tell your agent about one thing you've done",
+        detail: "A job, class project, club, or volunteering. Matches and resumes are built only from what you confirm.",
+        href: "/app/profile#start",
+      },
+      urgency("add_story"),
+    );
+  }
+
   if (input.factsToReview > 0) {
     const n = input.factsToReview;
     push(
@@ -146,7 +175,7 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
         detail: `${n} ${n === 1 ? "fact needs" : "facts need"} your review before ${n === 1 ? "it" : "they"} can strengthen a resume.`,
         href: "/app/profile",
       },
-      urgency("confirm_facts"),
+      input.confirmedFacts === 0 ? urgency("add_story") : urgency("confirm_facts"),
     );
   }
 
@@ -175,7 +204,36 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
     );
   }
 
-  if (input.applications.length === 0) {
+  // Saved jobs that aren't tracked yet still need a resume, then a finished letter.
+  const tracked = new Set(input.applications.map((a) => a.jobId).filter(Boolean));
+  for (const job of (input.jobs ?? []).filter((j) => !j.sent)) {
+    if (!job.hasResume && !tracked.has(job.jobId)) {
+      push(
+        {
+          kind: "resume",
+          title: `Build a resume for ${job.company}`,
+          detail: `Compare three one-page versions for ${job.title}, built from your confirmed facts.`,
+          href: `/app/resumes/compare?job=${job.jobId}`,
+        },
+        urgency("resume"),
+      );
+    } else if (job.hasResume && job.letter !== "ready") {
+      push(
+        {
+          kind: "packet",
+          title: job.letter === "needs_you" ? `Say why you want ${job.company}` : `Finish your ${job.company} packet`,
+          detail:
+            job.letter === "needs_you"
+              ? "Your letter is drafted from your evidence. Add a sentence or two in your own words and it's ready."
+              : `Draft a cover letter for ${job.title} from the same facts as your resume.`,
+          href: `/app/jobs/${job.jobId}/packet#letter`,
+        },
+        urgency("packet"),
+      );
+    }
+  }
+
+  if (input.applications.length === 0 && !(input.jobs ?? []).length) {
     push(
       { kind: "explore", title: "Find roles worth your time", detail: "Search live postings and save one to start tracking your search.", href: "/app/jobs" },
       urgency("explore"),
@@ -190,19 +248,24 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
 
 /** The most useful next actions, in priority order. Shared by the Agent page and chat. */
 export async function nextMoves(userId: string, now = new Date()): Promise<NextMove[]> {
-  const [facts, questions, applications, watched, prefs] = await Promise.all([
+  const [facts, questions, applications, watched, prefs, experiences] = await Promise.all([
     factCounts(userId),
     listOpenQuestions(userId),
     listApplications(userId),
     listWatched(userId),
     preferenceSuggestions(userId, now),
+    listExperiences(userId),
   ]);
+  const jobs = await loadJobProgress(userId, applications);
   return buildNextMoves({
     factsToReview: facts.toReview,
     openQuestions: questions.length,
     applications,
     watched,
     prefsPending: prefs.length,
+    confirmedFacts: facts.confirmed,
+    experiences: experiences.length,
+    jobs: jobs.map((j) => ({ jobId: j.jobId, company: j.company, title: j.title, hasResume: j.resumes > 0, letter: j.letter, sent: isSent(j.stage) })),
     now,
   });
 }

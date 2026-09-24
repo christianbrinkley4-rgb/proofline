@@ -18,13 +18,16 @@ export async function GET(request: Request) {
   }
 
   await dbReady;
-  const existing = await db.query.user.findFirst({ where: eq(schema.user.email, DEV_EMAIL) });
+  // ?fresh=1 signs in a brand-new student, to walk the first-run coach from an empty profile.
+  const fresh = url.searchParams.get("fresh") === "1";
+  const email = fresh ? `dev.new.${Date.now()}@example.com` : DEV_EMAIL;
+  const existing = fresh ? null : await db.query.user.findFirst({ where: eq(schema.user.email, email) });
   if (!existing) {
-    await auth.api.signUpEmail({ body: { email: DEV_EMAIL, password: DEV_PASSWORD, name: "Dev Student" } });
+    await auth.api.signUpEmail({ body: { email, password: DEV_PASSWORD, name: fresh ? "Sam Rivera" : "Dev Student" } });
   }
 
   const signIn = await auth.api.signInEmail({
-    body: { email: DEV_EMAIL, password: DEV_PASSWORD },
+    body: { email, password: DEV_PASSWORD },
     asResponse: true,
   });
 

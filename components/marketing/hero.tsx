@@ -1,63 +1,71 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { site } from "@/lib/site";
 import { ProductDemo } from "./product-demo";
-import { container } from "./section";
+import { container, wideContainer } from "./section";
 
 export function Hero() {
   return (
-    <section className="relative">
-      <div className={`${container} pt-14 pb-12 sm:pt-20 sm:pb-16`}>
-        <div className="grid gap-6 lg:grid-cols-12 lg:items-end lg:gap-10">
-          <div className="lg:col-span-7">
-            <a
-              href="#pricing"
-              className="inline-flex items-center gap-2 rounded-full border bg-background py-1 pr-2.5 pl-3 text-[13px] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-            >
-              <span className="size-1.5 rounded-full bg-brand" />
-              Free during beta. Built first for students.
-              <ArrowRight className="size-3.5" />
-            </a>
-            {/* Keep the promise visible before the product tour. */}
-            <h1 className="mt-6 text-[42px] leading-[1.04] font-semibold tracking-[-0.04em] text-balance sm:text-[56px] md:text-[64px] lg:text-[52px] xl:text-[60px]">
-              Everything you have done can lead somewhere new.
-            </h1>
-          </div>
+    <section className="relative isolate overflow-hidden atmosphere grain">
+      <div className={`${container} relative pt-16 pb-14 text-center sm:pt-24 sm:pb-20`}>
+        <p className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-background/70 py-1 pr-3 pl-2 text-[13px] text-muted-foreground motion-safe:animate-rise">
+          <span className="grid size-4 place-items-center rounded-full bg-brand text-background">
+            <Check className="size-2.5" strokeWidth={3.5} />
+          </span>
+          Free during beta. Built first for students.
+        </p>
 
-          <div className="lg:col-span-5 lg:pb-2">
-            <p className="max-w-[36rem] text-[17px] leading-7 text-pretty text-muted-foreground sm:text-[18px] sm:leading-8">
-              Keep a living record of your work, classes, projects, and wins. {site.name} finds roles that fit,
-              builds job-specific resumes and cover letters from your confirmed facts, preps you for the interview, and
-              tracks every application and follow-up.
-            </p>
+        <h1 className="mx-auto mt-7 max-w-[15ch] font-display text-[46px] leading-[0.98] font-semibold text-balance motion-safe:animate-rise motion-safe:[animation-delay:80ms] sm:text-[68px] lg:text-[84px]">
+          Turn what you&apos;ve done into the job you want.
+        </h1>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button size="xl" asChild>
-                <Link href={site.routes.signUp}>
-                  Start free
-                  <ArrowRight data-icon="inline-end" />
-                </Link>
-              </Button>
-              <Button size="xl" variant="outline" asChild>
-                <a href="#how">See it work</a>
-              </Button>
-              <span className="text-[13px] text-subtle-foreground sm:ml-2">No credit card.</span>
-            </div>
-          </div>
+        <p className="mx-auto mt-6 max-w-[38rem] text-[17px] leading-7 text-pretty text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:160ms] sm:text-[19px] sm:leading-8">
+          {site.name} is a job search coach. It finds roles worth your time, shows how you fit, and builds every resume and
+          cover letter from facts you&apos;ve confirmed. One clear next step at a time.
+        </p>
+
+        <div className="mt-9 flex flex-col items-center justify-center gap-3 motion-safe:animate-rise motion-safe:[animation-delay:240ms] sm:flex-row">
+          <Button size="xl" asChild className="w-full px-6 sm:w-auto">
+            <Link href={site.routes.signUp}>
+              Start free
+              <ArrowRight data-icon="inline-end" />
+            </Link>
+          </Button>
+          <Button size="xl" variant="outline" asChild className="w-full bg-background/70 px-6 sm:w-auto">
+            <a href="#how">See how it works</a>
+          </Button>
         </div>
+        <p className="mt-4 text-[13px] text-subtle-foreground motion-safe:animate-rise motion-safe:[animation-delay:240ms]">No credit card. Your data stays yours.</p>
       </div>
 
-      <div id="how" className="relative pb-20 sm:pb-28">
-        {/* Grey stage behind the lower part of the demo. */}
-        <div aria-hidden="true" className="absolute inset-x-0 top-28 bottom-0 border-t bg-muted/70" />
-        <div className={`${container} relative`}>
-          <ProductDemo />
-          <p className="mt-4 text-center text-[12.5px] text-subtle-foreground">
-            Sample student, made-up companies. Everything above is clickable.
-          </p>
+      {/* The product is the hero's visual: full width, on the same light. */}
+      <div id="demo" className={`${wideContainer} relative pb-20 motion-safe:animate-rise motion-safe:[animation-delay:320ms] sm:pb-28`}>
+        <div className="relative">
+          <CoachNote />
+          <div className="rounded-[1.4rem] border border-white/70 bg-background/50 p-1.5 shadow-lift sm:p-2">
+            <ProductDemo />
+          </div>
         </div>
+        <p className="mt-4 text-center text-[12.5px] text-subtle-foreground">Sample student, made-up companies. Everything above is clickable.</p>
       </div>
     </section>
+  );
+}
+
+/** The coach's voice, pinned to the demo: one next step, with the reason. */
+function CoachNote() {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute -right-6 bottom-20 z-10 hidden w-72 rounded-2xl border bg-background p-4 text-left shadow-lift motion-safe:animate-rise motion-safe:[animation-delay:700ms] xl:block"
+    >
+      <div className="flex items-center gap-2 text-[11.5px] font-medium text-brand-ink">
+        <span className="size-1.5 rounded-full bg-brand" />
+        Your next step
+      </div>
+      <p className="mt-1.5 text-[14px] leading-5 font-semibold">Tailor a resume for Whitfield &amp; Lowe</p>
+      <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">It&apos;s your best fit at 87. Two of your confirmed facts cover what they ask for most.</p>
+    </div>
   );
 }

@@ -1,12 +1,12 @@
 import { BulletWalkthrough } from "@/components/marketing/bullet-walkthrough";
 import { ClosingCta } from "@/components/marketing/closing-cta";
+import { CoachBand } from "@/components/marketing/coach-band";
 import { Faq } from "@/components/marketing/faq";
 import { Hero } from "@/components/marketing/hero";
-import { Loop } from "@/components/marketing/loop";
 import { Pricing } from "@/components/marketing/pricing";
-import { Principles } from "@/components/marketing/principles";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { Walkthrough } from "@/components/marketing/walkthrough";
 
 export default function Home() {
   return (
@@ -14,8 +14,8 @@ export default function Home() {
       <SiteHeader />
       <main className="flex-1">
         <Hero />
-        <Loop />
-        <Principles />
+        <Walkthrough />
+        <CoachBand />
         <BulletWalkthrough />
         <Pricing />
         <Faq />

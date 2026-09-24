@@ -14,8 +14,8 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0">
-        <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em] sm:text-[30px]">{title}</h1>
-        {description && <p className="mt-1.5 max-w-2xl text-[15px] text-muted-foreground">{description}</p>}
+        <h1 className="font-display text-[30px] leading-[1.05] font-semibold sm:text-[38px]">{title}</h1>
+        {description && <p className="mt-2 max-w-2xl text-[15.5px] leading-6 text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>

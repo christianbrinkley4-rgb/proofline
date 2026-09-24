@@ -154,6 +154,14 @@ export function draftCoverLetterOffline(ctx: LetterContext): CoverLetter {
 
 export type LetterCheck = { id: string; ok: boolean; label: string; detail: string; blocking: boolean };
 
+/** Where a letter stands for the coach: not drafted, waiting on the person's own words, or ready to review. */
+export type LetterStatus = "none" | "needs_you" | "ready";
+
+export function letterStatus(letter: CoverLetter | null | undefined): LetterStatus {
+  if (!letter) return "none";
+  return letter.paragraphs.some((p) => PLACEHOLDER.test(p.text)) ? "needs_you" : "ready";
+}
+
 /**
  * What must be true before a letter leaves Proofline. A paragraph a model wrote
  * may only use numbers found in the facts it cites; the person's own edits are

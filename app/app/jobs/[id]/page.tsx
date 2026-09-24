@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Check, FileText, Lightbulb, Minus, PenLine, TriangleAlert } from "lucide-react";
+import { and, eq } from "drizzle-orm";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, FileText, Lightbulb, MessagesSquare, Minus, NotebookPen, PenLine, SquareKanban, TriangleAlert } from "lucide-react";
 import { FitBreakdown } from "@/components/jobs/fit-breakdown";
 import { JobActions } from "@/components/jobs/job-actions";
 import { PageBody } from "@/components/app/page-header";
 import { CompanyAvatar } from "@/components/shared/fit";
 import { Button } from "@/components/ui/button";
+import { jobPlan, storyReady } from "@/lib/agent/coach";
 import { requireSession } from "@/lib/auth";
+import { db, schema } from "@/lib/db";
+import { listExperiences } from "@/lib/kb/experiences";
+import { factCounts } from "@/lib/kb/facts";
+import { letterStatus } from "@/lib/packet/cover-letter";
+import { getPacket, readLetter } from "@/lib/packet/service";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { FIT_BAND_LABEL, fitBand } from "@/lib/fit/rubric";
@@ -61,13 +68,41 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
 
   // Always score against the profile as it is now: confirming a fact should move the number.
   const requirements = requirementsOf(job);
-  const [candidate, profile] = await Promise.all([loadCandidate(userId), getProfile(userId)]);
+  const [candidate, profile, resumes, packet, application, facts, experiences] = await Promise.all([
+    loadCandidate(userId),
+    getProfile(userId),
+    db.query.resume.findMany({ where: and(eq(schema.resume.userId, userId), eq(schema.resume.jobId, job.id)), columns: { id: true } }),
+    getPacket(userId, job.id),
+    db.query.application.findFirst({ where: and(eq(schema.application.userId, userId), eq(schema.application.jobId, job.id)) }),
+    factCounts(userId),
+    listExperiences(userId),
+  ]);
   const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements }, candidate);
   await saveMatches(userId, [{ job, fit }]);
   const band = fitBand(fit.score);
   const guide = applicationGuide(job, requirements, profile?.school);
   const pay = formatPay(job);
   const publicFeedName = job.source === "himalayas" ? "Himalayas" : job.source === "jobicy" ? "Jobicy" : null;
+  const applyUrl = /^https?:\/\//.test(job.url) ? job.url : null;
+  const plan = jobPlan({
+    resumes: resumes.length,
+    letter: letterStatus(readLetter(packet)),
+    stage: application?.stage ?? null,
+    capped: Boolean(fit.cappedBy),
+    storyReady: storyReady({ confirmedFacts: facts.confirmed, experiences: experiences.length }),
+  });
+  const primary = {
+    story: { label: "Add your story first", href: "/app/profile#start", icon: NotebookPen, external: false },
+    resume: { label: "Build a resume for this job", href: `/app/resumes/compare?job=${job.id}`, icon: FileText, external: false },
+    packet: { label: "Finish your packet", href: `/app/jobs/${job.id}/packet`, icon: PenLine, external: false },
+    prep: { label: "Practice for the interview", href: `/app/jobs/${job.id}/packet#interview`, icon: MessagesSquare, external: false },
+    apply: application && application.stage !== "saved"
+      ? { label: "Open your tracker", href: "/app/tracker", icon: SquareKanban, external: false }
+      : applyUrl
+        ? { label: publicFeedName ? `Apply via ${publicFeedName}` : "Apply on their site", href: applyUrl, icon: ArrowUpRight, external: true }
+        : { label: "Open your packet", href: `/app/jobs/${job.id}/packet#tracking`, icon: PenLine, external: false },
+  }[plan.primary];
+  const PrimaryIcon = primary.icon;
 
   return (
     <PageBody className="max-w-5xl">
@@ -99,29 +134,52 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
         </div>
       </header>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {/^https?:\/\//.test(job.url) && (
-          <Button size="lg" asChild>
-            <a href={job.url} target="_blank" rel="noreferrer">
-              {publicFeedName ? `View on ${publicFeedName}` : "Open the application"}
-              <ArrowUpRight data-icon="inline-end" />
-            </a>
+      <section aria-label="Next step" className="relative isolate mt-6 overflow-hidden rounded-2xl border bg-background p-4 sm:p-5">
+        <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-60 atmosphere-soft" />
+        <p className="text-[12px] font-medium text-brand-ink">Your next step</p>
+        <p className="mt-0.5 text-[15px] font-medium">{plan.note}</p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button size="xl" asChild>
+            {primary.external ? (
+              <a href={primary.href} target="_blank" rel="noreferrer">
+                {primary.label}
+                <PrimaryIcon data-icon="inline-end" />
+              </a>
+            ) : (
+              <Link href={primary.href}>
+                <PrimaryIcon data-icon="inline-start" />
+                {primary.label}
+                <ArrowRight data-icon="inline-end" />
+              </Link>
+            )}
           </Button>
-        )}
-        <Button size="lg" variant="outline" asChild disabled={Boolean(fit.cappedBy)}>
-          <Link href={`/app/resumes/compare?job=${job.id}`}>
-            <FileText data-icon="inline-start" />
-            Compare tailored resumes
-          </Link>
-        </Button>
-        <Button size="lg" variant="outline" asChild>
-          <Link href={`/app/jobs/${job.id}/packet`}>
-            <PenLine data-icon="inline-start" />
-            Cover letter and interview prep
-          </Link>
-        </Button>
-        <JobActions jobId={job.id} saved={data.match?.status === "saved"} />
-      </div>
+          {plan.primary !== "resume" && plan.primary !== "story" && !fit.cappedBy && (
+            <Button size="lg" variant="ghost" asChild>
+              <Link href={`/app/resumes/compare?job=${job.id}`}>
+                <FileText data-icon="inline-start" />
+                Resumes
+              </Link>
+            </Button>
+          )}
+          {plan.primary !== "packet" && plan.primary !== "prep" && (
+            <Button size="lg" variant="ghost" asChild>
+              <Link href={`/app/jobs/${job.id}/packet`}>
+                <PenLine data-icon="inline-start" />
+                Packet
+              </Link>
+            </Button>
+          )}
+          {applyUrl && !primary.external && (
+            <Button size="lg" variant="ghost" asChild>
+              <a href={applyUrl} target="_blank" rel="noreferrer">
+                Posting
+                <ArrowUpRight data-icon="inline-end" />
+              </a>
+            </Button>
+          )}
+          <JobActions jobId={job.id} saved={data.match?.status === "saved"} tracked={Boolean(application)} />
+        </div>
+      </section>
 
       {publicFeedName && (
         <p className="mt-2 text-[12px] text-muted-foreground">

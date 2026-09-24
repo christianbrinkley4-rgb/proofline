@@ -47,10 +47,10 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
 
   return (
     <div className="flex min-h-dvh">
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-muted/40 md:flex">
+      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
         <Link href="/app" className="flex h-14 items-center gap-2 px-5">
           <LogoMark className="size-5" />
-          <span className="text-[14px] font-semibold tracking-tight">{site.name}</span>
+          <span className="font-display text-[16px] font-semibold">{site.name}</span>
         </Link>
 
         <nav aria-label="App" className="flex flex-col gap-0.5 px-3 pt-2">
@@ -82,7 +82,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/90 px-4 backdrop-blur-md md:hidden">
           <Link href="/app" className="flex items-center gap-2">
             <LogoMark className="size-5" />
-            <span className="text-[14px] font-semibold tracking-tight">{site.name}</span>
+            <span className="font-display text-[16px] font-semibold">{site.name}</span>
           </Link>
           <div className="flex items-center gap-1">
             <Link
@@ -96,7 +96,11 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
           </div>
         </header>
 
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <main className="relative isolate flex-1 pb-20 md:pb-0">
+          {/* A little morning light at the top of every page. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 atmosphere-soft opacity-45 [mask-image:linear-gradient(to_bottom,black,transparent)]" />
+          {children}
+        </main>
 
         <nav
           aria-label="App"

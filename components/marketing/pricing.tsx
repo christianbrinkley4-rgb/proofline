@@ -31,13 +31,14 @@ export function Pricing() {
       </SectionHeading>
 
       <div className="mt-12 grid gap-4 lg:grid-cols-[1.1fr_1fr]">
-        <div className="flex flex-col rounded-xl border bg-background p-6 shadow-xs sm:p-8">
-          <div className="flex items-center justify-between">
+        <div className="relative isolate flex flex-col overflow-hidden rounded-2xl border bg-background p-6 shadow-lift sm:p-8">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40 atmosphere-soft opacity-70" />
+          <div className="relative flex items-center justify-between">
             <h3 className="text-[15px] font-semibold">Students and recent grads</h3>
             <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[12px] font-medium text-brand-ink">Beta</span>
           </div>
-          <div className="mt-6 flex items-baseline gap-2">
-            <span className="text-[48px] leading-none font-semibold tracking-[-0.04em]">$0</span>
+          <div className="relative mt-6 flex items-baseline gap-2">
+            <span className="font-display text-[56px] leading-none font-semibold">$0</span>
             <span className="text-[14px] text-muted-foreground">during beta</span>
           </div>
           <p className="mt-3 text-[13px] text-muted-foreground">You do not need to be in college to sign up.</p>
@@ -59,10 +60,10 @@ export function Pricing() {
           </div>
         </div>
 
-        <div id="career-centers" className="flex flex-col rounded-xl border bg-muted/50 p-6 sm:p-8">
+        <div id="career-centers" className="flex flex-col rounded-2xl border bg-muted/50 p-6 sm:p-8">
           <h3 className="text-[15px] font-semibold">Career centers</h3>
           <div className="mt-6 flex items-baseline gap-2">
-            <span className="text-[48px] leading-none font-semibold tracking-[-0.04em]">Custom</span>
+            <span className="font-display text-[56px] leading-none font-semibold">Custom</span>
           </div>
           <p className="mt-4 text-[14px] leading-6 text-muted-foreground">
             Give every student the full toolkit, and see applications, interviews, and offers across your cohort instead

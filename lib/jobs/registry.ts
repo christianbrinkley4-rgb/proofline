@@ -144,6 +144,13 @@ const ROLE_TAGS: Record<string, string[]> = {
   consulting: ["consulting", "accounting"],
   data: ["data", "tech", "finance"],
   software: ["tech", "engineering"],
+  // Business titles (analyst, operations, business development, rotational programs) show
+  // up at nearly every employer, so a business search should reach wide, not narrow.
+  business: ["operations", "consulting", "consumer", "tech", "finance", "fintech", "sales", "marketing", "health", "nc"],
+  sales: ["sales", "tech", "fintech", "consumer"],
+  marketing: ["marketing", "consumer", "tech"],
+  product: ["tech", "fintech", "consumer"],
+  project: ["operations", "tech", "engineering", "consulting", "health"],
 };
 
 /** Workday sites worth querying for these roles (every query costs a round trip per site). */
