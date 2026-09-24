@@ -6,11 +6,13 @@ import { Section, SectionHeading } from "./section";
 
 const STUDENT_FEATURES = [
   "Job search across live company job boards",
-  "Saved searches with new-match alerts",
+  "Watched searches that surface new matches daily",
   "Fit scores with the full breakdown",
   "Three tailored resume strategies per job, with PDF and DOCX export",
-  "Bullets built only from facts you confirm",
+  "Cover letters and form answers built only from facts you confirm",
+  "Interview prep with stories from your own experience",
   "Application tracker with notes, reminders, and follow-up drafts",
+  "A personal agent, or bring your own AI with the same rules",
 ];
 
 const CAREER_CENTER_FEATURES = [
@@ -63,7 +65,7 @@ export function Pricing() {
           </div>
           <p className="mt-4 text-[14px] leading-6 text-muted-foreground">
             Give every student the full toolkit, and see applications, interviews, and offers across your cohort instead
-            of resume downloads.
+            of resume downloads. We&apos;re building this with pilot schools now.
           </p>
           <ul className="mt-6 space-y-3">
             {CAREER_CENTER_FEATURES.map((f) => (

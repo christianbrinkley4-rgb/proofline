@@ -28,7 +28,8 @@ export function Hero() {
           <div className="lg:col-span-5 lg:pb-2">
             <p className="max-w-[36rem] text-[17px] leading-7 text-pretty text-muted-foreground sm:text-[18px] sm:leading-8">
               Keep a living record of your work, classes, projects, and wins. {site.name} finds roles that fit,
-              builds three job-specific resumes from your confirmed facts, and tracks every application and follow-up.
+              builds job-specific resumes and cover letters from your confirmed facts, preps you for the interview, and
+              tracks every application and follow-up.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">

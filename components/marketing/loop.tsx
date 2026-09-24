@@ -1,14 +1,14 @@
 import { Section, SectionHeading } from "./section";
 
-const STEPS = [
+const STEPS: Array<{ title: string; text: string; soon?: boolean }> = [
   { title: "Profile", text: "Start with a resume, then add the work, projects, and wins that make you you." },
   { title: "Find", text: "Describe the job you want. It searches live company job boards for you." },
   { title: "Score", text: "Every opening gets a fit score out of 100, and you can see the math." },
   { title: "Tailor", text: "Compare three one-page versions for each job, built from confirmed facts." },
-  { title: "Apply", text: "A checklist per job: the link, the materials, the deadline, the portal." },
+  { title: "Apply", text: "A packet per job: a cover letter and form answers built from your facts, plus the link and deadline." },
   { title: "Track", text: "Every application on one board, from saved to offer." },
   { title: "Follow up", text: "See when to follow up, edit a draft, and record what you sent." },
-  { title: "Prep", text: "Practice interviews built from the bullets on your own resume.", soon: true },
+  { title: "Prep", text: "Likely interview questions for each job, paired with stories from your own experience." },
 ];
 
 export function Loop() {

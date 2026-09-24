@@ -8,15 +8,19 @@ const FAQS = [
   },
   {
     q: "Where do the jobs come from?",
-    a: "Straight from company job boards, starting with Greenhouse and Lever, which thousands of employers use to post openings. We add sources over time and merge duplicates, so each opening shows up once.",
+    a: "Straight from employers: company job boards on Greenhouse, Lever, Ashby, and SmartRecruiters, large employers' own career sites, and The Muse. Duplicates are merged so each opening shows up once, and stale listings are skipped.",
   },
   {
     q: "Does it apply for me?",
-    a: "No, and that's on purpose. Every job gets a checklist with the link, the materials, the deadline, and anything you need to set up first. You stay in control of what gets sent and when.",
+    a: "No, and that's on purpose. Every job gets a packet with a cover letter and answers to the form's questions, built from your confirmed facts, plus the link and deadline. You stay in control of what gets sent and when.",
   },
   {
     q: "Will my resume get through applicant tracking systems?",
     a: "Resumes export as clean one-page DOCX and PDF files with standard headings and simple formatting, which is what those systems read best. Your fit score also shows which terms from the posting you're missing.",
+  },
+  {
+    q: "Can I use my own AI?",
+    a: "Yes. Connect Claude, Cursor, or another app that supports MCP from Settings. It gets the same tools and the same rules: anything it learns about you waits for your confirmation, and it can't send or submit anything.",
   },
   {
     q: "Who is it for right now?",
