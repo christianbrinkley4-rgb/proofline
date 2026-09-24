@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { after } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
@@ -19,7 +18,7 @@ export const metadata: Metadata = { title: "Jobs" };
 
 export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">) {
   const session = await requireSession();
-  const { q } = await searchParams;
+  const { q, paste, company, title } = await searchParams;
   const profile = await getProfile(session.user.id);
   const [matches, recentSearches, watched] = await Promise.all([
     listMatches(session.user.id, ["new", "saved"], 120),
@@ -80,10 +79,8 @@ export default async function JobsPage({ searchParams }: PageProps<"/app/jobs">)
       <div className="mt-8">
         <AgentSuggestions suggestions={suggestions.map((s) => ({ key: s.key, question: s.question, because: s.because }))} />
         <WatchedSearches searches={watched.map((w) => ({ id: w.id, query: w.query, fresh: w.newJobIds.length, lastRunAt: w.lastRunAt?.toISOString() ?? null }))} />
-        <Suspense>
           {/* Keyed by the query so opening a watched search starts it fresh. */}
-          <JobSearch key={query} initialQuery={query || defaultQuery} initialResults={initialResults} autoRun={Boolean(query)} />
-        </Suspense>
+          <JobSearch key={query} initialQuery={query || defaultQuery} initialResults={initialResults} autoRun={Boolean(query)} openPaste={paste === "1"} pasteFor={{ company: typeof company === "string" ? company.slice(0, 160) : undefined, title: typeof title === "string" ? title.slice(0, 200) : undefined }} />
       </div>
     </PageBody>
   );

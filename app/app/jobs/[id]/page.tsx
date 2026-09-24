@@ -98,12 +98,14 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
       </header>
 
       <div className="mt-6 flex flex-wrap gap-2">
-        <Button size="lg" asChild>
-          <a href={job.url} target="_blank" rel="noreferrer">
-            Open the application
-            <ArrowUpRight data-icon="inline-end" />
-          </a>
-        </Button>
+        {/^https?:\/\//.test(job.url) && (
+          <Button size="lg" asChild>
+            <a href={job.url} target="_blank" rel="noreferrer">
+              Open the application
+              <ArrowUpRight data-icon="inline-end" />
+            </a>
+          </Button>
+        )}
         <Button size="lg" variant="outline" asChild disabled={Boolean(fit.cappedBy)}>
           <Link href={`/app/resumes/compare?job=${job.id}`}>
             <FileText data-icon="inline-start" />

@@ -58,6 +58,23 @@ export async function addManualApplication(userId: string, input: { company: str
   await logEvent(userId, "application_stage_changed", { applicationId: row.id, from: null, to: stage });
   return row;
 }
+/**
+ * A tracker entry the student typed in by hand (no posting attached) gets the posting
+ * once they paste it, so fit guidance, resumes, and the packet work for it too.
+ */
+export async function linkManualApplication(userId: string, job: { id: string; company: string; title: string; url: string }) {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const manual = (await listApplications(userId)).find(
+    (a) => !a.jobId && norm(a.company) === norm(job.company) && norm(a.title) === norm(job.title),
+  );
+  if (!manual) return null;
+  await db
+    .update(schema.application)
+    .set({ jobId: job.id, url: manual.url ?? (job.url || null), updatedAt: new Date() })
+    .where(and(eq(schema.application.id, manual.id), eq(schema.application.userId, userId)));
+  return manual.id;
+}
+
 export async function moveApplication(userId: string, id: string, stage: Stage, sortOrder?: number) {
   z.uuid().parse(id);
   StageSchema.parse(stage);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Bell, BellRing, Check, CornerDownLeft, Link2, LoaderCircle, Search } from "lucide-react";
 import { toast } from "sonner";
 import { importLinkAction, saveSearchAction } from "@/app/app/jobs/actions";
@@ -11,6 +11,7 @@ import { describeIntent } from "@/lib/jobs/intent";
 import type { JobResult } from "@/lib/jobs/search";
 import type { JobIntent, SearchStats } from "@/lib/jobs/types";
 import { cn } from "@/lib/utils";
+import { PasteJob } from "./paste-job";
 import { ResultRow } from "./result-row";
 
 type LogLine = { id: number; text: string; tone: "status" | "found" | "done" };
@@ -27,14 +28,21 @@ export function JobSearch({
   initialQuery,
   initialResults,
   autoRun,
+  openPaste = false,
+  pasteFor,
 }: {
   initialQuery: string;
   initialResults: JobResult[];
   autoRun: boolean;
+  /** Arriving from the tracker to attach a posting by hand. */
+  openPaste?: boolean;
+  /** Company and title from a tracker entry, to prefill the paste form. */
+  pasteFor?: { company?: string; title?: string };
 }) {
   const router = useRouter();
-  const params = useSearchParams();
   const [query, setQuery] = useState(initialQuery);
+  /** The query that produced the results on screen, for "Watch this search". */
+  const [ranQuery, setRanQuery] = useState(autoRun ? initialQuery : "");
   const [running, setRunning] = useState(false);
   const [log, setLog] = useState<LogLine[]>([]);
   const [intent, setIntent] = useState<JobIntent | null>(null);
@@ -44,6 +52,7 @@ export function JobSearch({
   const [hideLongShots, setHideLongShots] = useState(false);
   const [watching, setWatching] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(openPaste);
   const [link, setLink] = useState("");
   const [linkPending, startLink] = useTransition();
   const source = useRef<EventSource | null>(null);
@@ -60,6 +69,7 @@ export function JobSearch({
       setLog([]);
       setStats(null);
       setWatching(false);
+      setRanQuery(trimmed);
       const url = new URL(window.location.href);
       url.searchParams.set("q", trimmed);
       window.history.replaceState(null, "", url);
@@ -177,7 +187,12 @@ export function JobSearch({
             e.preventDefault();
             startLink(async () => {
               const r = await importLinkAction(link);
-              if (!r.ok) return void toast(r.error);
+              if (!r.ok) {
+                toast(r.error);
+                // The fix is usually to paste the posting; open that form with the link filled in.
+                if (/paste/i.test(r.error)) setPasteOpen(true);
+                return;
+              }
               router.push(`/app/jobs/${r.jobId}`);
             });
           }}
@@ -195,6 +210,12 @@ export function JobSearch({
           </Button>
         </form>
       )}
+      {linkOpen && !pasteOpen && (
+        <button type="button" onClick={() => setPasteOpen(true)} className="mt-2 text-[12.5px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+          No link, or it needs a sign-in? Paste the description instead
+        </button>
+      )}
+      {pasteOpen && <PasteJob initial={{ ...pasteFor, url: /^https?:\/\//.test(link.trim()) ? link.trim() : undefined }} onCancel={() => setPasteOpen(false)} />}
 
       {(running || log.length > 0) && (
         <section
@@ -260,7 +281,7 @@ export function JobSearch({
             ))}
           </ul>
 
-          {params.get("q") && !running && (
+          {ranQuery && !running && (
             <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-[13px]">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Bell className="size-4" />
@@ -272,7 +293,7 @@ export function JobSearch({
                 disabled={watching}
                 onClick={async () => {
                   setWatching(true);
-                  const result = await saveSearchAction(params.get("q") ?? query, results.map((r) => r.jobId));
+                  const result = await saveSearchAction(ranQuery, results.map((r) => r.jobId));
                   if (!result.ok) {
                     setWatching(false);
                     toast(result.error);

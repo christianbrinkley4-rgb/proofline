@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { importJobLink, LinkImportError } from "@/lib/jobs/sources/link";
+import { pastedJob, PastedJobSchema, type PastedJob } from "@/lib/jobs/sources/pasted";
+import { linkManualApplication } from "@/lib/tracker/service";
 import { acceptSuggestion, declineSuggestion } from "@/lib/agent/preferences";
 import { markViewed, refreshSearch, unwatchSearch, watchSearch } from "@/lib/jobs/saved";
 import { requirementsOf, saveMatches, setMatchStatus, upsertJobs } from "@/lib/jobs/store";
@@ -53,6 +55,27 @@ export async function importLinkAction(url: string): Promise<{ ok: true; jobId: 
   } catch (error) {
     return { ok: false, error: error instanceof LinkImportError ? error.message : "We couldn't read that posting. Try another link." };
   }
+}
+
+/**
+ * A job the student pasted by hand. It gets the same fit score, resumes, and packet as
+ * any other, and a tracker entry they added manually for it is linked up.
+ */
+export async function importPastedJobAction(input: PastedJob): Promise<{ ok: true; jobId: string } | { ok: false; error: string }> {
+  const id = await userId();
+  const parsed = PastedJobSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const rows = await upsertJobs([pastedJob(id, parsed.data)]);
+  const row = [...rows.values()][0];
+  const candidate = await loadCandidate(id);
+  const fit = scoreFit({ title: row.title, location: row.location, mode: row.mode, level: row.level, requirements: requirementsOf(row) }, candidate);
+  await saveMatches(id, [{ job: row, fit }]);
+  await setMatchStatus(id, row.id, "saved");
+  await linkManualApplication(id, row);
+  await logEvent(id, "job_saved", { jobId: row.id, via: "pasted" });
+  revalidatePath("/app/jobs");
+  revalidatePath("/app/tracker");
+  return { ok: true, jobId: row.id };
 }
 
 /** Watches a search; the results already on screen count as seen. */

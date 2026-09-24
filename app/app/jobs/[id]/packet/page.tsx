@@ -156,12 +156,14 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
             )}
           </p>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" asChild>
-              <a href={job.url} target="_blank" rel="noreferrer">
-                Open the application
-                <ArrowUpRight data-icon="inline-end" />
-              </a>
-            </Button>
+            {/^https?:\/\//.test(job.url) && (
+              <Button size="sm" variant="outline" asChild>
+                <a href={job.url} target="_blank" rel="noreferrer">
+                  Open the application
+                  <ArrowUpRight data-icon="inline-end" />
+                </a>
+              </Button>
+            )}
             <Button size="sm" variant="ghost" asChild>
               <Link href="/app/tracker">Open tracker</Link>
             </Button>

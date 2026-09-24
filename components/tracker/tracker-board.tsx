@@ -180,6 +180,10 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
         {app.resumeId && <Button asChild size="sm" variant="outline"><Link href={"/app/resumes/" + app.resumeId}><FileText data-icon="inline-start" />Linked resume</Link></Button>}
         {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "/packet"}><PenLine data-icon="inline-start" />Cover letter & interview prep</Link></Button>}
       </div>
+      {!app.jobId && <div className="rounded-lg border border-dashed p-3 text-[12.5px] leading-5 text-muted-foreground">
+        Paste this posting to get a fit score, tailored resumes, a cover letter, and interview prep for it.
+        <Button asChild size="sm" variant="outline" className="mt-2 flex w-fit"><Link href={`/app/jobs?paste=1&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.title)}`}>Add the posting</Link></Button>
+      </div>}
       {insight && <section className="rounded-xl border p-4">
         <div className="flex items-baseline justify-between"><h3 className="text-sm font-semibold">Your plan for this role</h3><span className="text-sm font-medium tabular-nums">{insight.score}/100 fit</span></div>
         <p className="mt-1 text-xs text-muted-foreground">Match to your confirmed background, not a hiring prediction.</p>
