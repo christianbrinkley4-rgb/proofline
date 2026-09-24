@@ -118,6 +118,8 @@ export const profile = pgTable("profile", {
   targetTerm: text("target_term"),
   onboardingStep: text("onboarding_step"),
   onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
+  /** Basics read from the last uploaded resume. Proposals that prefill the form; the profile fields above are what the student confirmed. */
+  importedBasics: jsonb("imported_basics").$type<Record<string, string>>(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

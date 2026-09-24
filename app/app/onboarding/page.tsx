@@ -13,6 +13,17 @@ export const metadata: Metadata = { title: "Set up your agent" };
 
 const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.category, state: f.verificationState, source: f.source, sourceDetail: f.sourceDetail });
 
+/** What the student confirmed wins; blanks fill from the last resume upload, then the account name. */
+function withImported(confirmed: OnboardingData["basics"], imported: Record<string, string> | null, accountName: string): OnboardingData["basics"] {
+  const out = { ...confirmed };
+  for (const key of Object.keys(out) as Array<keyof typeof out>) {
+    const value = imported?.[key];
+    if (!out[key] && typeof value === "string" && value) out[key] = value;
+  }
+  if (!out.fullName) out.fullName = accountName ?? "";
+  return out;
+}
+
 export default async function OnboardingPage({ searchParams }: PageProps<"/app/onboarding">) {
   const requested = (await searchParams).step;
   const session = await requireSession();
@@ -26,20 +37,24 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
   const data: OnboardingData = {
     step: profile.onboardingCompletedAt && step === "done" ? "done" : step,
     firstName: (profile.fullName || session.user.name).split(/\s+/)[0],
-    basics: {
-      fullName: profile.fullName ?? session.user.name ?? "",
-      phone: profile.phone ?? "",
-      city: profile.city ?? "",
-      region: profile.region ?? "",
-      linkedinUrl: profile.linkedinUrl ?? "",
-      portfolioUrl: profile.portfolioUrl ?? "",
-      school: profile.school ?? "",
-      degree: profile.degree ?? "",
-      major: profile.major ?? "",
-      minor: profile.minor ?? "",
-      gradDate: profile.gradDate ?? "",
-      gpa: profile.gpa != null ? String(profile.gpa) : "",
-    },
+    basics: withImported(
+      {
+        fullName: profile.fullName ?? "",
+        phone: profile.phone ?? "",
+        city: profile.city ?? "",
+        region: profile.region ?? "",
+        linkedinUrl: profile.linkedinUrl ?? "",
+        portfolioUrl: profile.portfolioUrl ?? "",
+        school: profile.school ?? "",
+        degree: profile.degree ?? "",
+        major: profile.major ?? "",
+        minor: profile.minor ?? "",
+        gradDate: profile.gradDate ?? "",
+        gpa: profile.gpa != null ? String(profile.gpa) : "",
+      },
+      profile.importedBasics,
+      session.user.name,
+    ),
     goals: {
       targetRoles: profile.targetRoles,
       targetTerm: profile.targetTerm ?? "",

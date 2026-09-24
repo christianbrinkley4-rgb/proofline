@@ -35,30 +35,26 @@ export async function POST(request: Request) {
     }
     const userId = session.user.id;
     const summary = await importParsedResume(userId, parsed, file.name);
-    await updateProfile(userId, { onboardingStep: "review" });
-    revalidatePath("/app", "layout");
-
     const edu = parsed.education[0];
     const [city = "", region = ""] = (parsed.location ?? "").split(/,\s*/);
-    return NextResponse.json<UploadResponse>({
-      ok: true,
-      method,
-      summary,
-      basics: {
-        fullName: parsed.name ?? "",
-        phone: parsed.phone ?? "",
-        city,
-        region,
-        linkedinUrl: parsed.links.find((l) => l.includes("linkedin")) ?? "",
-        portfolioUrl: parsed.links.find((l) => !l.includes("linkedin")) ?? "",
-        school: edu?.school ?? "",
-        degree: edu?.degree ?? "",
-        major: edu?.major ?? "",
-        minor: edu?.minor ?? "",
-        gradDate: edu?.gradDate ?? "",
-        gpa: edu?.gpa != null ? String(edu.gpa) : "",
-      },
-    });
+    const basics = {
+      fullName: parsed.name ?? "",
+      phone: parsed.phone ?? "",
+      city,
+      region,
+      linkedinUrl: parsed.links.find((l) => l.includes("linkedin")) ?? "",
+      portfolioUrl: parsed.links.find((l) => !l.includes("linkedin")) ?? "",
+      school: edu?.school ?? "",
+      degree: edu?.degree ?? "",
+      major: edu?.major ?? "",
+      minor: edu?.minor ?? "",
+      gradDate: edu?.gradDate ?? "",
+      gpa: edu?.gpa != null ? String(edu.gpa) : "",
+    };
+    // Kept as proposals so the form is still prefilled if the student leaves before confirming.
+    await updateProfile(userId, { onboardingStep: "review", importedBasics: basics });
+    revalidatePath("/app", "layout");
+    return NextResponse.json<UploadResponse>({ ok: true, method, summary, basics });
   } catch {
     return fail("Something went wrong reading that file. Try a different export, or start from scratch.", 500);
   }

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Bot, CircleCheck, CircleDashed, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Bot, CircleCheck, CircleDashed, Database, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { AiConnections } from "@/components/settings/ai-connections";
+import { YourData } from "@/components/settings/your-data";
 import { requireSession } from "@/lib/auth";
 import { listTokens } from "@/lib/agent/tokens";
 import { getProfile } from "@/lib/kb/profile";
@@ -63,6 +64,14 @@ export default async function SettingsPage() {
         <p className="mt-4 text-[12px] leading-5 text-muted-foreground">
           Connecting from ChatGPT or claude.ai in the browser needs a sign-in flow that isn&apos;t available yet. Desktop and coding apps work with a token today.
         </p>
+      </section>
+
+      <section id="data" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
+        <div className="flex items-center gap-2"><Database className="size-4 text-brand" /><h2 className="text-[16px] font-semibold">Your data</h2></div>
+        <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-muted-foreground">It&apos;s yours. Take a full copy any time, or delete it all.</p>
+        <div className="mt-4">
+          <YourData email={session.user.email} />
+        </div>
       </section>
 
       <p className="mt-6 text-[12.5px] text-muted-foreground">
