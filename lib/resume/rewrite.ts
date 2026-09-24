@@ -46,6 +46,7 @@ const GERUND_BASE: Record<string, string> = {
 function pastTense(verb: string): string {
   const w = verb.toLowerCase();
   if (IRREGULAR[w]) return IRREGULAR[w];
+  if (Object.values(IRREGULAR).includes(w)) return w;
   if (/ed$/.test(w)) return w;
   if (/ing$/.test(w)) {
     const base = GERUND_BASE[w];

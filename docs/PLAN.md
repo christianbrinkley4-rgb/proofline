@@ -105,5 +105,6 @@ Later on September 24:
 - **Your data**: export everything as JSON or delete the account from Settings.
 - **Import**: two-column PDFs and LinkedIn's Save to PDF read correctly; pasted text works too.
 - **Database**: opened lazily, so Next's helper processes never touch it (the real cause of the corruption).
+- **Talk it out**: browser dictation on Profile turns the student's reviewed words into confirmed source facts, drafts grounded bullets, and asks follow-up questions for missing numbers. Answering those questions regenerates the bullets with the new evidence. Typing works when speech recognition is unavailable.
 
 Next: OAuth for browser-based connectors (claude.ai, ChatGPT); a profile timeline; email delivery for reminders and watched-search news; more job sources; outcome analysis once enough consented application history exists.

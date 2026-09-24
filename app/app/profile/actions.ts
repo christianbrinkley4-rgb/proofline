@@ -5,7 +5,9 @@ import { z } from "zod";
 import { requireSession } from "@/lib/auth";
 import { archiveExperience, ExperienceDetailsSchema, updateExperience, type ExperienceDetails } from "@/lib/kb/experiences";
 import { addFact } from "@/lib/kb/facts";
-import { archiveBullet, editBullet, generateBullets, setBulletFavorite } from "@/lib/resume/bullets/service";
+import { archiveBullet, editBullet, generateBullets, listBullets, setBulletFavorite } from "@/lib/resume/bullets/service";
+import { listOpenQuestions } from "@/lib/kb/questions";
+import { experienceFromWords } from "@/lib/kb/story";
 
 async function userId() {
   return (await requireSession()).user.id;
@@ -60,6 +62,71 @@ export async function updateExperienceAction(
 export async function archiveExperienceAction(experienceId: string) {
   await archiveExperience(await userId(), z.uuid().parse(experienceId));
   refresh();
+}
+
+const SpokenSchema = z.object({
+  text: z.string().trim().min(20, "Say a little more: what you did, how much or how often, and what changed.").max(8000),
+  org: z.string().trim().min(1, "Where was this? A job, club, class, or project name.").max(160),
+  title: z.string().trim().max(160),
+  kind: z.enum(["work", "internship", "leadership", "project", "volunteer", "research"]),
+});
+
+export type SpokenExperience = z.infer<typeof SpokenSchema>;
+export type ExperienceDrafts = {
+  experienceId: string;
+  bullets: Array<{ id: string; text: string; score: number | null; ready: boolean }>;
+  questions: Array<{ id: string; prompt: string; kind: string }>;
+  method: "model" | "rules";
+};
+
+async function drafts(userId: string, experienceId: string, method: "model" | "rules"): Promise<ExperienceDrafts> {
+  const [bullets, questions] = await Promise.all([listBullets(userId, [experienceId]), listOpenQuestions(userId, { experienceId })]);
+  return {
+    experienceId,
+    method,
+    bullets: bullets.map((b) => ({ id: b.id, text: b.text, score: b.score, ready: b.status === "active" })),
+    questions: questions.filter((q) => q.kind !== "yes_no").map((q) => ({ id: q.id, prompt: q.prompt, kind: q.kind })),
+  };
+}
+
+/**
+ * Something the student said out loud becomes an experience: their statements are
+ * confirmed facts (they said them), bullets are written in X-Y-Z form, and every
+ * missing number comes back as a question instead of a guess.
+ */
+export async function speakExperienceAction(input: SpokenExperience): Promise<({ ok: true } & ExperienceDrafts) | { ok: false; error: string }> {
+  const parsed = SpokenSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const id = await userId();
+  const { experienceId } = await experienceFromWords(id, { ...parsed.data, notes: parsed.data.text, via: "voice" });
+  const result = await generateBullets(id, experienceId);
+  refresh();
+  return { ok: true, ...(await drafts(id, experienceId, result.method)) };
+}
+
+/** After the student answers the follow-up questions: rewrite with their numbers. */
+export async function rewriteWithAnswersAction(experienceId: string): Promise<ExperienceDrafts> {
+  const id = await userId();
+  const expId = z.uuid().parse(experienceId);
+  const result = await generateBullets(id, expId);
+  // A rewrite with the student's numbers replaces the weaker draft of the same statement,
+  // unless they starred or edited it themselves.
+  const byStatement = new Map<string, Awaited<ReturnType<typeof listBullets>>>();
+  for (const b of await listBullets(id, [expId])) {
+    const key = b.factIds[0];
+    if (key) byStatement.set(key, [...(byStatement.get(key) ?? []), b]);
+  }
+  for (const group of byStatement.values()) {
+    // Keep drafts awaiting approval visible. Among approved versions, prefer the
+    // one backed by more facts (the student's new answer), then its score.
+    const approved = group.filter((b) => b.status === "active");
+    const [best, ...rest] = approved.sort((a, b) =>
+      b.factIds.length - a.factIds.length || (b.score ?? 0) - (a.score ?? 0),
+    );
+    for (const b of rest) if (best && !b.favorite && b.generator !== "user" && !b.editedFromId) await archiveBullet(id, b.id);
+  }
+  refresh();
+  return drafts(id, expId, result.method);
 }
 
 const FactSchema = z.object({

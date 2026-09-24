@@ -7,6 +7,7 @@ import { FactRow } from "@/components/onboarding/fact-row";
 import { ExperienceCard } from "@/components/profile/experience-card";
 import { LifeNote } from "@/components/profile/life-note";
 import { StoryNotebook } from "@/components/profile/story-notebook";
+import { VoiceStory } from "@/components/profile/voice-story";
 import type { BulletCheck } from "@/lib/resume/bullet-score";
 import { requireSession } from "@/lib/auth";
 import { listExperiences } from "@/lib/kb/experiences";
@@ -47,6 +48,7 @@ export default async function ProfilePage() {
 
       <StoryNotebook notes={storyNotes} />
       <LifeNote />
+      <VoiceStory />
 
       {(questions.length > 0 || waitingFacts.length > 0) && (
         <section className="mt-8">

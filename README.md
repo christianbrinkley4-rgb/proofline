@@ -2,7 +2,7 @@
 
 Proofline helps someone turn their full life story into a job search they can understand and manage. They can record work, classes, research, projects, volunteering, and wins; review inferred facts; find roles; compare tailored resume versions; draft cover letters and prepare for interviews; and track every application and follow-up. Every exported resume bullet and cover letter claim cites confirmed source facts.
 
-Proofline drafts but never sends email or submits applications. Students can connect their own AI (Claude, Cursor, and other MCP apps) with a personal access token; in-app chat and outcome learning are planned.
+Proofline drafts but never sends email or submits applications. Students can connect their own AI (Claude, Cursor, and other MCP apps) with a personal access token, or chat with the in-app agent.
 
 ## Run locally
 
@@ -25,7 +25,7 @@ In development, `/api/dev/login` signs in a test student and `/api/dev/seed` giv
 
 ## Product flow
 
-- Profile: import a resume (PDF or DOCX), add free-form life notes, correct experiences, review proposed facts, and build source-backed accomplishment bullets.
+- Profile: import a resume (PDF or DOCX), add free-form life notes or talk through an experience, correct experiences, review proposed facts, and build source-backed accomplishment bullets.
 - Jobs: search live sources and inspect fit, strengths, gaps, and eligibility limits.
 - Resumes: create experience-first, skills-first, and keyword-match versions for a posting; preview and export one-page PDF/DOCX files. Stored versions preserve what was prepared for a job.
 - Packet: for each job, a grounded cover letter (PDF/DOCX, in the resume's template) and interview prep built on the student's own stories.

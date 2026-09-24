@@ -2,6 +2,9 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { notesToStatements, probeExperience } from "@/lib/agent/probe";
 import { db, schema } from "@/lib/db";
+import { createExperience } from "./experiences";
+import { addFact } from "./facts";
+import { askQuestion } from "./questions";
 
 export const StoryNoteSchema = z.object({
   body: z.string().trim().min(4, "Write a few words to save this note.").max(4000),
@@ -14,6 +17,41 @@ export const PromoteStorySchema = z.object({
   title: z.string().trim().max(160).optional(),
 });
 export type StoryNote = typeof schema.storyNote.$inferSelect;
+
+export type WordsInput = {
+  kind: "work" | "internship" | "leadership" | "project" | "volunteer" | "research";
+  org: string;
+  title?: string | null;
+  location?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  notes: string;
+  /** Where the words came from: "onboarding", "profile", "voice". */
+  via: string;
+};
+
+/**
+ * An experience told in the student's own words (typed or spoken). Each statement
+ * becomes a confirmed fact, since they said it, and follow-up questions ask for the
+ * numbers that would make it stronger instead of guessing them.
+ */
+export async function experienceFromWords(userId: string, input: WordsInput): Promise<{ experienceId: string; questions: number }> {
+  const experience = await createExperience(userId, {
+    kind: input.kind,
+    org: input.org,
+    title: input.title || null,
+    location: input.location || null,
+    startDate: input.startDate || null,
+    endDate: input.endDate || null,
+    rawNotes: input.notes,
+  });
+  for (const statement of notesToStatements(input.notes)) {
+    await addFact(userId, { category: "experience", content: statement, experienceId: experience.id, source: "user_stated", sourceDetail: input.via });
+  }
+  const questions = probeExperience({ org: input.org, title: input.title, notes: input.notes });
+  for (const q of questions) await askQuestion(userId, { ...q, experienceId: experience.id });
+  return { experienceId: experience.id, questions: questions.length };
+}
 
 export async function listStoryNotes(userId: string): Promise<StoryNote[]> {
   return db.query.storyNote.findMany({

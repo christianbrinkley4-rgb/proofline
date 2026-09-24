@@ -5,10 +5,11 @@ import { db, schema } from "@/lib/db";
 import { getExperience } from "@/lib/kb/experiences";
 import { listFacts, type Fact } from "@/lib/kb/facts";
 import { askQuestion } from "@/lib/kb/questions";
-import { BULLETS_V1 } from "@/lib/llm/prompts/bullets.v1";
+import { BULLETS_V2 } from "@/lib/llm/prompts/bullets.v2";
 import { getLlm } from "@/lib/llm/provider";
 import { scoreBullet } from "../bullet-score";
 import { draftFromStatement, withMetric } from "../rewrite";
+import { composeXyz, resultClause } from "../xyz";
 import { verifyBullet } from "../verify";
 
 export type Bullet = typeof schema.bullet.$inferSelect;
@@ -47,7 +48,13 @@ type Candidate = { text: string; factIds: string[]; generator: "anthropic" | "of
 function offlineCandidates(facts: Fact[]): Candidate[] {
   const statements = facts.filter((f) => f.category === "experience");
   const metrics = facts.filter((f) => f.category === "metric" || f.category === "leadership");
-  const unusedMetrics = [...metrics];
+  // Answers that say what changed ("saved 3 hours a week") lead an X-Y-Z bullet; the rest add a number.
+  const unusedResults = metrics.filter((m) => resultClause(m.content));
+  const unusedMetrics = metrics.filter((m) => !unusedResults.includes(m));
+  // An answer may describe any of several activities. Without a link to a
+  // particular statement, combining them would imply a result the student did
+  // not actually attribute to that activity.
+  const canCombine = statements.length === 1;
   const out: Candidate[] = [];
 
   for (const fact of statements) {
@@ -57,14 +64,24 @@ function offlineCandidates(facts: Fact[]): Candidate[] {
     }
     let text = draftFromStatement(fact.content);
     const factIds = [fact.id];
-    if (!/\d/.test(text) && unusedMetrics.length) {
+    const result = canCombine ? unusedResults.find((r) => composeXyz(text, r.content)) : undefined;
+    if (result) {
+      text = composeXyz(text, result.content)!;
+      factIds.push(result.id);
+      unusedResults.splice(unusedResults.indexOf(result), 1);
+    }
+    if (canCombine && !/\d/.test(text) && unusedMetrics.length) {
       const metric = unusedMetrics.shift()!;
       text = withMetric(text, metric.content);
       factIds.push(metric.id);
     }
     out.push({ text, factIds, generator: "offline" });
   }
-  // Metrics nobody used can stand alone when they read like an accomplishment ("Led a team of 5 people").
+  // Results and metrics nobody used can stand alone when they read like an accomplishment ("Led a team of 5 people").
+  for (const result of unusedResults) {
+    const clause = resultClause(result.content);
+    if (clause && /\d/.test(clause)) out.push({ text: clause, factIds: [result.id], generator: "offline" });
+  }
   for (const metric of unusedMetrics) {
     if (/^[A-Z][a-z]+ed\b/.test(metric.content)) {
       out.push({ text: metric.content.replace(/\s*\([^)]*\)\s*$/, ""), factIds: [metric.id], generator: "offline" });
@@ -89,8 +106,8 @@ async function modelCandidates(userId: string, org: string, title: string | null
   try {
     return await llm.generateObject({
       purpose: "bullets.generate",
-      promptVersion: BULLETS_V1.version,
-      system: BULLETS_V1.system,
+      promptVersion: BULLETS_V2.version,
+      system: BULLETS_V2.system,
       input,
       schema: BulletsOutput,
       effort: "medium",
@@ -147,7 +164,7 @@ export async function generateBullets(userId: string, experienceId: string, requ
         score,
         scoreDetail: { checks, verified: approved, unsupported: check.unsupported },
         generator: candidate.generator === "resume" ? "user" : candidate.generator,
-        promptVersion: candidate.generator === "anthropic" ? BULLETS_V1.version : null,
+        promptVersion: candidate.generator === "anthropic" ? BULLETS_V2.version : null,
       })
       .returning();
 
