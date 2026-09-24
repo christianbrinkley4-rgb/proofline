@@ -26,6 +26,7 @@ const TOOL_LABEL: Record<string, string> = {
   move_application: "Updated a stage",
   tailor_resume: "Tailored a resume",
   draft_cover_letter: "Drafted a cover letter",
+  draft_application_answer: "Drafted an answer",
   interview_prep: "Built interview prep",
   draft_follow_up: "Drafted a follow-up",
 };

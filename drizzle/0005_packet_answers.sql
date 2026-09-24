@@ -1,0 +1,1 @@
+ALTER TABLE "application_packet" ADD COLUMN "answers" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -94,15 +94,35 @@ function create(): DbState {
 
 // Survive hot reloads in development: a second PGlite instance on the same folder would corrupt it.
 const globalForDb = globalThis as unknown as { __prooflineDb?: DbState };
-const state = (globalForDb.__prooflineDb ??= create());
-// A failed start (bad URL, locked folder) shouldn't stick across hot reloads.
-state.ready.catch(() => {
-  if (globalForDb.__prooflineDb === state) globalForDb.__prooflineDb = undefined;
+
+/**
+ * Opened on first use, never on import. Next's dev server loads route modules in
+ * short-lived helper processes (to read route config); opening the database at
+ * import time made each of them a second writer on the same PGlite folder.
+ */
+function state(): DbState {
+  const existing = globalForDb.__prooflineDb;
+  if (existing) return existing;
+  const created = create();
+  globalForDb.__prooflineDb = created;
+  // A failed start (bad URL, locked folder) shouldn't stick across hot reloads.
+  created.ready.catch(() => {
+    if (globalForDb.__prooflineDb === created) globalForDb.__prooflineDb = undefined;
+  });
+  return created;
+}
+
+export const db: Db = new Proxy({} as Db, {
+  get(_target, property) {
+    const real = state().db as unknown as Record<PropertyKey, unknown>;
+    const value = real[property];
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(real) : value;
+  },
 });
 
-export const db = state.db;
-
 /** Resolves once migrations have run. Await before the first query in a request. */
-export const dbReady = state.ready;
+export const dbReady: PromiseLike<void> = {
+  then: (onFulfilled, onRejected) => state().ready.then(onFulfilled, onRejected),
+};
 
 export { schema };

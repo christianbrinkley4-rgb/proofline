@@ -10,7 +10,7 @@ import { getProfile } from "@/lib/kb/profile";
 import { answerQuestion, listOpenQuestions } from "@/lib/kb/questions";
 import { createStoryNote } from "@/lib/kb/story";
 import { letterText } from "@/lib/packet/cover-letter";
-import { draftCoverLetter, packetView } from "@/lib/packet/service";
+import { draftAnswer, draftCoverLetter, packetView } from "@/lib/packet/service";
 import { VARIANT_LABEL, type VariantId } from "@/lib/resume/document";
 import { formatRange } from "@/lib/resume/parse/dates";
 import { saveTailoredResume, tailorResume } from "@/lib/resume/tailor";
@@ -360,6 +360,23 @@ export const TOOLS: AgentTool[] = [
         checks: view?.checks.map((c) => ({ check: c.label, ok: c.ok, detail: c.detail })) ?? [],
         editUrl: link(`/app/jobs/${args.jobId}/packet#letter`),
       };
+    },
+  }),
+
+  tool({
+    name: "draft_application_answer",
+    title: "Draft an application answer",
+    description:
+      "Draft an answer to a short-answer question from a job's application form, from confirmed evidence, and save it to the job's packet. Parts only the student knows (their motivation, the context of a story) come back as bracketed prompts for them to fill in; don't fill those in for them.",
+    input: {
+      jobId: z.uuid(),
+      question: z.string().trim().min(5).max(1000),
+      wordLimit: z.number().int().min(20).max(1000).optional(),
+    },
+    readOnly: false,
+    run: async (args, ctx) => {
+      const answer = await draftAnswer(ctx.userId, args.jobId, args.question, args.wordLimit ?? null);
+      return { answer: answer.answer, needsStudentInput: /\[[^\]]{8,}\]/.test(answer.answer), editUrl: link(`/app/jobs/${args.jobId}/packet#questions`) };
     },
   }),
 

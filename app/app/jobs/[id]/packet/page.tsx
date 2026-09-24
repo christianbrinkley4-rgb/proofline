@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
-import { ArrowLeft, ArrowUpRight, FileText, MessagesSquare, PenLine, SquareKanban } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FileText, ListChecks, MessagesSquare, PenLine, SquareKanban } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
+import { ApplicationAnswers } from "@/components/packet/application-answers";
 import { CoverLetterEditor, type SourceView } from "@/components/packet/cover-letter-editor";
 import { InterviewPrep } from "@/components/packet/interview-prep";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
         {[
           ["#resume", "Resume", FileText],
           ["#letter", "Cover letter", PenLine],
+          ["#questions", "Questions", ListChecks],
           ["#interview", "Interview prep", MessagesSquare],
           ["#tracking", "Tracking", SquareKanban],
         ].map(([href, label, Icon]) => {
@@ -122,6 +124,14 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
           checks={view.checks}
           sources={sources}
         />
+      </section>
+
+      <section id="questions" className="mt-6 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
+        <h2 className="text-[17px] font-semibold tracking-tight">Application questions</h2>
+        <p className="mt-1 mb-4 text-[13px] leading-5 text-muted-foreground">
+          Paste a short-answer question from the form. The draft uses your strongest matching evidence and leaves what only you know for you to write.
+        </p>
+        <ApplicationAnswers jobId={id} answers={view.answers} sources={sources} />
       </section>
 
       <section id="interview" className="mt-6 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">

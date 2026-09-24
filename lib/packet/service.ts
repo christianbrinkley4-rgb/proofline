@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { logEvent } from "@/lib/agent/events";
@@ -6,13 +7,17 @@ import { scoreFit } from "@/lib/fit/engine";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { ROLE_FAMILIES } from "@/lib/jobs/roles";
 import { requirementsOf, type JobRow } from "@/lib/jobs/store";
+import { roleName } from "@/lib/jobs/text";
 import { listExperiences } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
+import { ANSWERS_V1 } from "@/lib/llm/prompts/answers.v1";
 import { COVER_LETTER_V1 } from "@/lib/llm/prompts/cover-letter.v1";
 import { getLlm } from "@/lib/llm/provider";
 import { listBullets } from "@/lib/resume/bullets/service";
 import { verifyBullet } from "@/lib/resume/verify";
+import { findVoiceIssues } from "@/lib/voice/rules";
+import { AnswerSchema, answerSupported, draftAnswerOffline, evidenceFor, type ApplicationAnswer } from "./answers";
 import {
   checkCoverLetter,
   CoverLetterSchema,
@@ -113,7 +118,7 @@ export async function getPacket(userId: string, jobId: string): Promise<Packet |
   });
 }
 
-async function upsertPacket(userId: string, jobId: string, patch: Partial<Pick<Packet, "why" | "coverLetter" | "coverLetterAt" | "interviewNotes">>) {
+async function upsertPacket(userId: string, jobId: string, patch: Partial<Pick<Packet, "why" | "coverLetter" | "coverLetterAt" | "interviewNotes" | "answers">>) {
   const [row] = await db
     .insert(schema.applicationPacket)
     .values({ userId, jobId, ...patch })
@@ -232,12 +237,79 @@ export async function saveInterviewNote(userId: string, jobId: string, questionI
   await upsertPacket(userId, jobId, { interviewNotes: notes });
 }
 
+export function readAnswers(packet: Packet | undefined): ApplicationAnswer[] {
+  return (packet?.answers ?? []).flatMap((a) => {
+    const parsed = AnswerSchema.safeParse(a);
+    return parsed.success ? [parsed.data] : [];
+  });
+}
+
+const ModelAnswer = z.object({ answer: z.string(), sourceIds: z.array(z.string()) });
+
+/** Drafts an answer to one application question and adds it to the packet. */
+export async function draftAnswer(userId: string, jobId: string, question: string, wordLimit: number | null = null): Promise<ApplicationAnswer> {
+  const q = z.string().trim().min(5, "Paste the question first.").max(1000).parse(question);
+  const limit = wordLimit == null ? null : z.number().int().min(20).max(1000).parse(wordLimit);
+  const [ctx, packet] = await Promise.all([loadPacketContext(userId, jobId), getPacket(userId, jobId)]);
+  if (!ctx) throw new Error("Job not found.");
+  const role = roleName(ctx.job.title);
+  const answerCtx = { company: ctx.job.company, role, why: packet?.why ?? null, evidence: ctx.evidence };
+  let draft = draftAnswerOffline(q, answerCtx, limit);
+
+  const llm = getLlm();
+  if (llm && ctx.evidence.length) {
+    const top = evidenceFor(q, ctx.evidence).slice(0, 8);
+    const byId = new Map(top.map((e) => [e.id, e]));
+    try {
+      const out = await llm.generateObject({
+        purpose: "packet.answer",
+        promptVersion: ANSWERS_V1.version,
+        system: ANSWERS_V1.system,
+        schema: ModelAnswer,
+        effort: "medium",
+        input: JSON.stringify({
+          question: q,
+          wordLimit: limit,
+          company: ctx.job.company,
+          role,
+          studentsReasonForApplying: packet?.why ?? null,
+          evidence: top.map((e) => ({ id: e.id, where: [e.title, e.org].filter(Boolean).join(" at "), text: e.text })),
+        }),
+      });
+      const sources = out.sourceIds.filter((id) => byId.has(id));
+      if (answerSupported(out.answer, sources, byId, ctx.factText) && findVoiceIssues(out.answer).length === 0) {
+        draft = { ...draft, answer: out.answer.trim(), sourceIds: sources, generator: "anthropic" };
+      }
+    } catch {
+      // Keep the rules draft.
+    }
+  }
+
+  const answer: ApplicationAnswer = { ...draft, id: randomUUID(), updatedAt: new Date().toISOString() };
+  await upsertPacket(userId, jobId, { answers: [...readAnswers(packet), answer] });
+  return answer;
+}
+
+/** The person's edit. Their words from here on. */
+export async function saveAnswer(userId: string, jobId: string, id: string, text: string): Promise<void> {
+  const clean = z.string().max(6000).parse(text);
+  const packet = await getPacket(userId, jobId);
+  const answers = readAnswers(packet).map((a) => (a.id === id && a.answer !== clean ? { ...a, answer: clean, generator: "user" as const, updatedAt: new Date().toISOString() } : a));
+  await upsertPacket(userId, jobId, { answers });
+}
+
+export async function deleteAnswer(userId: string, jobId: string, id: string): Promise<void> {
+  const packet = await getPacket(userId, jobId);
+  await upsertPacket(userId, jobId, { answers: readAnswers(packet).filter((a) => a.id !== id) });
+}
+
 export type PacketView = {
   letter: CoverLetter | null;
   checks: ReturnType<typeof checkCoverLetter>;
   why: string;
   prep: PrepQuestion[];
   notes: Record<string, string>;
+  answers: ApplicationAnswer[];
   evidence: Evidence[];
   matched: string[];
   missing: string[];
@@ -264,6 +336,7 @@ export async function packetView(userId: string, jobId: string): Promise<PacketV
       experiences: ctx.experiences,
     }),
     notes: packet?.interviewNotes ?? {},
+    answers: readAnswers(packet),
     evidence: ctx.evidence,
     matched: ctx.matched,
     missing: ctx.missing,

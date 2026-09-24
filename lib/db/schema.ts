@@ -475,6 +475,8 @@ export const applicationPacket = pgTable(
     coverLetterAt: timestamp("cover_letter_at", { withTimezone: true }),
     /** Practice answers by question id. */
     interviewNotes: jsonb("interview_notes").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+    /** Drafts for the application form's own questions (ApplicationAnswer[] from lib/packet/answers.ts). */
+    answers: jsonb("answers").$type<Array<Record<string, unknown>>>().notNull().default(sql`'[]'::jsonb`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
