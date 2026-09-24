@@ -247,7 +247,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
         <p className="mt-1 mb-4 max-w-2xl text-[14px] leading-6 text-muted-foreground">
           {gaps.length || unmeasured.length
             ? "The fastest way to a better resume is real evidence for what they ask. Tell me where you've done each one, in your own words. I'll write the bullet and rescore your fit. Nothing gets added that you didn't say."
-            : "Nothing left to ask about for this posting."}
+            : "Your confirmed facts cover every skill this posting names, and every bullet on your best version is measured."}
         </p>
         <GapCoach
           jobId={job.id}

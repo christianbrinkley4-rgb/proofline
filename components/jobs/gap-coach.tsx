@@ -88,12 +88,6 @@ export function GapCoach({
         />
       ))}
 
-      {open.length === 0 && done.length === 0 && (
-        <p className="rounded-xl border border-dashed p-4 text-[13.5px] text-muted-foreground">
-          Your confirmed facts already cover every skill this posting names.
-        </p>
-      )}
-
       {declined.length > 0 && <Declined jobId={jobId} skills={declined} />}
 
       {advice.length > 0 && (
