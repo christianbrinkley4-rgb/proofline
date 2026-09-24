@@ -3,7 +3,7 @@ import mammoth from "mammoth";
 import { getLlm } from "@/lib/llm/provider";
 import { RESUME_PARSE_V1 } from "@/lib/llm/prompts/resume-parse.v1";
 import { docxHtmlLines, pdfPageLines } from "./layout-text";
-import { parseResumeText } from "./rules";
+import { parseResumeText as parseRulesText } from "./rules";
 import { ParsedResumeSchema, type ParsedResume } from "./types";
 
 export type ResumeFile = { name: string; type: string; bytes: Uint8Array };
@@ -72,6 +72,28 @@ export async function resumeToText(file: ResumeFile): Promise<string> {
 
 export type ParseResult = { parsed: ParsedResume; method: "model" | "rules"; text: string };
 
+/** Pasted text (a Google Doc, LinkedIn sections, notes) through the same model-then-rules path. */
+export async function parseResumeText(text: string): Promise<ParseResult> {
+  const clean = text.replace(/\r/g, "").replace(/ /g, " ").trim();
+  const llm = getLlm();
+  if (llm) {
+    try {
+      const parsed = await llm.generateObject({
+        purpose: "resume.parse",
+        promptVersion: RESUME_PARSE_V1.version,
+        system: RESUME_PARSE_V1.system,
+        input: `Extract this resume:\n\n${clean}`,
+        schema: ParsedResumeSchema,
+        effort: "low",
+      });
+      return { parsed, method: "model", text: clean };
+    } catch {
+      // Fall through to the rules parser.
+    }
+  }
+  return { parsed: parseRulesText(clean), method: "rules", text: clean };
+}
+
 /**
  * Model first when one is configured (it handles unusual layouts), rules otherwise
  * or if the model fails. Either way the result is only a set of proposals.
@@ -104,5 +126,5 @@ export async function parseResume(file: ResumeFile): Promise<ParseResult> {
       // Fall through to the rules parser; the user still gets proposals to confirm.
     }
   }
-  return { parsed: parseResumeText(text), method: "rules", text };
+  return { parsed: parseRulesText(text), method: "rules", text };
 }

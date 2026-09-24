@@ -132,12 +132,15 @@ function UploadStep({ onBack, onDone }: { onBack: () => void; onDone: (basics: O
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState("");
 
-  async function upload(file: File) {
+  async function upload(file: File | string) {
     setError(null);
-    setStatus(`Reading ${file.name}`);
+    setStatus(typeof file === "string" ? "Reading your text" : `Reading ${file.name}`);
     const form = new FormData();
-    form.set("resume", file);
+    if (typeof file === "string") form.set("text", file);
+    else form.set("resume", file);
     const result: UploadResponse = await fetch("/api/resume/upload", { method: "POST", body: form })
       .then((r) => r.json())
       .catch(() => ({ ok: false, error: "Couldn't reach the server. Check your connection and try again." }));
@@ -205,9 +208,48 @@ function UploadStep({ onBack, onDone }: { onBack: () => void; onDone: (basics: O
             {error}
           </p>
         )}
-        <button type="button" onClick={onBack} className="mt-6 text-[13.5px] text-muted-foreground hover:text-foreground">
-          Back
-        </button>
+        <p className="mt-4 text-[12.5px] text-muted-foreground">
+          LinkedIn works too: on your profile, choose More, then Save to PDF, and drop that file here.
+        </p>
+        {pasting ? (
+          <form
+            className="mt-4 space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void upload(pasted);
+            }}
+          >
+            <label htmlFor="pasted" className="text-[13px] font-medium">
+              Paste your resume or profile text
+            </label>
+            <textarea
+              id="pasted"
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              rows={10}
+              maxLength={30000}
+              placeholder={"EXPERIENCE\nOakwood Family Dental, Bookkeeping Assistant, May 2025 - Present\n- Reconciled vendor accounts each month in QuickBooks"}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-[13.5px] leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <div className="flex gap-2">
+              <Button type="submit" disabled={pasted.trim().length < 80 || Boolean(status && !error)}>
+                Read my text
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setPasting(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <button type="button" onClick={() => setPasting(true)} className="mt-2 text-[13px] font-medium underline-offset-4 hover:underline">
+            No file? Paste the text instead
+          </button>
+        )}
+        <div>
+          <button type="button" onClick={onBack} className="mt-6 text-[13.5px] text-muted-foreground hover:text-foreground">
+            Back
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -63,11 +63,72 @@ function firstTextX(line: Line): number {
   return visible[0]?.x ?? 0;
 }
 
+const DATE_OR_PLACE = /^(\(?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|spring|summer|fall|winter)[a-z]*\.?,?\s+\d{4}|\d{1,2}\/\d{4}|\d{4}|present|current|expected)\b|^[A-Z][A-Za-z.' -]+,\s?[A-Z]{2}\b|^remote$/i;
+
 /**
- * Lines of one PDF page, top to bottom. A line that is indented past the previous
+ * Two-column layouts (Canva templates, LinkedIn's PDF export) put a sidebar next
+ * to the main text. Reading them line by line across the page interleaves the two,
+ * so find an empty vertical gutter and read each column on its own. Lines that
+ * span the gutter (a centered name, a contact line) come first.
+ *
+ * A one-column resume with flush-right dates has a similar-looking gap, so a
+ * split only counts when both sides hold real text, not just dates and places.
+ */
+export function splitColumns(items: PositionedItem[]): PositionedItem[][] {
+  const visible = items.filter((i) => i.str.trim());
+  if (visible.length < 12) return [items];
+  const left = Math.min(...visible.map((i) => i.x));
+  const right = Math.max(...visible.map((i) => i.x + i.width));
+  const width = right - left;
+  if (width < 200) return [items];
+  const step = 2;
+  const occupancy = new Array(Math.ceil(width / step) + 1).fill(0);
+  for (const it of visible) {
+    for (let b = Math.floor((it.x - left) / step); b <= Math.floor((it.x + it.width - left) / step); b++) occupancy[b]++;
+  }
+  const allowance = Math.max(2, Math.round(visible.length * 0.04));
+  let best: { from: number; to: number } | null = null;
+  let start = -1;
+  const lo = Math.floor(occupancy.length * 0.15);
+  const hi = Math.ceil(occupancy.length * 0.85);
+  for (let b = lo; b <= hi; b++) {
+    const open = b < hi && occupancy[b] <= allowance;
+    if (open && start < 0) start = b;
+    if (!open && start >= 0) {
+      if (!best || b - start > best.to - best.from) best = { from: start, to: b };
+      start = -1;
+    }
+  }
+  if (!best || (best.to - best.from) * step < 10) return [items];
+  const gutterFrom = left + best.from * step;
+  const gutterTo = left + best.to * step;
+  const spanning = visible.filter((i) => i.x < gutterFrom && i.x + i.width > gutterTo);
+  // Items belong to the column they start in; a long sidebar line may run into the gutter.
+  const leftCol = visible.filter((i) => !spanning.includes(i) && i.x < gutterFrom);
+  const rightCol = visible.filter((i) => !spanning.includes(i) && !leftCol.includes(i));
+  const substantial = (col: PositionedItem[]) => {
+    const text = col.filter((i) => i.str.trim().length > 2);
+    const prose = text.filter((i) => !DATE_OR_PLACE.test(i.str.trim()));
+    return col.length >= visible.length * 0.15 && prose.length >= text.length * 0.5 && prose.length >= 4;
+  };
+  if (!substantial(leftCol) || !substantial(rightCol)) return [items];
+  return [spanning, leftCol, rightCol].filter((c) => c.length);
+}
+
+/** Marks where one column ends and the next begins, so the parser doesn't carry a sidebar section into the main text. */
+export const COLUMN_BREAK = "[[column]]";
+
+/** Lines of one PDF page, top to bottom, reading each column separately when there are two. */
+export function pdfPageLines(items: PositionedItem[]): string[] {
+  const columns = splitColumns(items);
+  return columns.flatMap((column, i) => (i === 0 ? columnLines(column) : [COLUMN_BREAK, ...columnLines(column)]));
+}
+
+/**
+ * Lines of one column, top to bottom. A line that is indented past the previous
  * bullet's marker, sits directly below it, and has no second column continues that bullet.
  */
-export function pdfPageLines(items: PositionedItem[]): string[] {
+function columnLines(items: PositionedItem[]): string[] {
   const out: string[] = [];
   let bullet: { index: number; markerX: number; y: number; size: number } | null = null;
   for (const line of groupLines(items)) {

@@ -1,5 +1,6 @@
 import { METROS, STATES } from "@/lib/jobs/locations";
 import { findDateRange } from "./dates";
+import { COLUMN_BREAK } from "./layout-text";
 import type { ParsedEducation, ParsedEntry, ParsedResume } from "./types";
 
 /**
@@ -18,10 +19,37 @@ const HEADINGS: Array<[RegExp, Section]> = [
   [/^(projects?|academic projects|technical projects|selected projects)$/, "project"],
   [/^(volunteer(ing)?|volunteer experience|community service|service)$/, "volunteer"],
   [/^(research|research experience)$/, "research"],
-  [/^(skills|technical skills|skills (and|&) (interests|tools)|tools|skills & certifications)$/, "skills"],
+  [/^(skills|top skills|technical skills|skills (and|&) (interests|tools)|tools|skills & certifications|languages)$/, "skills"],
   [/^(certifications?|licenses( (and|&) certifications)?)$/, "certifications"],
-  [/^(honors|awards|honors (and|&) awards|interests|references|summary|objective|profile)$/, "other"],
+  [/^(honors|awards|honors[- ](and |& )?awards|interests|references|summary|objective|profile|about|publications)$/, "other"],
+  // LinkedIn's PDF puts contact details in a sidebar section of their own.
+  [/^contact( info(rmation)?)?$/, "header"],
 ];
+
+const STATE_NAMES = Object.entries(STATES).map(([abbr, name]) => [abbr, name.toLowerCase()] as const);
+
+/** "Raleigh, North Carolina, United States" -> "Raleigh, NC". */
+function placeWithStateName(text: string): string | null {
+  const m = text.trim().match(/^([A-Z][A-Za-z.' -]{1,40}),\s*([A-Za-z ]+?)(?:,\s*(?:United States|USA|US))?$/);
+  if (!m) return null;
+  const state = STATE_NAMES.find(([, name]) => name === m[2].trim().toLowerCase());
+  return state ? `${m[1].trim()}, ${state[0]}` : null;
+}
+
+/** A header line that only carries dates, a duration, or a place ("May 2024 - Present (1 year 5 months)"). */
+function isMetaLine(line: string): boolean {
+  const text = line.trim().replace(/\(\s*(?:\d+\s+(?:years?|yrs?|months?|mos?)\s*)+\)/gi, "").trim();
+  if (!text) return true;
+  if (placeWithStateName(text)) return true;
+  if (/^(remote|hybrid|on-?site)$/i.test(text)) return true;
+  const rest = splitParts(text)
+    .map((p) => {
+      const part = stripDates(p);
+      return trailingPlace(part)?.rest ?? part;
+    })
+    .filter(Boolean);
+  return rest.length === 0;
+}
 
 const BULLET = /^\s*[•●▪◦■\-*–·]\s+/;
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/;
@@ -93,9 +121,17 @@ function parseEntry(section: ParsedEntry["section"], header: string[], bullets: 
   const joined = header.join(" | ");
   const range = findDateRange(joined);
   let location: string | null = null;
-  const parts = header.flatMap(splitParts).map(stripDates).filter(Boolean);
+  const parts = header
+    .flatMap(splitParts)
+    .map((p) => stripDates(p).replace(/\(\s*(?:\d+\s+(?:years?|yrs?|months?|mos?)\s*)+\)/gi, "").replace(/^\(\s*\)$/, "").trim())
+    .filter(Boolean);
 
   const withoutLocation = parts.flatMap((p) => {
+    const named = placeWithStateName(p);
+    if (named) {
+      location ??= named;
+      return [];
+    }
     const found = location ? null : trailingPlace(p);
     if (found) {
       location = found.place;
@@ -124,7 +160,8 @@ function parseEducation(lines: string[]): ParsedEducation[] {
     // Columns without dates or the campus location: "Bachelor of Science in Accounting   Raleigh, NC".
     const clean = splitParts(text)
       .map((p) => {
-        const part = stripDates(p);
+        // LinkedIn wraps dates in parentheses: "(August 2024 - May 2028)".
+        const part = stripDates(p).replace(/\(\s*\)/g, "").trim();
         return trailingPlace(part)?.rest ?? part;
       })
       .filter(Boolean)
@@ -153,7 +190,8 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       const body = clean.replace(GPA_TEXT, "").replace(/[,|;\s]+$/, "").replace(/,\s*,/g, ",");
       const abbreviated = body.match(/^((?:[BMA]\.?\s?[SAB]\.?(?:\s?[AS]\.?)?|Ph\.?\s?D\.?))\s+(?!in\b)([^,]+)/i);
       const [degreePart, ...rest] = abbreviated ? [abbreviated[1], abbreviated[2]] : body.split(/\s+in\s+|,\s*/i);
-      current.degree = degreePart.trim() || null;
+      // "Bachelor of Science - BS" (LinkedIn) reads as "Bachelor of Science".
+      current.degree = degreePart.trim().replace(/\s+-\s+[A-Z][A-Za-z.]{1,5}$/, "") || null;
       const majorPart = rest.join(", ").replace(/,?\s*minor.*$/i, "").replace(/[\s,;|]+$/, "").trim();
       current.major = majorPart || null;
       const minor = body.match(/minor\s+in\s+([^,;|]+)/i);
@@ -209,6 +247,11 @@ export function parseResumeText(text: string): ParsedResume {
   const buckets = new Map<Section, string[]>();
   let section: Section = "header";
   for (const line of lines) {
+    if (line.trim() === COLUMN_BREAK) {
+      // A new column starts with no section until it names one; its opening lines are header material.
+      section = "header";
+      continue;
+    }
     const heading = headingOf(line);
     if (heading) {
       section = heading;
@@ -221,7 +264,7 @@ export function parseResumeText(text: string): ParsedResume {
   const headerText = header.join("  ");
   const nameLine = header.find((l) => !EMAIL.test(l) && !PHONE.test(l) && /^[A-Za-z .'-]{3,40}$/.test(l.trim()));
   const withoutEmails = headerText.replace(new RegExp(EMAIL.source, "g"), " ");
-  const links = [...new Set((withoutEmails.match(LINK) ?? []).map((l) => l.replace(/^https?:\/\/(www\.)?/, "")))];
+  const links = [...new Set((withoutEmails.match(LINK) ?? []).map((l) => l.replace(/^https?:\/\//, "").replace(/^www\./, "")))];
 
   const entries: ParsedEntry[] = [];
   for (const kind of ["experience", "leadership", "project", "volunteer", "research"] as const) {
@@ -241,9 +284,12 @@ export function parseResumeText(text: string): ParsedResume {
       } else if (bullets.length && /^[a-z(]/.test(line.trim())) {
         // A wrapped bullet continues on the next line.
         bullets[bullets.length - 1] += ` ${line.trim()}`;
+      } else if (headerLines.length && !bullets.length && isMetaLine(line)) {
+        // Dates or a place on their own line still describe the role above.
+        headerLines.push(line.trim());
       } else {
         if (bullets.length) flush();
-        if (headerLines.length >= 2) flush();
+        if (headerLines.filter((l) => !isMetaLine(l)).length >= 2) flush();
         headerLines.push(line.trim());
       }
     }
@@ -254,7 +300,7 @@ export function parseResumeText(text: string): ParsedResume {
     name: nameLine?.trim() ?? null,
     email: headerText.match(EMAIL)?.[0] ?? null,
     phone: headerText.match(PHONE)?.[0] ?? null,
-    location: headerText.match(CITY_STATE)?.[0] ?? null,
+    location: headerText.match(CITY_STATE)?.[0] ?? header.map(placeWithStateName).find(Boolean) ?? null,
     links,
     education: parseEducation(buckets.get("education") ?? []),
     entries,
