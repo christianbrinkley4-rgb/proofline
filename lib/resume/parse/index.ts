@@ -2,6 +2,7 @@ import { extractText, getDocumentProxy } from "unpdf";
 import mammoth from "mammoth";
 import { getLlm } from "@/lib/llm/provider";
 import { RESUME_PARSE_V1 } from "@/lib/llm/prompts/resume-parse.v1";
+import { docxHtmlLines, pdfPageLines } from "./layout-text";
 import { parseResumeText } from "./rules";
 import { ParsedResumeSchema, type ParsedResume } from "./types";
 
@@ -16,16 +17,54 @@ export function isSupported(file: { name: string; type: string }): "pdf" | "docx
   return null;
 }
 
-/** Plain text of a PDF or DOCX, one line per visual line where the format allows. */
+type PdfTextItem = { str: string; transform: number[]; width: number };
+
+async function pdfLines(bytes: Uint8Array): Promise<string[]> {
+  const pdf = await getDocumentProxy(bytes);
+  const lines: string[] = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const page = await pdf.getPage(n);
+    const content = await page.getTextContent();
+    const items = (content.items as Array<Partial<PdfTextItem>>).flatMap((item) =>
+      typeof item.str === "string" && Array.isArray(item.transform)
+        ? [{
+            str: item.str,
+            x: item.transform[4],
+            y: item.transform[5],
+            width: item.width ?? 0,
+            size: Math.hypot(item.transform[2], item.transform[3]) || 10,
+          }]
+        : [],
+    );
+    lines.push(...pdfPageLines(items));
+  }
+  return lines;
+}
+
+/** Plain text of a PDF or DOCX, one line per visual line, with flush-right columns kept apart. */
 export async function resumeToText(file: ResumeFile): Promise<string> {
   const kind = isSupported(file);
   if (kind === "pdf") {
+    try {
+      const lines = await pdfLines(file.bytes);
+      if (lines.length) return lines.join("\n");
+    } catch {
+      // Fall back to plain extraction below.
+    }
     const pdf = await getDocumentProxy(file.bytes);
     const { text } = await extractText(pdf, { mergePages: true });
     return Array.isArray(text) ? text.join("\n") : text;
   }
   if (kind === "docx") {
-    const { value } = await mammoth.extractRawText({ buffer: Buffer.from(file.bytes) });
+    const buffer = Buffer.from(file.bytes);
+    try {
+      const { value } = await mammoth.convertToHtml({ buffer });
+      const lines = docxHtmlLines(value);
+      if (lines.length) return lines.join("\n");
+    } catch {
+      // Fall back to raw text below.
+    }
+    const { value } = await mammoth.extractRawText({ buffer });
     return value;
   }
   throw new Error("Unsupported file type. Upload a PDF or DOCX.");

@@ -7,12 +7,17 @@ const MONTHS: Record<string, string> = {
 
 const MONTH_NAMES = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join("|");
 
+const YEAR = "(?:19|20)\\d{2}";
+const MONTH = `\\b(?:${MONTH_NAMES})\\.?`;
 /** One date: "May 2025", "Sept. 2024", "05/2025", "2025", "Summer 2026". */
-const ONE = `(?:(?:${MONTH_NAMES})\\.?\\s+\\d{4}|\\d{1,2}\\/\\d{4}|\\d{4})`;
+const ONE = `(?:${MONTH},?\\s+${YEAR}|\\b\\d{1,2}\\/${YEAR}|\\b${YEAR})\\b`;
 const PRESENT = "(?:present|current|now|today)";
+const SEPARATOR = "\\s*(?:-|\\u2013|\\u2014|to|through)\\s*";
+/** "Jan" in "Jan – Apr 2026": a month that borrows the year of the date after it. */
+const BARE_START = `${MONTH}(?=${SEPARATOR}${MONTH},?\\s+${YEAR})`;
 
-/** A range like "May 2025 – Present" or "2023 - 2024", or a single "Expected May 2028". */
-export const DATE_RANGE = new RegExp(`(?:expected\\s+)?(${ONE})(?:\\s*(?:-|\\u2013|\\u2014|to|through)\\s*(${ONE}|${PRESENT}))?`, "i");
+/** A range like "May 2025 – Present", "Jan – Apr 2026", or "2023 - 2024", or a single "Expected May 2028". */
+export const DATE_RANGE = new RegExp(`(?:expected\\s+)?(${ONE}|${BARE_START})(?:${SEPARATOR}(${ONE}|\\b${PRESENT}\\b))?`, "i");
 
 /** "May 2025" -> "2025-05"; "2025" -> "2025"; "05/2025" -> "2025-05". */
 export function normalizeDate(raw: string | undefined | null): string | null {
@@ -21,7 +26,7 @@ export function normalizeDate(raw: string | undefined | null): string | null {
   if (new RegExp(`^${PRESENT}$`).test(s)) return null;
   const slash = s.match(/^(\d{1,2})\/(\d{4})$/);
   if (slash) return `${slash[2]}-${slash[1].padStart(2, "0")}`;
-  const named = s.match(/^([a-z]+)\s+(\d{4})$/);
+  const named = s.match(/^([a-z]+),?\s+(\d{4})$/);
   if (named && MONTHS[named[1]]) return `${named[2]}-${MONTHS[named[1]]}`;
   const year = s.match(/^(\d{4})$/);
   return year ? year[1] : null;
@@ -39,7 +44,9 @@ export function findDateRange(line: string): DateRange | null {
     return { start: null, end: normalizeDate(first), current: false, text };
   }
   const current = new RegExp(`^${PRESENT}$`, "i").test(second.trim());
-  return { start: normalizeDate(first), end: current ? null : normalizeDate(second), current, text };
+  const end = current ? null : normalizeDate(second);
+  const start = normalizeDate(first) ?? (end ? normalizeDate(`${first} ${end.slice(0, 4)}`) : null);
+  return { start, end, current, text };
 }
 
 /** "2025-05" -> "May 2025", "2025" -> "2025". For display. */

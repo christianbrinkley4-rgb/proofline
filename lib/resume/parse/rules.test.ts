@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findDateRange, formatRange, normalizeDate } from "./dates";
-import { parseResumeText } from "./rules";
+import { parseResumeText, trailingPlace } from "./rules";
 
 const SAMPLE = `Taylor Morgan
 Raleigh, NC | taylor.morgan@example.com | (919) 555-0188 | linkedin.com/in/taylor-morgan-example
@@ -98,9 +98,49 @@ describe("dates", () => {
     expect(findDateRange("Expected May 2028")).toMatchObject({ start: null, end: "2028-05" });
   });
 
+  it("borrows the year for a bare starting month", () => {
+    expect(findDateRange("NC State VITA Program Jan – Apr 2026")).toMatchObject({ start: "2026-01", end: "2026-04" });
+    expect(findDateRange("May-Aug 2025")).toMatchObject({ start: "2025-05", end: "2025-08" });
+  });
+
+  it("ignores numbers that aren't years", () => {
+    expect(findDateRange("(919) 555-0142")).toBeNull();
+    expect(findDateRange("Counted 3,200 SKUs")).toBeNull();
+  });
+
   it("formats ranges for display", () => {
     expect(formatRange("2025-05", null)).toBe("May 2025 – Present");
     expect(formatRange("2024-08", "2025-05")).toBe("Aug 2024 – May 2025");
+  });
+});
+
+describe("trailingPlace", () => {
+  it.each([
+    ["Raleigh, NC", "Raleigh, NC", ""],
+    ["Volunteer Tax Preparer Raleigh, NC", "Raleigh, NC", "Volunteer Tax Preparer"],
+    ["Bookkeeping Assistant (part-time) Raleigh, NC", "Raleigh, NC", "Bookkeeping Assistant (part-time)"],
+    ["North Carolina State University, Raleigh, NC", "Raleigh, NC", "North Carolina State University"],
+    ["Summer Analyst New York, NY", "New York, NY", "Summer Analyst"],
+    ["Salt Lake City, UT", "Salt Lake City, UT", ""],
+    ["Beta Alpha Psi Durham, NC", "Durham, NC", "Beta Alpha Psi"],
+    ["Remote", "Remote", ""],
+  ])("reads %s", (part, place, rest) => {
+    expect(trailingPlace(part)).toEqual({ place, rest });
+  });
+
+  it("needs a real state", () => {
+    expect(trailingPlace("Smith, JD")).toBeNull();
+  });
+});
+
+describe("glyph-free bullets", () => {
+  it("treats full sentences under a role as bullets", () => {
+    const parsed = parseResumeText(
+      "Sam Lee\nEXPERIENCE\nCampus Dining   Aug 2024 – Present\nShift Lead\nTrained new hires on the register and closing checklist every week.\nKept the line under five minutes during the lunch rush most days.",
+    );
+    expect(parsed.entries).toHaveLength(1);
+    expect(parsed.entries[0]).toMatchObject({ org: "Campus Dining", title: "Shift Lead" });
+    expect(parsed.entries[0].bullets).toHaveLength(2);
   });
 });
 

@@ -1,3 +1,4 @@
+import { METROS, STATES } from "@/lib/jobs/locations";
 import { findDateRange } from "./dates";
 import type { ParsedEducation, ParsedEntry, ParsedResume } from "./types";
 
@@ -52,22 +53,57 @@ function stripDates(text: string): string {
   return (range ? text.replace(range.text, "") : text).replace(/[\s,|–-]+$/, "").trim();
 }
 
+/** Words that end a job title, so "Tax Preparer Raleigh, NC" yields the city "Raleigh". */
+const ROLE_WORD =
+  /^(assistant|associate|intern|internship|analyst|manager|preparer|volunteer|member|president|vice|treasurer|secretary|director|coordinator|specialist|representative|rep|clerk|cashier|server|tutor|lead|leader|officer|chair|chairperson|captain|engineer|developer|researcher|fellow|consultant|accountant|auditor|bookkeeper|technician|advisor|adviser|mentor|ambassador|student|teacher|instructor|aide|host|hostess|barista|agent|supervisor|founder|co-founder|head|staff|worker|designer|writer|editor|scholar|trainee|apprentice|counselor|organizer|delegate|liaison|administrator|receptionist|scribe|lifeguard|coach|nanny|driver|owner|partner|university|college|school|institute|academy|program|company|inc\.?|llc|llp|group|club|society|association|chapter|team|department|office|center|centre|bank|firm|foundation|hospital|clinic|dental|store|stores|bookstore|bookstores)$/i;
+/** First words of multi-word city names. */
+const CITY_PREFIX =
+  /^(new|san|santa|los|las|st\.?|saint|fort|ft\.?|port|mount|mt\.?|north|south|east|west|lake|palm|grand|salt|little|long|cedar|chapel|glen|el|la|del|des|baton|bowling|oklahoma|kansas|jersey|sioux|ann|colorado|corpus|silver|virginia|high|pine|myrtle|rock|round|sugar|winter|coral|boca|holly|wake|king|research|winston|ocean|daly|palo|menlo|redwood|mountain|culver|beverly|newport|huntington|overland|cherry|ellicott|chevy|falls|park|green|red|white|elk|bay|half|twin|cape|key|dana|laguna|walnut|thousand|rancho|garden|great|upper|lower|old)$/i;
+const KNOWN_CITIES = new Set(METROS.flatMap((m) => m.cities));
+
+/**
+ * A trailing "City, ST" in one column of a header line, and what's left before it.
+ * The city is capitalized, never a job-title or organization word, and at most three words.
+ */
+export function trailingPlace(part: string): { place: string; rest: string } | null {
+  const text = part.trim();
+  if (/^remote$/i.test(text)) return { place: "Remote", rest: "" };
+  const m = text.match(/^(.*?)[\s,]*\b([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,4}),\s?([A-Z]{2})\.?(?:\s*\((?:remote|hybrid)\))?$/);
+  if (!m || !STATES[m[3]]) return null;
+  const words = m[2].split(/\s+/);
+  let city: string[] = [];
+  for (let i = words.length - 1; i >= 0 && city.length < 3; i--) {
+    if (ROLE_WORD.test(words[i])) break;
+    city = [words[i], ...city];
+  }
+  if (!city.length) return null;
+  // Prefer a city we know; otherwise keep extra leading words only when they read like a city prefix.
+  const known = [3, 2, 1].find((n) => n <= city.length && KNOWN_CITIES.has(city.slice(-n).join(" ").toLowerCase()));
+  if (known) city = city.slice(-known);
+  else {
+    let keep = 1;
+    while (keep < city.length && CITY_PREFIX.test(city[city.length - keep - 1])) keep++;
+    if (!(m[1].trim() === "" && city.length === words.length)) city = city.slice(-keep);
+  }
+  const rest = `${m[1]} ${words.slice(0, words.length - city.length).join(" ")}`.replace(/[\s,|–-]+$/, "").trim();
+  return { place: `${city.join(" ")}, ${m[3]}`, rest };
+}
+
 function parseEntry(section: ParsedEntry["section"], header: string[], bullets: string[]): ParsedEntry {
   const joined = header.join(" | ");
   const range = findDateRange(joined);
   let location: string | null = null;
   const parts = header.flatMap(splitParts).map(stripDates).filter(Boolean);
 
-  const withoutLocation = parts.filter((p) => {
-    const m = p.match(CITY_STATE);
-    if (m && p.length < 40 && !location) {
-      location = `${m[1]}, ${m[2]}`;
-      const rest = p.replace(m[0], "").replace(/^[\s,–-]+|[\s,–-]+$/g, "");
-      return rest.length > 0;
+  const withoutLocation = parts.flatMap((p) => {
+    const found = location ? null : trailingPlace(p);
+    if (found) {
+      location = found.place;
+      return found.rest ? [found.rest] : [];
     }
-    return !(/^remote$/i.test(p) && (location = "Remote"));
+    return [p];
   });
-  const [org = header[0] ?? "Untitled", title = null] = withoutLocation.map((p) => p.replace(CITY_STATE, "").replace(/[\s,–-]+$/, "").trim());
+  const [org = header[0] ?? "Untitled", title = null] = withoutLocation;
 
   return {
     section,
@@ -85,11 +121,19 @@ function parseEducation(lines: string[]): ParsedEducation[] {
   let current: ParsedEducation | null = null;
   for (const line of lines) {
     const text = line.replace(BULLET, "").trim();
+    // Columns without dates or the campus location: "Bachelor of Science in Accounting   Raleigh, NC".
+    const clean = splitParts(text)
+      .map((p) => {
+        const part = stripDates(p);
+        return trailingPlace(part)?.rest ?? part;
+      })
+      .filter(Boolean)
+      .join(", ");
     if (SCHOOL.test(text) && !DEGREE.test(text.split(",")[0])) {
       if (current) results.push(current);
       const range = findDateRange(text);
       current = {
-        school: stripDates(text).replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
+        school: clean.replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
         degree: null,
         major: null,
         minor: null,
@@ -106,10 +150,11 @@ function parseEducation(lines: string[]): ParsedEducation[] {
     const range = findDateRange(text);
     if (range && !current.gradDate) current.gradDate = range.end;
     if (DEGREE.test(text) && !current.degree) {
-      const body = stripDates(text).replace(GPA_TEXT, "").replace(/[,|;\s]+$/, "");
-      const [degreePart, ...rest] = body.split(/\s+in\s+|,\s*/i);
+      const body = clean.replace(GPA_TEXT, "").replace(/[,|;\s]+$/, "").replace(/,\s*,/g, ",");
+      const abbreviated = body.match(/^((?:[BMA]\.?\s?[SAB]\.?(?:\s?[AS]\.?)?|Ph\.?\s?D\.?))\s+(?!in\b)([^,]+)/i);
+      const [degreePart, ...rest] = abbreviated ? [abbreviated[1], abbreviated[2]] : body.split(/\s+in\s+|,\s*/i);
       current.degree = degreePart.trim() || null;
-      const majorPart = rest.join(", ").replace(/minor.*$/i, "").replace(/[\s,;|]+$/, "").trim();
+      const majorPart = rest.join(", ").replace(/,?\s*minor.*$/i, "").replace(/[\s,;|]+$/, "").trim();
       current.major = majorPart || null;
       const minor = body.match(/minor\s+in\s+([^,;|]+)/i);
       if (minor) current.minor = minor[1].trim();
@@ -121,6 +166,13 @@ function parseEducation(lines: string[]): ParsedEducation[] {
   }
   if (current) results.push(current);
   return results;
+}
+
+function looksLikeSentence(line: string): boolean {
+  const text = line.trim();
+  const range = findDateRange(text);
+  if ((range && text.endsWith(range.text.trim())) || splitParts(text).length > 1) return false;
+  return text.split(/\s+/).length >= 8 && (/[.;]$/.test(text) || /^[A-Z][a-z]+ed\b/.test(text));
 }
 
 function parseList(lines: string[]): string[] {
@@ -166,6 +218,9 @@ export function parseResumeText(text: string): ParsedResume {
     for (const line of buckets.get(kind) ?? []) {
       if (BULLET.test(line)) {
         bullets.push(line.replace(BULLET, "").trim());
+      } else if (headerLines.length && looksLikeSentence(line)) {
+        // Some exports drop the bullet marker; a full sentence under a role is still a bullet.
+        bullets.push(line.trim());
       } else if (bullets.length && /^[a-z(]/.test(line.trim())) {
         // A wrapped bullet continues on the next line.
         bullets[bullets.length - 1] += ` ${line.trim()}`;
