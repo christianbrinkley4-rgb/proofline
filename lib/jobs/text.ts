@@ -73,6 +73,22 @@ export function dedupeKey(company: string, title: string, location: string | nul
   return `${c}|${t}|${l}`;
 }
 
+const TERM = /\b(spring|summer|fall|autumn|winter|19\d{2}|20\d{2}|part[- ]time|full[- ]time|term[- ]time|remote|hybrid|on[- ]?site|paid|unpaid|co-?op)\b/i;
+
+/**
+ * A posting title as a person would say it: "Accounting Intern (Summer 2027)" and
+ * "2027 Summer Intern - Finance Controllership" become "Accounting Intern" and
+ * "Summer Intern, Finance Controllership".
+ */
+export function roleName(title: string): string {
+  let t = title.replace(/\s*[([][^)\]]*[)\]]\s*/g, (m) => (TERM.test(m) ? " " : m)).trim();
+  // Drop trailing " - Summer 2027" or " | Chicago" style qualifiers when they're only terms or places.
+  t = t.replace(/\s+[-–|:]\s+([^-–|:]+)$/, (m, tail: string) => (TERM.test(tail) && tail.split(/\s+/).length <= 4 ? "" : m));
+  t = t.replace(/^(?:(?:spring|summer|fall|winter)\s+)?(?:19|20)\d{2}\s+/i, "").replace(/\s+(?:19|20)\d{2}$/, "");
+  t = t.replace(/\s+[-–]\s+/g, ", ").replace(/\s{2,}/g, " ").trim();
+  return t || title;
+}
+
 export function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }

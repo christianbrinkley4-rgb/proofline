@@ -452,6 +452,33 @@ export const application = pgTable(
   (t) => [index("application_user_idx").on(t.userId, t.stage)],
 );
 
+/**
+ * Everything prepared for one job beyond the resume: the cover letter, the
+ * person's own reason for applying, and their interview practice notes.
+ */
+export const applicationPacket = pgTable(
+  "application_packet",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => job.id, { onDelete: "cascade" }),
+    /** The person's reason for wanting this job, in their words. Never generated. */
+    why: text("why"),
+    /** CoverLetter from lib/packet/cover-letter.ts. */
+    coverLetter: jsonb("cover_letter").$type<Record<string, unknown>>(),
+    coverLetterAt: timestamp("cover_letter_at", { withTimezone: true }),
+    /** Practice answers by question id. */
+    interviewNotes: jsonb("interview_notes").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("application_packet_user_job_uidx").on(t.userId, t.jobId)],
+);
+
 // ─── Agent memory ─────────────────────────────────────────────────────────────
 
 /**

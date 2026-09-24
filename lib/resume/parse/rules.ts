@@ -175,9 +175,26 @@ function looksLikeSentence(line: string): boolean {
   return text.split(/\s+/).length >= 8 && (/[.;]$/.test(text) || /^[A-Z][a-z]+ed\b/.test(text));
 }
 
+/** Splits on commas, semicolons, and bars, but not inside parentheses: "Excel (pivot tables, XLOOKUP)" stays whole. */
+function splitList(text: string): string[] {
+  const items: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of text) {
+    if (ch === "(" || ch === "[") depth++;
+    if ((ch === ")" || ch === "]") && depth > 0) depth--;
+    if (depth === 0 && /[,;|•]/.test(ch)) {
+      items.push(current);
+      current = "";
+    } else current += ch;
+  }
+  items.push(current);
+  return items;
+}
+
 function parseList(lines: string[]): string[] {
   return lines
-    .flatMap((l) => l.replace(BULLET, "").replace(/^[A-Za-z &]+:\s*/, "").split(/\s*[,;|]\s*/))
+    .flatMap((l) => splitList(l.replace(BULLET, "").replace(/^[A-Za-z &]+:\s*/, "")))
     .map((s) => s.trim())
     .filter((s) => s.length > 1 && s.length < 60);
 }

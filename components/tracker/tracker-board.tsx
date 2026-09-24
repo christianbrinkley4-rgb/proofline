@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, Copy, FileText, GripVertical, LayoutList, Plus, Search, SquareKanban, X } from "lucide-react";
+import { ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, Copy, FileText, GripVertical, LayoutList, PenLine, Plus, Search, SquareKanban, X } from "lucide-react";
 import { toast } from "sonner";
 import { addManualApplicationAction, deleteApplicationAction, moveApplicationAction, recordFollowUpAction, recordReplyAction, snoozeFollowUpAction, updateApplicationAction } from "@/app/app/tracker/actions";
 import { Button } from "@/components/ui/button";
@@ -178,6 +178,7 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
         {url && <Button asChild size="sm"><a href={url} target="_blank" rel="noreferrer">Open posting<ArrowUpRight data-icon="inline-end" /></a></Button>}
         {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId}>Job & fit report</Link></Button>}
         {app.resumeId && <Button asChild size="sm" variant="outline"><Link href={"/app/resumes/" + app.resumeId}><FileText data-icon="inline-start" />Linked resume</Link></Button>}
+        {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "/packet"}><PenLine data-icon="inline-start" />Cover letter & interview prep</Link></Button>}
       </div>
       {insight && <section className="rounded-xl border p-4">
         <div className="flex items-baseline justify-between"><h3 className="text-sm font-semibold">Your plan for this role</h3><span className="text-sm font-medium tabular-nums">{insight.score}/100 fit</span></div>

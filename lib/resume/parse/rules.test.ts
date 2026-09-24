@@ -76,7 +76,7 @@ describe("parseResumeText", () => {
   });
 
   it("reads skills without their labels", () => {
-    expect(parsed.skills).toEqual(expect.arrayContaining(["QuickBooks Online", "SQL"]));
+    expect(parsed.skills).toEqual(expect.arrayContaining(["QuickBooks Online", "SQL", "Excel (pivot tables, XLOOKUP)"]));
     expect(parsed.skills.some((s) => s.startsWith("Technical"))).toBe(false);
   });
 });

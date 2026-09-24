@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Check, FileText, Lightbulb, Minus, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, FileText, Lightbulb, Minus, PenLine, TriangleAlert } from "lucide-react";
 import { FitBreakdown } from "@/components/jobs/fit-breakdown";
 import { JobActions } from "@/components/jobs/job-actions";
 import { PageBody } from "@/components/app/page-header";
@@ -108,6 +108,12 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
           <Link href={`/app/resumes/compare?job=${job.id}`}>
             <FileText data-icon="inline-start" />
             Compare tailored resumes
+          </Link>
+        </Button>
+        <Button size="lg" variant="outline" asChild>
+          <Link href={`/app/jobs/${job.id}/packet`}>
+            <PenLine data-icon="inline-start" />
+            Cover letter and interview prep
           </Link>
         </Button>
         <JobActions jobId={job.id} saved={data.match?.status === "saved"} />

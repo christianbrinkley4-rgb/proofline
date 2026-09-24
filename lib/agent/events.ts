@@ -23,6 +23,8 @@ export type AgentEventType =
   | "resume_linked"
   | "follow_up_recorded"
   | "follow_up_drafted"
+  | "cover_letter_drafted"
+  | "cover_letter_edited"
   | "preference_learned"
   | "connector_call";
 
