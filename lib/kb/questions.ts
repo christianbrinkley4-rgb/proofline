@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { logEvent } from "@/lib/agent/events";
 import { db, schema } from "@/lib/db";
 import { addFact, confirmFact, rejectFact, type Fact, type FactCategory } from "./facts";
+import { isNonAnswer } from "./answer";
 
 export type Question = typeof schema.question.$inferSelect;
 
@@ -70,6 +71,7 @@ export async function answerQuestion(userId: string, questionId: string, answer:
   if (!q || q.status !== "open") return undefined;
 
   const value = answer.trim();
+  const dismissed = q.kind !== "yes_no" && (!value || isNonAnswer(value));
   let fact: Fact | undefined;
 
   if (q.kind === "yes_no") {
@@ -86,7 +88,7 @@ export async function answerQuestion(userId: string, questionId: string, answer:
         sourceDetail: `question:${q.id}`,
       });
     }
-  } else if (value) {
+  } else if (value && !dismissed) {
     fact = await addFact(userId, {
       category: q.factCategory ?? (q.kind === "number" ? "metric" : "experience"),
       content: q.factTemplate ? fillTemplate(q.factTemplate, value) : value,
@@ -112,7 +114,7 @@ export async function answerQuestion(userId: string, questionId: string, answer:
 
   const [updated] = await db
     .update(schema.question)
-    .set({ status: "answered", answer: value, answeredAt: new Date() })
+    .set({ status: dismissed ? "dismissed" : "answered", answer: value, answeredAt: new Date() })
     .where(eq(schema.question.id, q.id))
     .returning();
   await logEvent(userId, "question_answered", { questionId: q.id, kind: q.kind, answer: value, factId: fact?.id ?? null });

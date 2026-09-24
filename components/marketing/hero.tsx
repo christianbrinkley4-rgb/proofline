@@ -19,17 +19,16 @@ export function Hero() {
               Free for students and recent grads during beta
               <ArrowRight className="size-3.5" />
             </a>
-            {/* Sizes are tuned so "Stop sending the same" holds one line at each breakpoint's width. */}
+            {/* Keep the promise visible before the product tour. */}
             <h1 className="mt-6 text-[42px] leading-[1.04] font-semibold tracking-[-0.04em] text-balance sm:text-[56px] md:text-[64px] lg:text-[52px] xl:text-[60px]">
-              Stop sending the same resume to fifty jobs.
+              Everything you have done can lead somewhere new.
             </h1>
           </div>
 
           <div className="lg:col-span-5 lg:pb-2">
             <p className="max-w-[36rem] text-[17px] leading-7 text-pretty text-muted-foreground sm:text-[18px] sm:leading-8">
-              Tell {site.name} what you want. It finds real openings, shows how well you fit each one, and writes a
-              one-page resume for every application from facts you&apos;ve confirmed. Then it keeps track until you get
-              the offer.
+              Keep a living record of your work, classes, projects, and wins. {site.name} finds roles that fit,
+              builds three job-specific resumes from your confirmed facts, and tracks every application and follow-up.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">

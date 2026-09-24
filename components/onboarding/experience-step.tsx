@@ -168,13 +168,25 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
 export function QuestionCard({ question, org }: { question: QuestionView; org?: string }) {
   const [answer, setAnswer] = useState(question.proposedValue ?? "");
   const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<"saved" | "skipped" | null>(null);
+  const [error, setError] = useState("");
+  function respond(value: string) {
+    setError("");
+    startTransition(async () => {
+      try {
+        const status = await answerQuestionAction(question.id, value);
+        setDone(status === "dismissed" ? "skipped" : "saved");
+      } catch {
+        setError("Couldn't save your answer. Please try again.");
+      }
+    });
+  }
 
   if (done) {
     return (
       <div className="flex items-center gap-2 rounded-lg border bg-background px-4 py-3 text-[13.5px] text-muted-foreground motion-safe:animate-view-in">
         <Check className="size-4 text-brand" strokeWidth={2.5} />
-        Got it. Added to your profile.
+        {done === "skipped" ? "Skipped." : "Got it. Response recorded."}
       </div>
     );
   }
@@ -185,10 +197,8 @@ export function QuestionCard({ question, org }: { question: QuestionView; org?: 
       onSubmit={(e) => {
         e.preventDefault();
         if (!answer.trim()) return;
-        startTransition(async () => {
-          await answerQuestionAction(question.id, answer);
-          setDone(true);
-        });
+        respond(answer);
+
       }}
     >
       {org && <div className="text-[12px] font-medium text-pending-ink">{org}</div>}
@@ -196,10 +206,10 @@ export function QuestionCard({ question, org }: { question: QuestionView; org?: 
       <div className="mt-3 flex flex-wrap gap-2">
         {question.kind === "yes_no" ? (
           <>
-            <Button type="button" size="sm" onClick={() => startTransition(async () => { await answerQuestionAction(question.id, "yes"); setDone(true); })}>
+            <Button type="button" size="sm" onClick={() => respond("yes")}>
               Yes
             </Button>
-            <Button type="button" size="sm" variant="outline" className="bg-background" onClick={() => startTransition(async () => { await answerQuestionAction(question.id, "no"); setDone(true); })}>
+            <Button type="button" size="sm" variant="outline" className="bg-background" onClick={() => respond("no")}>
               No
             </Button>
           </>
@@ -223,11 +233,12 @@ export function QuestionCard({ question, org }: { question: QuestionView; org?: 
           variant="ghost"
           className="h-9"
           disabled={pending}
-          onClick={() => startTransition(async () => { await skipQuestionAction(question.id); setDone(true); })}
+          onClick={() => startTransition(async () => { try { await skipQuestionAction(question.id); setDone("skipped"); } catch { setError("Couldn't skip this question. Please try again."); } })}
         >
           Skip
         </Button>
       </div>
+      {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
     </form>
   );
 }

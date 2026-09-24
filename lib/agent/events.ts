@@ -19,6 +19,9 @@ export type AgentEventType =
   | "resume_tailored"
   | "resume_exported"
   | "application_stage_changed"
+  | "application_reply_recorded"
+  | "resume_linked"
+  | "follow_up_recorded"
   | "follow_up_drafted"
   | "preference_learned"
   | "connector_call";

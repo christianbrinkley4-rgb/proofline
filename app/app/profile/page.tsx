@@ -5,11 +5,14 @@ import { PageBody, PageHeader } from "@/components/app/page-header";
 import { QuestionCard } from "@/components/onboarding/experience-step";
 import { FactRow } from "@/components/onboarding/fact-row";
 import { ExperienceCard } from "@/components/profile/experience-card";
+import { LifeNote } from "@/components/profile/life-note";
+import { StoryNotebook } from "@/components/profile/story-notebook";
 import type { BulletCheck } from "@/lib/resume/bullet-score";
 import { requireSession } from "@/lib/auth";
 import { listExperiences } from "@/lib/kb/experiences";
 import { listFacts, type Fact } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
+import { listStoryNotes } from "@/lib/kb/story";
 import { listOpenQuestions } from "@/lib/kb/questions";
 import { listBullets } from "@/lib/resume/bullets/service";
 import { formatMonth, formatRange } from "@/lib/resume/parse/dates";
@@ -21,12 +24,13 @@ const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.categor
 export default async function ProfilePage() {
   const session = await requireSession();
   const userId = session.user.id;
-  const [profile, experiences, facts, questions, bullets] = await Promise.all([
+  const [profile, experiences, facts, questions, bullets, storyNotes] = await Promise.all([
     getProfile(userId),
     listExperiences(userId),
     listFacts(userId),
     listOpenQuestions(userId),
     listBullets(userId),
+    listStoryNotes(userId),
   ]);
 
   const orgFor = new Map(experiences.map((e) => [e.id, e.org]));
@@ -40,6 +44,9 @@ export default async function ProfilePage() {
         title="Profile"
         description={`Everything your agent knows about you: ${confirmedCount} confirmed facts. Only confirmed facts ever reach a resume.`}
       />
+
+      <StoryNotebook notes={storyNotes} />
+      <LifeNote />
 
       {(questions.length > 0 || waitingFacts.length > 0) && (
         <section className="mt-8">

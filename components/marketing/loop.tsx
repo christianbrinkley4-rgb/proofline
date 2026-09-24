@@ -1,13 +1,13 @@
 import { Section, SectionHeading } from "./section";
 
 const STEPS = [
-  { title: "Profile", text: "Upload a resume or answer a few questions. You only tell it once." },
+  { title: "Profile", text: "Start with a resume, then add the work, projects, and wins that make you you." },
   { title: "Find", text: "Describe the job you want. It searches live company job boards for you." },
   { title: "Score", text: "Every opening gets a fit score out of 100, and you can see the math." },
-  { title: "Tailor", text: "A one-page resume for each job, built only from facts you confirmed." },
+  { title: "Tailor", text: "Compare three one-page versions for each job, built from confirmed facts." },
   { title: "Apply", text: "A checklist per job: the link, the materials, the deadline, the portal." },
   { title: "Track", text: "Every application on one board, from saved to offer." },
-  { title: "Follow up", text: "Reminders when it's been a week, with a draft in your voice." },
+  { title: "Follow up", text: "See when to follow up, edit a draft, and record what you sent." },
   { title: "Prep", text: "Practice interviews built from the bullets on your own resume.", soon: true },
 ];
 

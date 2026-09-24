@@ -15,7 +15,7 @@ Living document. Updated as slices land.
 ```
                  ┌─────────────── Web app (Next.js) ───────────────┐
  Student ───────▶│ Onboarding · Profile · Jobs · Resumes · Tracker │
-                 │                 Agent chat panel                 │
+                 │               Agent workbench                  │
                  └───────────────────────┬─────────────────────────┘
                                          │
  Student's own Claude /                  ▼
@@ -56,7 +56,7 @@ Proactive work: daily scans of saved searches, deadline and follow-up reminders,
 | Job search, dedupe, fit scoring, eligibility gates | Code + free public job board APIs | $0 |
 | Resume layout, PDF/DOCX export, quality gate, bullet scoring | Code | $0 |
 | Onboarding, knowledge base, tracker, reminders | Code | $0 |
-| Writing (bullets, tailoring, cover letters, parsing messy resumes) | Offline templates by default; Claude when a key is set; or the student's own AI over MCP | $0 to about $0.09 per tailored resume on Claude Opus 5 |
+| Writing (bullets, tailoring, cover letters, parsing messy resumes) | Offline templates by default; Claude when a key is set; or the student's own AI over MCP | $0 to provider-dependent usage cost when AI writing is enabled |
 | Database | PGlite locally; Supabase or Neon free tier when deployed | $0 |
 
 ## Decisions (and why)
@@ -71,11 +71,19 @@ Proactive work: daily scans of saved searches, deadline and follow-up reminders,
 | # | Slice | State |
 |---|---|---|
 | 1 | Scaffold, design system, landing page | Done |
-| 2 | Database, auth, app shell | |
-| 3 | Knowledge base, onboarding, resume upload and fact confirmation | |
-| 4 | Resume standards engine, bullet scoring, bullet generator with verification | |
-| 5 | Live job discovery (4 sources) and fit engine | |
-| 6 | Tailoring, templates, exact one-page PDF and DOCX export, quality gate | |
-| 7 | Tracker with drag and drop, follow-up drafts | |
-| 8 | Personal agent: memory, learning signals, chat, MCP connector | |
-| 9 | Landing page refresh | |
+| 2 | Database, auth, app shell | Done |
+| 3 | Knowledge base, onboarding, resume upload and fact confirmation | Done |
+| 4 | Resume standards engine, bullet scoring, bullet generator with verification | Done |
+| 5 | Live job discovery and fit engine | Done |
+| 6 | Three per-job resume strategies, comparison, PDF and DOCX export, quality gate | Done |
+| 7 | Tracker with drag and drop, notes, fit guidance, follow-up drafts | Done |
+| 8 | Personal agent: workbench and learning signals done; chat and MCP connector planned | In progress |
+| 9 | Landing page refresh | Done |
+
+## September 23 continuation
+
+The personal history is a living profile, not a one-time intake. Students can add free-form work, classes, projects, research, volunteering, and wins from the Profile page. Their own statements become confirmed source facts; model-written bullets wait for explicit approval. Changing a fact invalidates affected resume exports.
+
+For each job, a student can build and compare experience-first, skills-first, and keyword-match resume versions. Each version is saved as a snapshot. The tracker connects the chosen version with an application and records stage changes, strengths, gaps, action steps, notes, deadlines, follow-up reminders, editable draft emails, and a record of what the student says they sent. Proofline does not submit job applications or send emails.
+
+Next: make profile capture even more fluid with a timeline and bulk import; add saved-search scheduling and alerts, personalized interview prep, more job sources, and the student-owned AI connector. Add real outcome analysis only after enough consented application history exists.

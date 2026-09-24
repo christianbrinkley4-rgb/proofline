@@ -31,6 +31,23 @@ describe("probeExperience", () => {
     expect(withoutTools.some((q) => /tools or software/.test(q.prompt))).toBe(true);
   });
 
+  it("turns bare tax-return work into volume, method, scope, and outcome questions", () => {
+    const qs = probeExperience({ org: "Maple Tax", notes: "Prepared tax returns." });
+    const prompts = qs.map((q) => q.prompt).join(" | ");
+    expect(qs).toHaveLength(6);
+    expect(prompts).toMatch(/how many tax returns.*week, month, or tax season/i);
+    expect(prompts).toMatch(/personally handle/i);
+    expect(prompts).toMatch(/tax software/i);
+    expect(prompts).toMatch(/types of returns/i);
+    expect(prompts).toMatch(/improve efficiency or accuracy/i);
+    expect(prompts).toMatch(/work help achieve/i);
+    expect(qs.find((q) => /how many tax returns/i.test(q.prompt))?.factTemplate).toContain("{answer}");
+  });
+
+  it("does not re-ask tax volume or software already in the note", () => {
+    const qs = probeExperience({ org: "Maple Tax", notes: "Prepared 45 tax returns in QuickBooks during the season." });
+    expect(qs.some((q) => /how many tax returns|which tax software/i.test(q.prompt))).toBe(false);
+  });
   it("orders by usefulness and respects the limit", () => {
     const qs = probeExperience(
       { org: "X", notes: "Led a team of volunteers. Reduced wait times. Handled donations and tracked orders." },

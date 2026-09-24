@@ -131,6 +131,9 @@ export async function generateBullets(userId: string, experienceId: string, requ
 
     const cited = candidate.factIds.map((id) => byId.get(id)!.content);
     const check = verifyBullet(text, cited);
+    // A model can make an unsupported qualitative claim even when every number is sourced.
+    const grounded = candidate.generator !== "anthropic" || facts.some((fact) => norm(fact.content) === norm(text));
+    const approved = check.ok && grounded;
     const { score, checks } = scoreBullet(text);
 
     const [row] = await db
@@ -139,16 +142,16 @@ export async function generateBullets(userId: string, experienceId: string, requ
         userId,
         experienceId,
         text,
-        status: check.ok ? "active" : "draft",
+        status: approved ? "active" : "draft",
         factIds: candidate.factIds,
         score,
-        scoreDetail: { checks, verified: check.ok, unsupported: check.unsupported },
+        scoreDetail: { checks, verified: approved, unsupported: check.unsupported },
         generator: candidate.generator === "resume" ? "user" : candidate.generator,
         promptVersion: candidate.generator === "anthropic" ? BULLETS_V1.version : null,
       })
       .returning();
 
-    if (check.ok) {
+    if (approved) {
       created++;
     } else {
       held++;
@@ -180,19 +183,17 @@ export async function generateBullets(userId: string, experienceId: string, requ
 
 /**
  * The student edited a bullet. The edit is a new row (the old one is archived, so
- * sent resumes keep their text), a voice sample for the agent, and it's re-verified:
- * a new number the student typed becomes a fact they stated.
+ * sent resumes keep their text), a voice sample for the agent, and a new
+ * confirmed fact containing the student's full revision.
  */
 export async function editBullet(userId: string, bulletId: string, text: string): Promise<Bullet | undefined> {
   const old = await db.query.bullet.findFirst({ where: and(eq(schema.bullet.id, bulletId), eq(schema.bullet.userId, userId)) });
   const clean = text.trim().replace(/[.]+$/, "");
   if (!old || !clean || clean === old.text) return old;
 
-  const cited = (await listFacts(userId, { experienceId: old.experienceId, states: ["confirmed"] })).filter((f) => old.factIds.includes(f.id));
   const factIds = [...old.factIds];
-  const check = verifyBullet(clean, cited.map((f) => f.content));
-  if (!check.ok) {
-    // The student typed it themselves, so the new claim is theirs: record it as a stated fact.
+  {
+    // The student typed the full revision, so record the claim itself as a stated fact.
     const [fact] = await db
       .insert(schema.fact)
       .values({

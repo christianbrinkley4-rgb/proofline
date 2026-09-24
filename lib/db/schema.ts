@@ -283,6 +283,23 @@ export const question = pgTable(
   (t) => [index("question_user_status_idx").on(t.userId, t.status)],
 );
 
+/** Private, unstructured memories. They become resume evidence only after promotion to an experience. */
+export const storyNote = pgTable(
+  "story_note",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    context: text("context"),
+    when: text("when"),
+    promotedExperienceId: uuid("promoted_experience_id").references(() => experience.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("story_note_user_idx").on(t.userId, t.createdAt)],
+);
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
 
 export const jobSourceEnum = pgEnum("job_source", [

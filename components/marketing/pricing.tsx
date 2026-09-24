@@ -8,9 +8,9 @@ const STUDENT_FEATURES = [
   "Job search across live company job boards",
   "Saved searches with new-match alerts",
   "Fit scores with the full breakdown",
-  "Tailored one-page resumes in DOCX and PDF",
+  "Three tailored resume strategies per job, with PDF and DOCX export",
   "Bullets built only from facts you confirm",
-  "Application tracker with follow-up reminders",
+  "Application tracker with notes, reminders, and follow-up drafts",
 ];
 
 const CAREER_CENTER_FEATURES = [

@@ -1,125 +1,31 @@
-# Competitive landscape (September 2026)
+# Competitive landscape
 
-What each competitor does well, where it falls short, and what Proofline does about it. Sources are listed at the bottom. Prices are what reviewers reported in 2026 and change often.
+Reviewed September 23, 2026 from each product's own pages. Feature claims are vendor descriptions, not independent benchmarks. This brief separates Proofline's working features from the roadmap.
 
-## The short version
+## What users can already buy or use elsewhere
 
-Nobody owns the whole loop with honest output. The market splits into three camps:
+| Product | Verified strength | Proofline response |
+| --- | --- | --- |
+| [Teal](https://www.tealhq.com/tools/resume-builder) | A master resume, unlimited role-specific versions, job matching, tracking, and interview preparation in one product. Its [tracker](https://help.tealhq.com/en/articles/9525013-leveraging-your-job-tracker-tools) has notes, guidance, and resume attachments. | Compete on a living evidence record, visible fit math, and an export gate that checks whether source facts remain confirmed. A polished tracker alone is not a unique advantage. |
+| [Huntr](https://help.huntr.co/en/articles/14367332-application-hub-and-packets) | Application packets tie a tailored resume, cover letter, and follow-up draft to a job. Its [tracker](https://help.huntr.co/en/articles/10477521-what-is-huntr) supports deadlines, contacts, and activities. | Make the evidence, chosen resume version, stage, and next action easy to inspect on one card. Add cover letters and interview activities to the same packet later. |
+| [Simplify](https://help.simplify.jobs/articles/2415391-using-copilot-to-autofill-applications) | Autofills many employer application forms, remembers answers to repeated questions, and adds completed applications to its tracker. Its [profile](https://help.simplify.jobs/en/articles/1749022-installing-and-setting-up-copilot) powers reuse. | Preserve the user's control over submission, then build a reviewable browser extension that reuses confirmed answers. Manual tracking is a current friction point. |
+| [Jobright](https://jobright.ai/ai-job-match) | Personalized role discovery uses goals, background, and preferences; its match score and assistant explain experience, seniority, skills, and gaps. | Improve discovery quality, eligibility checks, and source freshness. Proofline's six-part score should say what evidence supported each component. |
+| [Jobscan](https://www.jobscan.co/resume-matcher) | Compares a resume with a posting and reports keyword and formatting gaps. It notes that an ATS does not itself assign the match score shown by a scanner. | Show ATS readability and keyword coverage without implying any score predicts an interview. Track actual response outcomes before making effectiveness claims. |
+| [Careerflow](https://www.careerflow.ai/job-tracker) | Integrated resume builder, job tracker, contacts, notes, reminders, and suggestions. | Connect each suggestion to a missing requirement or a confirmed piece of evidence, and give the user a concrete next action. |
 
-1. **Resume optimizers** (Jobscan, Rezi, Resume Worded, Enhancv, Kickresume). Score a resume against a posting. You still find the jobs, and the scores reward keyword stuffing. Users report 80%+ match rates with zero callbacks.
-2. **Trackers and autofill** (Teal, Huntr, Simplify, Careerflow). Organize the search and speed up forms. They don't decide which jobs are worth your time, and their AI writing tools will happily invent.
-3. **AI agents and auto-apply** (Jobright, LazyApply, AIApply, JobCopilot). Find and even submit applications. Volume over quality, and recruiters now discard obviously AI-written applications.
+## Current Proofline position
 
-Proofline's position: **an agent that hunts for you, scores honestly, and only writes what you can defend.** Quality per application, not volume.
+The working product accepts resume uploads and free-form experiences, keeps source facts with confirmation state, finds and scores live postings, builds three role-specific resume strategies, exports one-page PDF and DOCX, and tracks applications with selected resume versions, notes, deadlines, fit guidance, follow-up reminders, and editable drafts. A person submits applications and sends follow-ups themselves. Model-written bullets require confirmation before export. The fit score is an explanation of available evidence, not a hiring prediction.
 
-## Feature matrix
+The combination of a growing personal history, source traceability, and a single job workspace is promising. Competitors already cover large parts of the loop, so claims such as "nobody else does this" or "best in class" need direct testing. Proofline should win by making each recommendation more defensible and each next step easier, then validate that with user outcomes.
 
-| | Finds jobs for you | Fit score shows its math | Tailored resume | Every claim verified | Tracker | Follow-ups | Learns from outcomes | Works inside your own AI | Free core |
-|---|---|---|---|---|---|---|---|---|---|
-| Teal | No (you clip jobs) | Partial (keyword match) | Yes | No | Yes | Reminders | No | No | Yes |
-| Jobright | Yes (8M listings) | Score, limited detail | Yes | No | Yes | Outreach drafts | No | No | Limited |
-| Simplify | Job matches | No | Basic | No | Yes | No | No | No | Yes |
-| Jobscan | No | Match rate (30+ checks) | AI optimize | No | Premium | No | No | No | 5 scans/mo |
-| Huntr | No (clipper) | Basic | Yes | No | Yes (best-in-class) | Reminders | No | No | Up to 100 jobs |
-| Careerflow | No | ATS score | Yes | No | Yes + analytics | Reminders | No | No | 10 jobs |
-| Rezi | No | Rezi Score (23 criteria) | Yes | No | No | No | No | No | 1 resume |
-| Resume Worded | No | Impact/brevity score | Suggestions | No | No | No | No | No | Partial |
-| Handshake | School network, NL search | Alignment tips | No | No | Applications | No | No | No | Yes |
-| **Proofline** | **Yes, live, keeps watching** | **Six-part breakdown + gates** | **Yes, with why + cuts** | **Yes, enforced** | **Yes** | **Drafts in your voice** | **Yes** | **Yes (MCP connector)** | **Yes** |
+## Gaps to close in order
 
-## Competitor notes
+1. **Capture the whole life story.** Add a timeline, bulk import, and easy editing of experiences, classes, projects, achievements, and preferences. Preserve source text and edits.
+2. **Cut the repeated application work.** Add a reviewable form helper that reuses confirmed answers across sites. Test Workday, Greenhouse, Lever, Ashby, and iCIMS. Never assume autofill is correct.
+3. **Turn a job into an application packet.** Add grounded cover letters, short-answer drafts, and interview stories beside the selected resume and follow-up.
+4. **Keep discovery current.** Schedule saved-search refreshes and show what changed, which jobs closed, and why a role is recommended. Do not promise live alerts until delivery is built.
+5. **Learn from outcomes with consent.** Compare responses across roles, resumes, and outreach only after enough history exists. Avoid causal claims from tiny samples.
+6. **Measure the product.** Benchmark job relevance, resume fidelity, application completion time, and user response rates against the strongest competitors with consenting test users.
 
-### Teal
-- **Does well:** Chrome extension (4.9 stars, featured) that clips any posting into a tracker with parsed details. Unlimited resume versions compared side by side. Bullet, summary, and skills generators. Free plan is genuinely useful.
-- **Falls short:** It's a toolkit. You do the hunting. Its generators write plausible bullets with no link to what you actually did.
-- **We take:** side-by-side versions (our variant diff view), posting text preserved on every tracked job, a clipper for jobs found elsewhere (our paste-a-link now, an extension later).
-- **We beat it:** discovery is the core loop, and generated bullets trace to confirmed facts.
-
-### Jobright
-- **Does well:** 8M+ aggregated listings, daily personalized matches with a match percentage, "Orion" chat copilot, insider connections with outreach drafts, autofill, an agent that can submit applications.
-- **Falls short:** About $40 a month for Turbo. Auto-submit trades quality for volume. Match scores don't show their reasoning in depth.
-- **We take:** daily matches, insider/alumni outreach drafts, a chat copilot.
-- **We beat it:** transparent scoring with eligibility gates, no silent auto-submit, free core, and the agent learns which applications actually get responses.
-
-### Simplify
-- **Does well:** Free autofill across 100+ ATS (about 85 to 90% accurate on Greenhouse, Lever, and Ashby; weaker on Workday and iCIMS). Remembers answers to unusual questions. 500K+ users.
-- **Falls short:** Paid tier criticized (unpublished pricing, no refunds, inconsistent AI). A 2026 privacy incident republished support conversations.
-- **We take:** "answer once, reuse forever" for screening questions (our knowledge base already stores this), autofill as a later extension.
-- **We beat it:** privacy by design (student data stays the student's), and we know which jobs to fill out in the first place.
-
-### Jobscan
-- **Does well:** The best-known ATS match rate, 30+ parameters against a specific posting, LinkedIn optimizer.
-- **Falls short:** $49.95 a month. Users chase the score; some hit 80%+ and still get no callbacks, because it optimizes for software, not the recruiter.
-- **We take:** a "what the ATS sees" check on every export.
-- **We beat it:** keyword overlap is only 10 of 100 fit points. The rest measures whether a human would call you.
-
-### Huntr
-- **Does well:** The cleanest kanban tracker, one-click clipper (4.8 stars), map view of employers by commute, contact management, autofill.
-- **Falls short:** Organizes the search but doesn't run it.
-- **We take:** contacts on every card, commute distance (already in our location score), clean drag-and-drop.
-- **We beat it:** the tracker is fed automatically by discovery and tailoring, and every card knows which resume version went out.
-
-### Careerflow
-- **Does well:** LinkedIn profile optimizer (scored, with suggestions), tracker analytics (response rate, time to response), mock interviews on the top tier.
-- **Falls short:** A good organizer, not an application engine.
-- **We take:** response-rate and time-to-response analytics, a LinkedIn optimizer built from the same confirmed facts.
-- **We beat it:** analytics feed the agent's learning instead of just a chart.
-
-### Rezi
-- **Does well:** Rezi Score (23 criteria, 5 categories, 1 to 100), keyword targeting that shows where to add missing terms, LinkedIn import, lifetime plan.
-- **Falls short:** Reviewers call the score misleading.
-- **We take:** a scored, categorized review of every resume.
-- **We beat it:** every check is pass/fail with a plain reason, factual checks block export, and nothing is scored without saying why.
-
-### Resume Worded
-- **Does well:** Scores impact, brevity, and customization. Flags weak verbs, filler, passive voice, pronouns, tense, repetition. 250+ example bullets from real resumes.
-- **Falls short:** Feedback feels templated; it rewards surface patterns without context.
-- **We take:** its full list of line-level checks (now in our bullet scorer).
-- **We beat it:** suggestions come from your own facts ("You told us you reconciled 40 accounts. Add it?"), and the agent asks for missing numbers instead of telling you to invent them.
-
-### Enhancv and Kickresume
-- **Do well:** Polished templates, cover letters, Kickresume gives students 6 months of premium free.
-- **Fall short:** Design-heavy templates can break ATS parsing (reviewers flag Enhancv on this).
-- **We take:** a small set of well-made templates.
-- **We beat them:** every template is single-column and ATS-safe by construction, and built from career-center and recruiter research (see RESUME-STANDARDS.md).
-
-### Handshake
-- **Does well:** 1,500+ partner schools, natural-language job search, per-job alignment coaching. Owns campus distribution.
-- **Falls short:** Only covers employers who post there. No resume tailoring.
-- **We take:** career-center partnerships as the B2B lane.
-- **We beat it:** we search the employers' own job boards, including ones that never post on Handshake, and tailor for each.
-
-### Interview prep: Final Round AI, Yoodli
-- **Do well:** Final Round covers realistic role-play plus a live "interview copilot." Yoodli coaches delivery (filler words, pacing, eye contact).
-- **Fall short:** Live copilots that feed answers during real interviews are an integrity risk. Yoodli doesn't coach content.
-- **We take:** mock interviews and delivery feedback.
-- **We beat them:** questions are built from the bullets on your own resume, so you practice defending what you actually wrote. No live cheating copilot.
-
-### Auto-apply tools: LazyApply, AIApply, JobCopilot
-- **Pattern:** Mass-submit applications with keyword-swapped resumes.
-- **Problem:** Recruiters report identical, embellished applications, and surveys say most hiring managers discard applications they identify as AI-written.
-- **Our stance:** we never submit for you. We make each application good enough to get a response.
-
-## What we add that nobody has
-
-1. **Verification-first knowledge base.** Every claim has a source and a status. Unconfirmed never exports.
-2. **A personal agent that learns.** Memory of your facts, preferences, voice, and results. It notices which resume versions and job types get responses and adjusts.
-3. **Bring your own AI.** Proofline runs as a connector inside Claude, ChatGPT, or Gemini, so students can use the assistant they already pay for.
-4. **Eligibility gates.** Graduation windows, work authorization, and required licenses cap a job's score with the reason shown, so nobody wastes a tailored resume on a job they can't get.
-5. **Outcome learning across the platform.** With consent and anonymized, we can learn which bullet styles and templates get callbacks in each field.
-
-## Sources
-
-- Teal: [Chrome Web Store](https://chromewebstore.google.com/detail/teal-job-search-companion/opafjjlpbiaicbbgifbejoochmmeikep), [Teal job tracker](https://www.tealhq.com/tools/job-tracker), [LoopCV review](https://blog.loopcv.pro/teal-hq-review/)
-- Jobright: [Scoutify review](https://scoutify.com/blog/jobright-review/), [Wobo review](https://www.wobo.ai/blog/jobright-review/)
-- Simplify: [Simplify Copilot](https://simplify.jobs/copilot), [jobhire.ai review](https://jobhire.ai/blog/simplify-jobs-review), [ResumeHog review](https://resumehog.com/blog/posts/simplify-copilot-review-2026-is-the-free-autofill-tool-worth-it.html)
-- Jobscan: [The Interview Guys](https://blog.theinterviewguys.com/is-jobscan-worth-it-in-2026/), [LoopCV](https://www.loopcv.pro/directory/jobscan/)
-- Huntr: [Wobo review](https://www.wobo.ai/blog/huntr-review), [JobScoutly](https://jobscoutly.com/reviews/huntr/)
-- Careerflow: [Careerflow](https://www.careerflow.ai/), [LoopCV review](https://blog.loopcv.pro/careerflow-review/)
-- Rezi: [Resume Genius review](https://resumegenius.com/reviews/rezi-ai-review), [ATS Resume AI](https://www.atsresumeai.com/compare/rezi-review)
-- Resume Worded: [Score My Resume](https://resumeworded.com/score), [LoopCV](https://www.loopcv.pro/directory/resume-worded/)
-- Enhancv and Kickresume: [Enhancv vs Kickresume](https://enhancv.com/blog/enhancv-vs-kickresume/), [Kickresume comparison](https://www.kickresume.com/en/help-center/alternative-to-enhancv/)
-- Handshake: [AI features help article](https://support.joinhandshake.com/hc/en-us/articles/38856960612631-About-AI-powered-features-in-Handshake-for-students)
-- Interview prep: [mocky.pro comparison](https://mocky.pro/en/blog/ai-mock-interview-tools-compared), [Final Round AI on Yoodli](https://www.finalroundai.com/blog/yoodli-review-pros-cons)
-- AI-written applications: [Black Tech Pipeline](https://blacktechpipeline.substack.com/p/are-you-sending-ai-slop-to-recruiters), [Job fraud (Wikipedia)](https://en.wikipedia.org/wiki/Job_fraud)
-- Bring your own AI: [Claude custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp), [ChatGPT developer mode and MCP apps](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt), [Gemini custom apps](https://support.google.com/gemini/answer/17209137?hl=en&co=GENIE.Platform%3DDesktop)
+Vendor pages change. Recheck product behavior and pricing before publishing competitive claims.

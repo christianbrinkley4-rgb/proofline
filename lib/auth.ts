@@ -33,8 +33,9 @@ export type Session = typeof auth.$Infer.Session;
 
 /** Session for the current request, or null. */
 export async function getSession(): Promise<Session | null> {
+  const requestHeaders = await headers();
   await dbReady;
-  return auth.api.getSession({ headers: await headers() });
+  return auth.api.getSession({ headers: requestHeaders });
 }
 
 /** Session for the current request; sends signed-out visitors to the login page. */

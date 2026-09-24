@@ -113,7 +113,7 @@ export async function searchMuse(params: { levels: string[]; categories: string[
         source: "themuse",
         sourceId: String(r.id),
         company: r.company.name,
-        title: r.name.trim(),
+        title: r.name.replace(/\\\//g, "/").trim(),
         location,
         mode: detectMode(location, r.name),
         level: /intern/i.test(levelName) ? "internship" : /entry/i.test(levelName) ? "entry" : detectLevel(r.name),

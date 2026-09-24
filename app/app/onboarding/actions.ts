@@ -170,8 +170,9 @@ export async function addExperienceAction(
 }
 
 export async function answerQuestionAction(questionId: string, answer: string) {
-  await answerQuestion(await userId(), questionId, answer);
+  const result = await answerQuestion(await userId(), questionId, answer);
   refresh();
+  return result?.question.status ?? null;
 }
 
 export async function skipQuestionAction(questionId: string) {

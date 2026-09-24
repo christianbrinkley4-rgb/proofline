@@ -3,6 +3,7 @@ import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { listBullets } from "@/lib/resume/bullets/service";
 import type { CandidateProfile } from "./engine";
+import { verifyBullet } from "@/lib/resume/verify";
 
 /** Everything the fit engine may use about a student: confirmed facts only, never proposals. */
 export async function loadCandidate(userId: string): Promise<CandidateProfile> {
@@ -13,8 +14,13 @@ export async function loadCandidate(userId: string): Promise<CandidateProfile> {
     listBullets(userId),
   ]);
 
+  const confirmed = new Map(facts.map((fact) => [fact.id, fact.content]));
+  const supportedBullets = bullets.filter((bullet) => bullet.status === "active" && bullet.factIds.length > 0 &&
+    bullet.factIds.every((id) => confirmed.has(id)) &&
+    verifyBullet(bullet.text, bullet.factIds.map((id) => confirmed.get(id)!)).ok);
+
   return {
-    confirmedText: [...facts.map((f) => f.content), ...bullets.filter((b) => b.status === "active").map((b) => b.text)],
+    confirmedText: [...facts.map((f) => f.content), ...supportedBullets.map((b) => b.text)],
     experienceTitles: experiences.flatMap((e) => [e.title, e.org].filter((x): x is string => Boolean(x))),
     hasInternship: experiences.some((e) => e.kind === "internship"),
     major: profile?.major ?? null,

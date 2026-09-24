@@ -105,9 +105,9 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
           </a>
         </Button>
         <Button size="lg" variant="outline" asChild disabled={Boolean(fit.cappedBy)}>
-          <Link href={`/app/resumes/new?job=${job.id}`}>
+          <Link href={`/app/resumes/compare?job=${job.id}`}>
             <FileText data-icon="inline-start" />
-            Tailor my resume
+            Compare tailored resumes
           </Link>
         </Button>
         <JobActions jobId={job.id} saved={data.match?.status === "saved"} />

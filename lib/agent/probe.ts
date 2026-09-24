@@ -86,7 +86,7 @@ const TOOL_WORDS =
   /\b(excel|sheets|quickbooks|sql|python|tableau|power ?bi|salesforce|sap|oracle|netsuite|workday|r\b|java|javascript|typescript|figma|canva|hubspot|jira|notion|word|powerpoint|outlook|taxslayer|lacerte|cch|ultratax|alteryx|bloomberg|capital iq|factset)\b/i;
 
 /** Up to `limit` questions, most useful first, never asking for a number the user already gave. */
-export function probeExperience(ctx: ProbeContext, limit = 3): Array<Omit<QuestionInput, "experienceId">> {
+export function probeExperience(ctx: ProbeContext, limit?: number): Array<Omit<QuestionInput, "experienceId">> {
   const sentences = ctx.notes
     .split(/(?<=[.!?])\s+|\n+/)
     .map((s) => s.trim())
@@ -103,6 +103,39 @@ export function probeExperience(ctx: ProbeContext, limit = 3): Array<Omit<Questi
     }
   }
 
+  // A bare activity such as "prepared tax returns" needs X/Y/Z evidence:
+  // what the person did, how much and how often, with what method, and what changed.
+  const taxWork = /\b(prepared?|preparing|filed|reviewed|processed)\b[^.!?\n]{0,100}\btax returns?\b|\btax returns?\b[^.!?\n]{0,100}\b(prepared?|preparing|filed|reviewed|processed)\b/i.test(ctx.notes);
+  if (taxWork) {
+    found.delete("volume");
+    found.delete("improvement");
+    const tax: Array<Omit<QuestionInput, "experienceId">> = [];
+    if (!/\b\d[\d,]*\s*(?:individual |business |corporate )?(?:tax )?returns?\b/i.test(ctx.notes)) tax.push({
+      prompt: "About how many tax returns did you prepare per week, month, or tax season? An estimate is fine; include the period.",
+      kind: "text", factTemplate: "Tax returns prepared: {answer}" + at(ctx), factCategory: "metric", priority: 12,
+    });
+    if (!/\b(collected|reconciled|reviewed|checked|interviewed|filed|entered|calculated|researched)\b/i.test(ctx.notes)) tax.push({
+      prompt: "Which parts did you personally handle, from gathering documents through review or filing?",
+      kind: "text", factTemplate: "Personally handled {answer} during tax return preparation" + at(ctx), factCategory: "experience", priority: 11,
+    });
+    if (!TOOL_WORDS.test(ctx.notes)) tax.push({
+      prompt: "Which tax software, spreadsheets, or other tools did you use? Skip if you did not use any.",
+      kind: "text", factTemplate: "Tax preparation tools: {answer}" + at(ctx), factCategory: "tool", priority: 10,
+    });
+    if (!/\b(1040|1065|1120|individual|personal|business|corporate|partnership|nonprofit|state|federal)\b/i.test(ctx.notes)) tax.push({
+      prompt: "What types of returns or clients did you work with? Only list the types you actually handled.",
+      kind: "text", factTemplate: "Tax return types or clients: {answer}" + at(ctx), factCategory: "experience", priority: 9,
+    });
+    if (!/\b(reduced|cut|saved|faster|improved|fewer errors|accuracy)\b[^.!?\n]*\b\d/i.test(ctx.notes)) tax.push({
+      prompt: "Did you improve efficiency or accuracy? If yes, what changed, and can you estimate the time saved, turnaround, or errors reduced? Skip if not.",
+      kind: "text", factTemplate: "Tax preparation efficiency or accuracy improvement: {answer}" + at(ctx), factCategory: "metric", priority: 8,
+    });
+    if (!/\b(on.time|deadline|turnaround|client satisfaction|fewer corrections)\b/i.test(ctx.notes)) tax.push({
+      prompt: "What did the work help achieve, such as on-time filings or fewer corrections? Share only an outcome you know; otherwise skip.",
+      kind: "text", factTemplate: "Tax preparation outcome: {answer}" + at(ctx), factCategory: "metric", priority: 7,
+    });
+    return [...tax, ...found.values()].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0)).slice(0, limit ?? 6);
+  }
   const questions = [...found.values()];
 
   if (!TOOL_WORDS.test(ctx.notes)) {
@@ -125,7 +158,7 @@ export function probeExperience(ctx: ProbeContext, limit = 3): Array<Omit<Questi
     });
   }
 
-  return questions.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0)).slice(0, limit);
+  return questions.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0)).slice(0, limit ?? 3);
 }
 
 /** Splits free-form notes into sentences the user stated, each a fact of its own. */

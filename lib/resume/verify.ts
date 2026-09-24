@@ -54,5 +54,5 @@ export function verifyBullet(bullet: string, citedFacts: string[]): VerifyResult
   const numbers = numbersIn(bullet);
   const allowed = numbersInFacts(citedFacts);
   const unsupported = numbers.filter((n) => !allowed.has(n) && !allowed.has(n.replace(/%$/, "")));
-  return { ok: unsupported.length === 0, numbers, unsupported };
+  return { ok: citedFacts.some((fact) => fact.trim().length > 0) && unsupported.length === 0, numbers, unsupported };
 }
