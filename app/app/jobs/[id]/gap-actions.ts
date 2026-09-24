@@ -10,7 +10,8 @@ import { skillFromAnswer } from "@/lib/fit/gaps";
 import { getJobForUser, requirementsOf, saveMatches } from "@/lib/jobs/store";
 import { createExperience, listExperiences } from "@/lib/kb/experiences";
 import { addFact } from "@/lib/kb/facts";
-import { generateBullets, listBullets } from "@/lib/resume/bullets/service";
+import { editBullet, generateBullets, listBullets } from "@/lib/resume/bullets/service";
+import { hasNumber } from "@/lib/resume/polish";
 
 const KINDS = ["work", "internship", "project", "leadership", "volunteer", "research"] as const;
 
@@ -101,4 +102,20 @@ export async function reopenGapAction(input: { jobId: string; skill: string }): 
   await logEvent(session.user.id, "gap_answered", { ...parsed.data, reopened: true });
   revalidatePath(`/app/jobs/${parsed.data.jobId}`);
   return { ok: true };
+}
+
+/**
+ * The student rewrites one bullet with the number it was missing. Their full
+ * revision becomes a confirmed fact and replaces the old bullet everywhere.
+ */
+export async function measureBulletAction(input: { jobId: string; bulletId: string; text: string }): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+  const parsed = z.object({ jobId: z.uuid(), bulletId: z.uuid(), text: z.string().trim().min(15).max(400) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Write the full bullet, with the number in it." };
+  if (!hasNumber(parsed.data.text)) return { ok: false, error: "Add the number: how many, how much, how often, or how fast." };
+  const session = await requireSession();
+  const row = await editBullet(session.user.id, parsed.data.bulletId, parsed.data.text);
+  if (!row) return { ok: false, error: "That bullet isn't on your profile anymore." };
+  revalidatePath(`/app/jobs/${parsed.data.jobId}`);
+  revalidatePath("/app");
+  return { ok: true, text: row.text };
 }

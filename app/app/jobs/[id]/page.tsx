@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { ArrowLeft, ArrowUpRight, Check, Minus, PenLine, TriangleAlert } from "lucide-react";
 import { FitBreakdown } from "@/components/jobs/fit-breakdown";
 import { GapCoach } from "@/components/jobs/gap-coach";
+import { MeasureBullets, type Unmeasured } from "@/components/jobs/measure-bullets";
 import { JobActions } from "@/components/jobs/job-actions";
 import { ResumeTrio, type TrioResume } from "@/components/jobs/resume-trio";
 import { PageBody } from "@/components/app/page-header";
@@ -27,6 +28,8 @@ import { listExperiences } from "@/lib/kb/experiences";
 import { factCounts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { VARIANT_BLURB, VARIANT_LABEL, type VariantId } from "@/lib/resume/document";
+import { listBullets } from "@/lib/resume/bullets/service";
+import { hasNumber } from "@/lib/resume/polish";
 import { screeningReport } from "@/lib/resume/screening";
 import { listResumes } from "@/lib/resume/store";
 import { STAGE_LABEL } from "@/lib/tracker/model";
@@ -77,7 +80,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
 
   // Always score against the profile as it is now: confirming a fact should move the number.
   const requirements = requirementsOf(job);
-  const [candidate, profile, allResumes, application, facts, experiences, declined, factAt] = await Promise.all([
+  const [candidate, profile, allResumes, application, facts, experiences, declined, factAt, liveBullets] = await Promise.all([
     loadCandidate(userId),
     getProfile(userId),
     listResumes(userId),
@@ -86,6 +89,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
     listExperiences(userId),
     declinedSkills(userId),
     latestFactAt(userId),
+    listBullets(userId),
   ]);
   const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements }, candidate);
   await saveMatches(userId, [{ job, fit }]);
@@ -115,6 +119,13 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
     };
   });
   const best = [...trio].sort((a, b) => b.covered - a.covered || Number(b.checksOk) - Number(a.checksOk) || b.passed - a.passed)[0] ?? null;
+  // Bullets on the best version that don't carry a number yet, skipping any already rewritten.
+  const liveIds = new Set(liveBullets.filter((b) => b.status === "active").map((b) => b.id));
+  const bestDoc = best ? forJob.find((r) => r.row.id === best.id)?.document : undefined;
+  const unmeasured: Unmeasured[] = (bestDoc?.sections ?? [])
+    .flatMap((s) => (s.kind === "entries" ? s.entries.flatMap((e) => e.bullets.map((b) => ({ bulletId: b.id, text: b.text, org: e.org }))) : []))
+    .filter((b) => liveIds.has(b.bulletId) && !hasNumber(b.text))
+    .slice(0, 3);
   const newestBuilt = forJob[0]?.row.createdAt ?? null;
   const stale = Boolean(newestBuilt && factAt && factAt > newestBuilt);
 
@@ -234,7 +245,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
           Make it stronger
         </h2>
         <p className="mt-1 mb-4 max-w-2xl text-[14px] leading-6 text-muted-foreground">
-          {gaps.length
+          {gaps.length || unmeasured.length
             ? "The fastest way to a better resume is real evidence for what they ask. Tell me where you've done each one, in your own words. I'll write the bullet and rescore your fit. Nothing gets added that you didn't say."
             : "Nothing left to ask about for this posting."}
         </p>
@@ -245,6 +256,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
           experiences={experiences.filter((e) => e.kind !== "education").map((e) => ({ id: e.id, org: e.org, title: e.title }))}
           advice={hardGaps(fit)}
         />
+        <MeasureBullets jobId={job.id} bullets={unmeasured} />
       </section>
 
       <section aria-labelledby="next-heading" className="mt-12 rounded-2xl border bg-muted/30 p-5 sm:p-6">
