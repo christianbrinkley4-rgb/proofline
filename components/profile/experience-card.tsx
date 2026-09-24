@@ -10,14 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { BulletRow, type BulletView } from "./bullet-row";
+import { ExperienceEdit, type EditableExperience } from "./experience-edit";
 
 export type ExperienceCardData = {
   id: string;
-  kind: string;
+  kind: EditableExperience["kind"];
   org: string;
   title: string | null;
   dates: string;
   location: string | null;
+  startDate: string | null;
+  endDate: string | null;
   facts: FactView[];
   bullets: BulletView[];
 };
@@ -58,6 +61,17 @@ export function ExperienceCard({ experience }: { experience: ExperienceCardData 
           <div className="flex items-center gap-2">
             <h3 className="truncate text-[16px] font-semibold tracking-tight">{experience.org}</h3>
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{KIND_LABEL[experience.kind] ?? experience.kind}</span>
+            <ExperienceEdit
+              experience={{
+                id: experience.id,
+                kind: experience.kind,
+                org: experience.org,
+                title: experience.title ?? "",
+                location: experience.location ?? "",
+                startDate: experience.startDate ?? "",
+                endDate: experience.endDate ?? "",
+              }}
+            />
           </div>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             {[experience.title, experience.location, experience.dates].filter(Boolean).join(" · ")}

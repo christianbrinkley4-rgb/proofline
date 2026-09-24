@@ -97,6 +97,8 @@ export default async function ProfilePage() {
                   org: e.org,
                   title: e.title,
                   location: e.location,
+                  startDate: e.startDate,
+                  endDate: e.endDate,
                   dates: e.startDate || e.endDate ? formatRange(e.startDate, e.endDate) : "",
                   facts: facts.filter((f) => f.experienceId === e.id).map(toView),
                   bullets: bullets

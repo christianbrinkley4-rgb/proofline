@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
+import { archiveExperience, ExperienceDetailsSchema, updateExperience, type ExperienceDetails } from "@/lib/kb/experiences";
 import { addFact } from "@/lib/kb/facts";
 import { archiveBullet, editBullet, generateBullets, setBulletFavorite } from "@/lib/resume/bullets/service";
 
@@ -32,6 +33,32 @@ export async function favoriteBulletAction(bulletId: string, favorite: boolean) 
 
 export async function archiveBulletAction(bulletId: string) {
   await archiveBullet(await userId(), bulletId);
+  refresh();
+}
+
+export async function updateExperienceAction(
+  experienceId: string,
+  input: ExperienceDetails,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parsed = ExperienceDetailsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
+  const v = parsed.data;
+  const row = await updateExperience(await userId(), z.uuid().parse(experienceId), {
+    kind: v.kind,
+    org: v.org,
+    title: v.title || null,
+    location: v.location || null,
+    startDate: v.startDate || null,
+    endDate: v.endDate || null,
+  });
+  if (!row) return { ok: false, error: "That experience is no longer on your profile." };
+  refresh();
+  return { ok: true };
+}
+
+/** Hidden from the profile, matching, and new resumes. Sent resumes keep their copy. */
+export async function archiveExperienceAction(experienceId: string) {
+  await archiveExperience(await userId(), z.uuid().parse(experienceId));
   refresh();
 }
 
