@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db, dbReady, schema } from "@/lib/db";
-import { diffResults, listWatched, markViewed, unwatchSearch, watchedWithNews, watchSearch } from "./saved";
+import { diffResults, listWatched, markViewed, REFRESH_AFTER_MS, refreshDue, releaseFailedClaim, tryClaimDueSearch, unwatchSearch, watchedWithNews, watchSearch } from "./saved";
 
 const userId = "test-user-saved";
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -44,6 +44,28 @@ describe("watched searches", () => {
     expect(view.fresh.map((f) => f.title)).toEqual(["Audit Intern"]);
     await markViewed(userId, search.id);
     expect((await watchedWithNews(userId))[0].fresh).toEqual([]);
+  });
+
+  it("claims a due search once and retries after a failed attempt", async () => {
+    const [search] = await listWatched(userId);
+    const previousRun = new Date(Date.now() - REFRESH_AFTER_MS - 60_000);
+    await db.update(schema.savedSearch).set({ lastRunAt: previousRun }).where(eq(schema.savedSearch.id, search.id));
+    const [due] = await listWatched(userId);
+    const claimedAt = new Date();
+    const cutoff = new Date(Date.now() - REFRESH_AFTER_MS);
+    const claims = await Promise.all([
+      tryClaimDueSearch(due, cutoff, claimedAt),
+      tryClaimDueSearch(due, cutoff, claimedAt),
+    ]);
+    expect(claims.sort()).toEqual([false, true]);
+
+    await releaseFailedClaim(due, claimedAt);
+    const [retryable] = await listWatched(userId);
+    expect(retryable.lastRunAt?.getTime()).toBe(previousRun.getTime());
+    const retryAt = new Date();
+    expect(await tryClaimDueSearch(retryable, cutoff, retryAt)).toBe(true);
+    await releaseFailedClaim(retryable, retryAt);
+    expect(await refreshDue({ userId, deadline: new Date(0) })).toBe(0);
   });
 
   it("stops watching", async () => {

@@ -54,9 +54,9 @@ export function parseIntent(query: string, defaults: IntentDefaults = {}): JobIn
     return " ";
   });
 
-  // "Remote or anywhere", "anywhere in the US", "any location": no place or setup limits, not even the profile's.
+  // "Anywhere", "worldwide", "globally": no place or setup limits, not even the profile's.
   let anywhere = false;
-  q = q.replace(/\b(?:remote\s+or\s+)?(?:anywhere|any ?where|any location|any city|nationwide|all locations)(?:\s+in\s+the\s+(?:us|u\.s\.|usa|united states|country))?(?:\s+or\s+remote)?\b/g, () => {
+  q = q.replace(/\b(?:remote\s+or\s+)?(?:anywhere|any ?where|any location|any city|nationwide|all locations|worldwide|globally|across the world)(?:\s+in\s+the\s+(?:us|u\.s\.|usa|united states|country))?(?:\s+or\s+remote)?\b/g, () => {
     anywhere = true;
     return " ";
   });

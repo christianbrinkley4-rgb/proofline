@@ -102,7 +102,7 @@ Later on September 24:
 
 - **Chat with the agent** on the Agent page, over the same tool layer. With a key it's a streaming Claude tool loop; without one, a rules-based agent handles the common requests (next moves, search, watch a search, status, cover letter, prep, follow-up, saving a story).
 - **Application questions** in the packet: grounded drafts for a form's short-answer questions, with bracketed prompts for what only the student knows.
-- **Watched searches** rerun daily (on Today visits, "Check now", and `/api/cron/refresh-searches`), remember what they've shown, and surface new postings on Today.
+- **Watched searches** remember postings already shown and surface new ones on Today. "Check now" runs a search on demand. Opening Today queues up to two searches older than four hours in the background; results appear on a later visit. In production, `/api/cron/refresh-searches` checks the oldest due searches once daily at 13:00 UTC, up to 20 or the function's time budget. [Vercel Hobby permits only one cron run per day](https://vercel.com/docs/cron-jobs/usage-and-pricing), with execution sometime within that hour. This is in-app news, not an instant or email alert. Production needs `CRON_SECRET` and a persistent `DATABASE_URL`; failed searches become eligible on the next run.
 - **Learning from dismissals**: repeated patterns become suggestions (skip on-site roles, a pay floor, a company, a kind of role) that change nothing until accepted. Search now applies deal-breakers and never re-shows a dismissed job.
 - **Your data**: export everything as JSON or delete the account from Settings.
 - **Import**: two-column PDFs and LinkedIn's Save to PDF read correctly; pasted text works too.
@@ -117,3 +117,11 @@ Next: OAuth for browser-based connectors (claude.ai, ChatGPT); a profile timelin
 - Search now shares its Workday page budget across two requested roles, gives multiple Muse categories separate bounded searches, and removes known work-mode mismatches. The employer registry is still finite; external relevance and coverage have not been benchmarked.
 - A browser bookmark can carry a visible posting into a review form for jobs Proofline cannot fetch. The person checks and submits it; some sites may block bookmarks that run code.
 - Fit guidance names missing skills and eligibility issues, and no longer treats a preferred degree as a requirement. Service, operations, healthcare, and trade skills have initial matching terms. The fit score remains evidence alignment, not a chance of being hired.
+
+## September 24 coverage and freshness
+
+- Search accepts worldwide queries and no longer defaults to U.S. results when the person has no target location. Company boards use a 30-minute in-memory cache.
+- Himalayas and Jobicy add public global remote listings without keys. Each result points to and credits the provider. Their feeds have their own update windows; neither gives universal or instant coverage.
+- A saved posting from a supported Greenhouse, Lever, Ashby, or SmartRecruiters board can add that board to the person's later searches. Discovery is user-scoped and capped at 12 boards.
+- Watched searches become eligible after four hours when the person visits Today. The hosted cron stays daily to fit Vercel Hobby limits and checks up to 20 due searches per run. A persistent database and `CRON_SECRET` are required in production.
+- Wider coverage needs licensed feeds, employer or ATS partnerships, source health metrics, and event-based delivery where publishers provide it. Coverage and detection delay must be measured by source and region before making stronger claims.

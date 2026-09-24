@@ -25,6 +25,8 @@ const SOURCE_LABEL: Record<string, string> = {
   themuse: "The Muse",
   adzuna: "Adzuna",
   usajobs: "USAJOBS",
+  himalayas: "Himalayas",
+  jobicy: "Jobicy",
   link: "your link",
 };
 

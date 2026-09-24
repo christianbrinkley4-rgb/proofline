@@ -63,4 +63,11 @@ describe("search filters", () => {
     expect(passesSearchFilters({ ...base, mode: "onsite" }, intent, ["customer service"], places)).toBe(false);
     expect(passesSearchFilters({ ...base, mode: "remote" }, intent, ["customer service"], places)).toBe(true);
   });
+  it("keeps international postings when the search has no place limit", () => {
+    const intent = parseIntent("customer service jobs worldwide", { targetLocations: ["Raleigh, NC"] });
+    expect(intent.locations).toEqual([]);
+    expect(intent.roles).toContain("customer-service");
+    const london = { ...job("global", "London, UK"), title: "Customer Service Representative" };
+    expect(passesSearchFilters(london, intent, ["customer service"], [])).toBe(true);
+  });
 });

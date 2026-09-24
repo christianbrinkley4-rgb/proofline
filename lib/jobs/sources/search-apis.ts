@@ -2,6 +2,8 @@ import { detectLevel, detectMode, htmlToText, parsePay } from "../text";
 import type { NormalizedJob } from "../types";
 import { getJson } from "./http";
 
+export { searchHimalayas, searchJobicy } from "./public-remote";
+
 /**
  * Sources we query with keywords instead of downloading whole boards:
  * Workday career sites (big employers: banks, Big 4, insurers), The Muse (no key),

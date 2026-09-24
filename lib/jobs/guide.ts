@@ -16,6 +16,8 @@ const PORTAL: Record<string, { name: string; account: string }> = {
   themuse: { name: "the employer's site", account: "The link goes to the employer's own application. Some ask you to create an account." },
   adzuna: { name: "the employer's site", account: "The link goes to the original posting. Some employers ask you to create an account." },
   usajobs: { name: "USAJOBS", account: "You'll need a USAJOBS account (Login.gov). Federal applications take longer, so start early." },
+  himalayas: { name: "the original posting", account: "Check the employer application page for its exact steps." },
+  jobicy: { name: "the original posting", account: "Check the employer application page for its exact steps." },
   link: { name: "the page you pasted", account: "Check whether the site asks you to sign in before you start." },
 };
 

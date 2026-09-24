@@ -314,6 +314,8 @@ export const jobSourceEnum = pgEnum("job_source", [
   "themuse",
   "adzuna",
   "usajobs",
+  "himalayas",
+  "jobicy",
 ]);
 
 /** internship, entry (new grad, junior), experienced, or unknown when the posting doesn't say. */

@@ -67,6 +67,7 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
   const band = fitBand(fit.score);
   const guide = applicationGuide(job, requirements, profile?.school);
   const pay = formatPay(job);
+  const publicFeedName = job.source === "himalayas" ? "Himalayas" : job.source === "jobicy" ? "Jobicy" : null;
 
   return (
     <PageBody className="max-w-5xl">
@@ -102,7 +103,7 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
         {/^https?:\/\//.test(job.url) && (
           <Button size="lg" asChild>
             <a href={job.url} target="_blank" rel="noreferrer">
-              Open the application
+              {publicFeedName ? `View on ${publicFeedName}` : "Open the application"}
               <ArrowUpRight data-icon="inline-end" />
             </a>
           </Button>
@@ -121,6 +122,12 @@ export default async function JobPage({ params }: PageProps<"/app/jobs/[id]">) {
         </Button>
         <JobActions jobId={job.id} saved={data.match?.status === "saved"} />
       </div>
+
+      {publicFeedName && (
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          Job data from <a className="underline underline-offset-2 hover:text-foreground" href={job.url} target="_blank" rel="noreferrer">{publicFeedName}</a>. Check the original listing for application details.
+        </p>
+      )}
 
       {fit.cappedBy && (
         <div className="mt-6 flex items-start gap-2 rounded-lg border border-pending/40 bg-pending-soft px-4 py-3 text-[13.5px] text-pending-ink">

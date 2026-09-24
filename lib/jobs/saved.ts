@@ -7,15 +7,15 @@ import { searchJobs } from "./search";
 
 /**
  * Watched searches. Each keeps the postings it has already shown; a refresh
- * reruns the search and collects anything new until the student looks.
+ * reruns the search and collects anything new until the person looks.
  */
 
 export type SavedSearch = typeof schema.savedSearch.$inferSelect;
 
 const MAX_WATCHED = 10;
 const MAX_SEEN = 1000;
-/** How old a watched search can get before it's refreshed again. */
-export const REFRESH_AFTER_MS = 20 * 60 * 60 * 1000;
+/** Visits can refresh a watched search once it is four hours old. The hosted cron runs daily. */
+export const REFRESH_AFTER_MS = 4 * 60 * 60 * 1000;
 
 const norm = (q: string) => q.trim().toLowerCase().replace(/\s+/g, " ");
 
@@ -57,7 +57,7 @@ export async function unwatchSearch(userId: string, id: string) {
   await db.delete(schema.savedSearch).where(and(eq(schema.savedSearch.id, z.uuid().parse(id)), eq(schema.savedSearch.userId, userId)));
 }
 
-/** The student opened the search; its new postings are no longer new. */
+/** The person opened the search; its new postings are no longer new. */
 export async function markViewed(userId: string, id: string) {
   await db.update(schema.savedSearch).set({ newJobIds: [] }).where(and(eq(schema.savedSearch.id, z.uuid().parse(id)), eq(schema.savedSearch.userId, userId)));
 }
@@ -77,9 +77,32 @@ export async function refreshSearch(userId: string, id: string): Promise<{ fresh
   return { fresh: next.fresh.length, total: results.length };
 }
 
+/** Atomically claim a due search; concurrent cron/page runs may select the same row. */
+export async function tryClaimDueSearch(search: SavedSearch, cutoff: Date, claimedAt: Date): Promise<boolean> {
+  const claimed = await db
+    .update(schema.savedSearch)
+    .set({ lastRunAt: claimedAt })
+    .where(and(
+      eq(schema.savedSearch.id, search.id),
+      eq(schema.savedSearch.alerts, true),
+      or(isNull(schema.savedSearch.lastRunAt), lt(schema.savedSearch.lastRunAt, cutoff)),
+    ))
+    .returning({ id: schema.savedSearch.id });
+  return claimed.length === 1;
+}
+
+/** A failed attempt must not look like a successful check or wait another four hours. */
+export async function releaseFailedClaim(search: SavedSearch, claimedAt: Date): Promise<void> {
+  await db
+    .update(schema.savedSearch)
+    .set({ lastRunAt: search.lastRunAt })
+    .where(and(eq(schema.savedSearch.id, search.id), eq(schema.savedSearch.lastRunAt, claimedAt)));
+}
+
 /** Refreshes watched searches that haven't run recently, oldest first. For the scheduler and page visits. */
-export async function refreshDue(opts: { userId?: string; limit?: number; now?: Date } = {}): Promise<number> {
-  const cutoff = new Date((opts.now ?? new Date()).getTime() - REFRESH_AFTER_MS);
+export async function refreshDue(opts: { userId?: string; limit?: number; now?: Date; deadline?: Date } = {}): Promise<number> {
+  const now = opts.now ?? new Date();
+  const cutoff = new Date(now.getTime() - REFRESH_AFTER_MS);
   const due = await db.query.savedSearch.findMany({
     where: and(
       eq(schema.savedSearch.alerts, true),
@@ -91,13 +114,21 @@ export async function refreshDue(opts: { userId?: string; limit?: number; now?: 
   });
   let done = 0;
   for (const search of due) {
+    // Leave time for the current search to finish before the host ends the function.
+    if (opts.deadline && Date.now() >= opts.deadline.getTime()) break;
+    const claimedAt = new Date();
+    if (!(await tryClaimDueSearch(search, cutoff, claimedAt))) continue;
     try {
-      // Claim it first so an overlapping refresh doesn't run the same search twice.
-      await db.update(schema.savedSearch).set({ lastRunAt: new Date() }).where(eq(schema.savedSearch.id, search.id));
       await refreshSearch(search.userId, search.id);
       done++;
-    } catch {
-      // One failing source shouldn't stop the rest; it's retried next time.
+    } catch (error) {
+      // A failed check keeps its last successful time and is eligible on the next run.
+      try {
+        await releaseFailedClaim(search, claimedAt);
+      } catch (releaseError) {
+        console.error("Could not release watched search claim", { searchId: search.id, error: releaseError });
+      }
+      console.error("Watched search refresh failed", { searchId: search.id, error });
     }
   }
   return done;

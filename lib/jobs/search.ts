@@ -8,12 +8,13 @@ import { parseRequirements } from "@/lib/fit/requirements";
 import { fitBand } from "@/lib/fit/rubric";
 import { getProfile } from "@/lib/kb/profile";
 import { parseIntent } from "./intent";
+import { discoveredBoardsForUser } from "./discovery";
 import { isRemoteText, isUSLocation, matchesPlace, resolvePlace } from "./locations";
 import { BOARDS, workdayFor } from "./registry";
 import { familiesFor, titleExcluded, titleWordsFor, workdayQueriesFor } from "./roles";
 import { fetchBoard, fetchBoardDetail, type BoardRef } from "./sources/boards";
 import { mapLimit } from "./sources/http";
-import { adzunaConfigured, planMuseSearches, searchAdzuna, searchMuse, searchUsaJobs, searchWorkday, usajobsConfigured, workdayDetail } from "./sources/search-apis";
+import { adzunaConfigured, planMuseSearches, searchAdzuna, searchHimalayas, searchJobicy, searchMuse, searchUsaJobs, searchWorkday, usajobsConfigured, workdayDetail } from "./sources/search-apis";
 import { saveMatches, upsertJobs, type JobRow } from "./store";
 import { collapseLocations, isStale, SOURCE_RANK } from "./collapse";
 import { dedupeKey } from "./text";
@@ -21,11 +22,11 @@ import type { JobIntent, NormalizedJob, SearchProgress, SearchStats } from "./ty
 
 /**
  * The agent's job hunt: one plain-language query in, ranked real openings out.
- * Boards are cached in memory for a few hours so repeat searches are instant;
- * everything that matches is stored and scored for this student.
+ * Boards are cached briefly so repeat searches are fast;
+ * everything that matches is stored and scored for this person.
  */
 
-const BOARD_TTL_MS = 6 * 60 * 60 * 1000;
+const BOARD_TTL_MS = 30 * 60 * 1000;
 type BoardCache = Map<string, { at: number; jobs: NormalizedJob[] }>;
 const globalCache = globalThis as unknown as { __prooflineBoards?: BoardCache };
 const boardCache: BoardCache = (globalCache.__prooflineBoards ??= new Map());
@@ -71,10 +72,12 @@ export function passesSearchFilters(job: NormalizedJob, intent: JobIntent, roleW
   const remoteJob = job.mode === "remote" || isRemoteText(job.location);
   const valid = places.filter((p) => p !== null);
   if (valid.length) {
-    return valid.some((p) => matchesPlace(job.location, p)) || (remoteJob && remoteOk && isUSLocation(job.location ?? "US"));
+    const broadlyRemote = /\b(anywhere|worldwide|global)\b/i.test(job.location ?? "") || /^remote$/i.test(job.location?.trim() ?? "");
+    const remoteInUS = isUSLocation(job.location) && valid.some((place) => Boolean(place.state));
+    return valid.some((p) => matchesPlace(job.location, p)) || (remoteJob && remoteOk && (broadlyRemote || remoteInUS));
   }
   if (intent.modes.length === 1 && intent.modes[0] === "remote") return remoteJob;
-  return isUSLocation(job.location) || (remoteJob && !/\b(uk|europe|emea|apac|india|canada|germany|london)\b/i.test(job.location ?? ""));
+  return true;
 }
 
 export type JobResult = {
@@ -127,15 +130,16 @@ export async function searchJobs(
   const candidates: NormalizedJob[] = [];
   let scanned = 0;
 
-  // Company boards
-  emit({ type: "status", message: `Searching ${BOARDS.length} company job boards` });
+  // Company boards, including supported ATS boards found from this user's saved jobs.
+  const boards = [...BOARDS, ...await discoveredBoardsForUser(userId)];
+  emit({ type: "status", message: `Searching ${boards.length} company job boards` });
   let done = 0;
-  await mapLimit(BOARDS, 12, async (ref) => {
+  await mapLimit(boards, 12, async (ref) => {
     const jobs = await boardJobs(ref);
     scanned += jobs.length;
     candidates.push(...jobs.filter((j) => passesSearchFilters(j, intent, roleWords, places, dealBreakers)));
     done++;
-    if (done % 20 === 0 || done === BOARDS.length) emit({ type: "status", message: `Searched ${done} of ${BOARDS.length} company boards` });
+    if (done % 20 === 0 || done === boards.length) emit({ type: "status", message: `Searched ${done} of ${boards.length} company boards` });
   });
   emit({ type: "source", source: "Company job boards", found: candidates.length });
 
@@ -173,6 +177,24 @@ export async function searchJobs(
   const museKept = muse.filter((j) => passesSearchFilters(j, intent, roleWords, places, dealBreakers));
   candidates.push(...museKept);
   emit({ type: "source", source: "The Muse", found: museKept.length });
+
+  // Public global remote feeds. A search without a role has no useful keyword
+  // for these endpoints, so the company boards and Muse carry that search.
+  const remoteKeyword = workdayQueries[0]?.trim();
+  if (remoteKeyword) {
+    emit({ type: "status", message: "Checking global remote job feeds" });
+    const feeds = await Promise.all([
+      searchHimalayas(remoteKeyword).catch(() => [] as NormalizedJob[]),
+      searchJobicy(remoteKeyword).catch(() => [] as NormalizedJob[]),
+    ]);
+    for (const [index, feed] of feeds.entries()) {
+      scanned += feed.length;
+      const kept = feed.filter((job) => passesSearchFilters(job, intent, roleWords, places, dealBreakers));
+      candidates.push(...kept);
+      emit({ type: "source", source: index === 0 ? "Himalayas" : "Jobicy", found: kept.length });
+    }
+    sourcesSearched += feeds.length;
+  }
 
   if (adzunaConfigured() || usajobsConfigured()) {
     const where = intent.locations[0] ?? null;
@@ -252,7 +274,7 @@ export async function searchJobs(
   await saveMatches(userId, scored, opts.savedSearchId);
 
   const stats: SearchStats = {
-    boardsSearched: BOARDS.length + workday.length,
+    boardsSearched: boards.length + workday.length,
     sourcesSearched,
     scanned,
     matched: scored.length,

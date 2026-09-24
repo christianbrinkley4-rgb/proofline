@@ -1,4 +1,4 @@
-export type JobSource = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workday" | "themuse" | "adzuna" | "usajobs" | "link";
+export type JobSource = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workday" | "themuse" | "adzuna" | "usajobs" | "himalayas" | "jobicy" | "link";
 export type JobMode = "remote" | "hybrid" | "onsite" | "unknown";
 export type JobLevel = "internship" | "entry" | "experienced" | "unknown";
 

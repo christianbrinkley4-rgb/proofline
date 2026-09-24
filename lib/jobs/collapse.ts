@@ -2,10 +2,10 @@ import type { NormalizedJob } from "./types";
 
 /** Direct employer sources beat aggregators when the same role shows up twice. */
 export const SOURCE_RANK: Record<NormalizedJob["source"], number> = {
-  greenhouse: 5, lever: 5, ashby: 5, workday: 5, smartrecruiters: 4, link: 4, themuse: 2, usajobs: 3, adzuna: 1,
+  greenhouse: 5, lever: 5, ashby: 5, workday: 5, smartrecruiters: 4, link: 4, themuse: 2, usajobs: 3, adzuna: 1, himalayas: 1, jobicy: 1,
 };
 
-export const AGGREGATORS = new Set<NormalizedJob["source"]>(["themuse", "adzuna", "usajobs"]);
+export const AGGREGATORS = new Set<NormalizedJob["source"]>(["themuse", "adzuna", "usajobs", "himalayas", "jobicy"]);
 
 /** Aggregator postings older than this are usually closed or from a past hiring cycle. */
 export const STALE_DAYS = 120;
