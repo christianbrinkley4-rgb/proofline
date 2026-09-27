@@ -14,7 +14,7 @@ Status: **small beta live** at https://proofline-beta.vercel.app. The founder au
 
 ## Prepared infrastructure
 
-- Vercel project: proofline-beta in christianbrinkley4-5140s-projects, linked to this checkout. Production deployment dpl_3htDLt1asN2UxTHpmcTs15DWhdj5 reported READY and is aliased to https://proofline-beta.vercel.app.
+- Vercel project: proofline-beta in christianbrinkley4-5140s-projects, linked to this checkout. Current production deployment dpl_G4uEvN4riT41rNmRCC4f8kMKhMUX reported READY and is aliased to https://proofline-beta.vercel.app.
 - Neon project: Proofline beta on the Free plan, production branch in AWS us-east-2. Hosted migrations through 0012 are applied. The career tables, completion column, and shared model-budget table were verified.
 - Vercel production settings include DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, NEXT_PUBLIC_SITE_URL, and CRON_SECRET.
 - The founder chose an independent rules-based first beta. Vercel production has PROOFLINE_AI_MODE=rules, so no external model call runs even if a key is later present. No Anthropic key is configured or needed for this beta. Per-account and platform-wide model credit ceilings remain implemented for a future optional model mode; the platform setting is 80 credits per UTC day, but credits are request reservations, not a dollar budget.
@@ -38,6 +38,12 @@ Commit 688e6b9 passed 563 tests across 63 files, typecheck, lint, a local and ho
 Pasted job descriptions are now readable only by the account that imported them. The shared lookup and status writer enforce this, and resume generation, comparison, cover-letter packet, and interview context use the guarded lookup. The database test checks that another account cannot read or save a pasted posting while a public listing remains accessible. The comparison page shows the latest version of each resume strategy and notes that older versions remain in the Resumes list.
 
 Commit 087d821 passed 564 tests across 63 files, typecheck, lint, and local and Vercel production builds. The local synthetic account still opened its compare and packet pages. Deployment dpl_3htDLt1asN2UxTHpmcTs15DWhdj5 reported READY. The live landing and signup returned 200, signed-out comparison redirected to login, and /api/dev/login returned 404. The cross-account denial was verified in a database regression test; a second authenticated hosted account was not used for this release check.
+
+## September 27 application-outcome coaching update
+
+The tracker now asks for optional reflections when a person records an employer reply: what might have helped and one thing to try next time. The checkbox for using that reply in future guidance improvements for others starts unchecked. Each reply records the application and the attached resume version; deleting the application removes its reply history. The rules-based agent can read only that account's outcomes and use the person's stated next experiment. It labels them self-reported and does not infer that a resume or letter caused an interview or rejection. The tracker labels its interview count as active stages, so a later rejection does not make a historical claim about interviews.
+
+Commit 2b156b0 passed 567 tests across 64 files, typecheck, lint, local and Vercel production builds. A local synthetic account recorded an interview reply with consent off; the tracker showed the reflection and the agent used its next experiment. Production deployment dpl_G4uEvN4riT41rNmRCC4f8kMKhMUX reported READY. The live landing and signup returned 200, signed-out /app/tracker redirected to login, and /api/dev/login returned 404. These are product and access checks, not proof of hiring success. No cross-user outcome learning pipeline is active; improvement consent is stored for future reviewed use.
 
 ## Release verification and current limits
 
