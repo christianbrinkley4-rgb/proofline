@@ -3,7 +3,7 @@ import { TailorStarter } from "@/components/resume/tailor-starter";
 import { requireSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-export const metadata: Metadata = { title: "Tailoring your resume" };
+export const metadata: Metadata = { title: "Building your resume" };
 
 export default async function NewResumePage({ searchParams }: PageProps<"/app/resumes/new">) {
   await requireSession();

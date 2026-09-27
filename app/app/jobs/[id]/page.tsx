@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
-import { ArrowLeft, ArrowUpRight, Check, Minus, PenLine, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUpRight, Check, Minus, PenLine, TriangleAlert } from "lucide-react";
 import { FitBreakdown } from "@/components/jobs/fit-breakdown";
 import { GapCoach } from "@/components/jobs/gap-coach";
 import { MeasureBullets, type Unmeasured } from "@/components/jobs/measure-bullets";
@@ -18,6 +18,7 @@ import { db, schema } from "@/lib/db";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { gapId, hardGaps, skillGaps } from "@/lib/fit/gaps";
+import { promptsForGaps } from "@/lib/fit/gap-prompts";
 import { FIT_BAND_LABEL, fitBand } from "@/lib/fit/rubric";
 import { applicationGuide } from "@/lib/jobs/guide";
 import { formatPay } from "@/lib/jobs/search";
@@ -25,7 +26,7 @@ import { fetchBoardDetail } from "@/lib/jobs/sources/boards";
 import { workdayDetail } from "@/lib/jobs/sources/search-apis";
 import { getJobForUser, requirementsOf, saveMatches, upsertJobs } from "@/lib/jobs/store";
 import { listExperiences } from "@/lib/kb/experiences";
-import { factCounts } from "@/lib/kb/facts";
+import { factCounts, listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { VARIANT_BLURB, VARIANT_LABEL, type VariantId } from "@/lib/resume/document";
 import { listBullets } from "@/lib/resume/bullets/service";
@@ -80,7 +81,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
 
   // Always score against the profile as it is now: confirming a fact should move the number.
   const requirements = requirementsOf(job);
-  const [candidate, profile, allResumes, application, facts, experiences, declined, factAt, liveBullets] = await Promise.all([
+  const [candidate, profile, allResumes, application, facts, experiences, declined, factAt, liveBullets, confirmedStatements, rejectedTasks] = await Promise.all([
     loadCandidate(userId),
     getProfile(userId),
     listResumes(userId),
@@ -90,6 +91,8 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
     declinedSkills(userId),
     latestFactAt(userId),
     listBullets(userId),
+    listFacts(userId, { states: ["confirmed"] }),
+    db.query.bulletSuggestion.findMany({ where: and(eq(schema.bulletSuggestion.userId, userId), eq(schema.bulletSuggestion.status, "rejected")) }),
   ]);
   const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements }, candidate);
   await saveMatches(userId, [{ job, fit }]);
@@ -122,6 +125,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
   // Bullets on the best version that don't carry a number yet, skipping any already rewritten.
   const liveIds = new Set(liveBullets.filter((b) => b.status === "active").map((b) => b.id));
   const bestDoc = best ? forJob.find((r) => r.row.id === best.id)?.document : undefined;
+  const limitedEvidence = (bestDoc?.sections.flatMap((section) => section.kind === "entries" ? section.entries.flatMap((entry) => entry.bullets) : []).length ?? 0) <= 2;
   const unmeasured: Unmeasured[] = (bestDoc?.sections ?? [])
     .flatMap((s) => (s.kind === "entries" ? s.entries.flatMap((e) => e.bullets.map((b) => ({ bulletId: b.id, text: b.text, org: e.org }))) : []))
     .filter((b) => liveIds.has(b.bulletId) && !hasNumber(b.text))
@@ -129,7 +133,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
   const newestBuilt = forJob[0]?.row.createdAt ?? null;
   const stale = Boolean(newestBuilt && factAt && factAt > newestBuilt);
 
-  const gaps = skillGaps(fit, declined);
+  const gaps = promptsForGaps(skillGaps(fit, declined), experiences, confirmedStatements, rejectedTasks, job.description);
   const missingIds = new Set([...fit.details.requiredSkills.missing, ...fit.details.preferredSkills.missing, ...fit.details.keywords.missing].map(gapId));
   const declinedHere = [...fit.details.requiredSkills.missing, ...fit.details.preferredSkills.missing, ...fit.details.keywords.missing].filter(
     (s, i, all) => declined.has(gapId(s)) && all.findIndex((x) => gapId(x) === gapId(s)) === i,
@@ -138,12 +142,13 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
   const blocked = ready ? null : "Your resumes are built only from facts you've confirmed, and there aren't enough yet. Add one experience and come back: your fit and resumes will be waiting.";
 
   const status = !trio.length
-    ? { step: 3, text: "Next: your three tailored resumes." }
+    ? { step: 3, text: "Next: your three tailored resumes.", href: "#resumes" }
     : gaps.length
-      ? { step: 4, text: `Next: ${gaps.length} ${gaps.length === 1 ? "thing" : "things"} the posting asks for that your resume doesn't show yet.` }
+      ? { step: 4, text: `Next: answer ${gaps.length} ${gaps.length === 1 ? "question" : "questions"} about what the posting asks for.`, href: "#strengthen" }
       : stale
-        ? { step: 4, text: "Next: rebuild your resumes with what you just added." }
-        : { step: 5, text: "Your resume is as strong as your evidence allows. Download the best one." };
+        ? { step: 4, text: "Next: rebuild your resumes with what you just added.", href: "#resumes" }
+        : { step: 5, text: "Your resume is as strong as your evidence allows. Next: the cover letter.", href: "#next-heading" };
+  const modeLabel = job.mode !== "unknown" ? job.mode[0].toUpperCase() + job.mode.slice(1) : null;
 
   return (
     <PageBody className="max-w-5xl">
@@ -158,12 +163,20 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
           <div className="min-w-0">
             <h1 className="font-display text-[26px] leading-tight font-semibold sm:text-[32px]">{job.title}</h1>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
-              {[job.company, job.location, job.mode !== "unknown" ? job.mode[0].toUpperCase() + job.mode.slice(1) : null, pay].filter(Boolean).join(" · ")}
+              {[job.company, job.location, modeLabel && !job.location?.toLowerCase().includes(job.mode) ? modeLabel : null, pay].filter(Boolean).join(" · ")}
             </p>
-            <p className={cn("mt-3 inline-flex items-center gap-2 text-[13px] font-medium", status.step > 4 ? "text-brand-ink" : "text-foreground")}>
-              <span className={cn("size-1.5 rounded-full", status.step > 4 ? "bg-brand" : "bg-ink")} />
+            {/* The next step is a link straight to where it happens, not just a sentence. */}
+            <a
+              href={status.href}
+              className={cn(
+                "mt-3 inline-flex min-h-10 items-center gap-2 text-[13px] font-medium underline-offset-4 hover:underline",
+                status.step > 4 ? "text-brand-ink" : "text-foreground",
+              )}
+            >
+              <span className={cn("size-1.5 shrink-0 rounded-full", status.step > 4 ? "bg-brand" : "bg-ink")} />
               {status.text}
-            </p>
+              <ArrowDown className="size-3.5 shrink-0" />
+            </a>
           </div>
         </div>
         <div className="flex shrink-0 items-baseline gap-1 sm:flex-col sm:items-end">
@@ -207,7 +220,13 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
         <div className="rounded-2xl border bg-background p-5">
           <h3 className="text-[13px] font-medium text-subtle-foreground">What they ask for that you haven&apos;t shown</h3>
           <ul className="mt-2 space-y-1.5">
-            {fit.gaps.length === 0 && <li className="text-[13.5px] text-muted-foreground">Nothing obvious.</li>}
+            {fit.gaps.length === 0 && (
+              <li className="text-[13.5px] text-muted-foreground">
+                {gaps.length
+                  ? `Nothing major. The posting also mentions ${gaps.length === 1 ? "a term" : `${gaps.length} terms`} your resume doesn't show; see Make it stronger below.`
+                  : "Nothing obvious."}
+              </li>
+            )}
             {fit.gaps.map((g) => (
               <li key={g} className="flex gap-2 text-[14px] text-muted-foreground">
                 <Minus className="mt-0.5 size-3.5 shrink-0" strokeWidth={2.5} />
@@ -233,11 +252,11 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
           </h2>
           {best && best.total > 0 && (
             <p className="text-[13px] text-muted-foreground">
-              Best pick: <span className="font-medium text-foreground">{best.label}</span>, showing {best.covered} of {best.total} requirements.
+              Current pick: <span className="font-medium text-foreground">{best.label}</span>, showing {best.covered} of {best.total} posting points.
             </p>
           )}
         </div>
-        <ResumeTrio jobId={job.id} resumes={trio} bestId={best?.id ?? null} stale={stale} autoBuild={autoBuild && ready} blocked={blocked} />
+        <ResumeTrio jobId={job.id} resumes={trio} bestId={best?.id ?? null} stale={stale} autoBuild={autoBuild && ready} blocked={blocked} limitedEvidence={limitedEvidence} />
       </section>
 
       <section id="strengthen" aria-labelledby="strengthen-heading" className="mt-10 scroll-mt-20">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
@@ -11,13 +11,33 @@ import { signIn, signUp } from "@/lib/auth-client";
 
 type Mode = "signup" | "login";
 
+/** Turns auth-library messages into plain next steps. */
+function friendlyError(message: string | undefined, mode: Mode) {
+  const text = (message ?? "").toLowerCase();
+  if (text.includes("too short")) return "Use a password with at least 8 characters.";
+  if (text.includes("too long")) return "That password is too long. Try one under 128 characters.";
+  if (text.includes("already exists") || text.includes("already registered")) {
+    return "There's already an account with that email. Sign in instead.";
+  }
+  if (text.includes("invalid email or password") || text.includes("invalid password")) {
+    return "That email and password don't match. Check both and try again.";
+  }
+  if (text.includes("invalid email")) return "That email doesn't look right. Check it and try again.";
+  if (message) return message;
+  return mode === "signup" ? "We couldn't create your account. Try again." : "We couldn't sign you in. Try again.";
+}
+
 export function AuthForm({ mode }: { mode: Mode }) {
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function onSubmit(form: FormData) {
+  // A plain submit handler, not a form action: React resets a form after its action
+  // runs, which would wipe what the person typed whenever sign-up fails.
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
     setPending(true);
     setError(null);
     const email = String(form.get("email") ?? "").trim();
@@ -28,7 +48,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         : await signIn.email({ email, password });
 
     if (result.error) {
-      setError(result.error.message ?? "That didn't work. Try again.");
+      setError(friendlyError(result.error.message, mode));
       setPending(false);
       return;
     }
@@ -48,7 +68,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           : "Sign in to pick up where your agent left off."}
       </p>
 
-      <form action={onSubmit} className="mt-8 space-y-4">
+      <form onSubmit={onSubmit} className="mt-8 space-y-4" aria-describedby={error ? "auth-error" : undefined}>
         {mode === "signup" && (
           <div className="space-y-1.5">
             <Label htmlFor="name">Your name</Label>
@@ -68,13 +88,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
             minLength={8}
             required
+            aria-describedby={mode === "signup" ? "password-hint" : undefined}
             className="h-10"
           />
-          {mode === "signup" && <p className="text-[12.5px] text-subtle-foreground">At least 8 characters.</p>}
+          {mode === "signup" && (
+            <p id="password-hint" className="text-[12.5px] text-subtle-foreground">
+              At least 8 characters.
+            </p>
+          )}
         </div>
 
         {error && (
-          <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
+          <p id="auth-error" role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
             {error}
           </p>
         )}

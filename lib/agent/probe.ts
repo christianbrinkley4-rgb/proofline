@@ -50,7 +50,7 @@ const PROBES: Probe[] = [
       return {
         prompt: `About how many ${noun} did you handle, and how often? For example "40 a month".`,
         kind: "text",
-        factTemplate: `Handled about {answer} ${noun}${at(ctx)}`,
+        factTemplate: `Volume: {answer}${at(ctx)}`,
         factCategory: "metric" satisfies FactCategory,
         priority: 8,
       };

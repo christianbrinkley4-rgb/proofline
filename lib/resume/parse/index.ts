@@ -73,13 +73,14 @@ export async function resumeToText(file: ResumeFile): Promise<string> {
 export type ParseResult = { parsed: ParsedResume; method: "model" | "rules"; text: string };
 
 /** Pasted text (a Google Doc, LinkedIn sections, notes) through the same model-then-rules path. */
-export async function parseResumeText(text: string): Promise<ParseResult> {
+export async function parseResumeText(text: string, userId?: string): Promise<ParseResult> {
   const clean = text.replace(/\r/g, "").replace(/ /g, " ").trim();
   const llm = getLlm();
   if (llm) {
     try {
       const parsed = await llm.generateObject({
         purpose: "resume.parse",
+        userId,
         promptVersion: RESUME_PARSE_V1.version,
         system: RESUME_PARSE_V1.system,
         input: `Extract this resume:\n\n${clean}`,
@@ -98,7 +99,7 @@ export async function parseResumeText(text: string): Promise<ParseResult> {
  * Model first when one is configured (it handles unusual layouts), rules otherwise
  * or if the model fails. Either way the result is only a set of proposals.
  */
-export async function parseResume(file: ResumeFile): Promise<ParseResult> {
+export async function parseResume(file: ResumeFile, userId?: string): Promise<ParseResult> {
   const text = await resumeToText(file);
   const llm = getLlm();
   if (llm) {
@@ -115,6 +116,7 @@ export async function parseResume(file: ResumeFile): Promise<ParseResult> {
           : `Extract this resume:\n\n${text}`;
       const parsed = await llm.generateObject({
         purpose: "resume.parse",
+        userId,
         promptVersion: RESUME_PARSE_V1.version,
         system: RESUME_PARSE_V1.system,
         input,

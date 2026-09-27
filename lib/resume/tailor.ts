@@ -4,10 +4,14 @@ import { db, schema } from "@/lib/db";
 import { extractSkills, skillCategory } from "@/lib/fit/skills";
 import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
 import { ROLE_FAMILIES } from "@/lib/jobs/roles";
+import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
+import { postingOverlap } from "@/lib/jobs/relevance";
 import { listExperiences, type Experience } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { listBullets, type Bullet } from "./bullets/service";
+import { nearDuplicate } from "./suggest";
+import { educationAfterExperience } from "./section-order";
 import type { EducationEntry, ResumeDocument, ResumeEntry, ResumeSection, TemplateId, VariantId } from "./document";
 import { layoutResume, type LayoutResult } from "./layout";
 import { formatMonth, formatRange } from "./parse/dates";
@@ -80,6 +84,8 @@ export async function tailorResume(
     listFacts(userId, { states: ["confirmed"] }),
     opts.jobId ? db.query.job.findFirst({ where: eq(schema.job.id, opts.jobId) }) : Promise.resolve(null),
   ]);
+  if (opts.jobId && !job) throw new Error("Job not found.");
+  if (job && !hasUsableJobDescription(job.description)) throw new Error(JOB_DESCRIPTION_REQUIRED);
   const req = job ? ((job.requirements as unknown as Requirements | null) ?? parseRequirements(job.description)) : null;
   const labels = requirementLabels(req);
   const familyWords = job ? ROLE_FAMILIES.filter((f) => f.titleWords.some((w) => job.title.toLowerCase().includes(w))).flatMap((f) => f.titleWords) : [];
@@ -101,7 +107,7 @@ export async function tailorResume(
     ];
     const words = familyWords.filter((w) => bullet.text.toLowerCase().includes(w)).length;
     const relevance = job
-      ? skills.filter((s) => labels.required.has(s)).length * 3 + skills.filter((s) => labels.preferred.has(s)).length * 2 + skills.filter((s) => labels.mentioned.has(s)).length + Math.min(words, 2)
+      ? skills.filter((s) => labels.required.has(s)).length * 3 + skills.filter((s) => labels.preferred.has(s)).length * 2 + skills.filter((s) => labels.mentioned.has(s)).length + Math.min(words, 2) + postingOverlap(bullet.text, job.description) * 2
       : skills.length * 0.5;
     const quality = (bullet.score ?? 60) / 100 + (bullet.favorite ? 0.15 : 0);
     const experience = expById.get(bullet.experienceId)!;
@@ -142,24 +148,26 @@ export async function tailorResume(
 
   const selected = new Map<string, Scored[]>();
   const cuts: CutItem[] = [];
+  const selectedTexts: string[] = [];
   for (const b of stale) cuts.push({ bulletId: b.id, text: b.text, reason: "A supporting fact changed or is no longer confirmed. Review this bullet on your profile." });
   expOrder.forEach(({ id }, index) => {
     const list = byExperience.get(id)!;
     const exp = expById.get(id)!;
     const cap = SECTION_OF[exp.kind] === "Experience" ? (index === 0 ? 5 : 4) : 2;
-    const keep = list.slice(0, cap);
-    selected.set(id, keep);
-    for (const s of list.slice(cap)) {
-      cuts.push({
-        bulletId: s.bullet.id,
-        text: s.bullet.text,
-        reason: s.covers.length
-          ? `Good bullet, but ${exp.org} already has ${cap} stronger ones for this job.`
-          : job
-            ? "Doesn't connect to anything this posting asks for."
-            : `${exp.org} already has ${cap} stronger bullets.`,
-      });
+    const keep: Scored[] = [];
+    for (const candidate of list) {
+      if (selectedTexts.some((text) => nearDuplicate(text, candidate.bullet.text))) {
+        cuts.push({ bulletId: candidate.bullet.id, text: candidate.bullet.text, reason: "Another bullet on this page describes the same work more clearly." });
+        continue;
+      }
+      if (keep.length < cap) {
+        keep.push(candidate);
+        selectedTexts.push(candidate.bullet.text);
+      } else {
+        cuts.push({ bulletId: candidate.bullet.id, text: candidate.bullet.text, reason: `${exp.org} already has ${cap} stronger bullets for this job.` });
+      }
     }
+    selected.set(id, keep);
   });
   for (const d of drafts) {
     cuts.push({ bulletId: d.id, text: d.text, reason: "Waiting on your OK, so it can't go on a resume yet. Answer the question on your profile." });
@@ -238,6 +246,14 @@ export async function tailorResume(
       if (variant === "skills") sections.splice(sections[0]?.kind === "education" ? 1 : 0, 0, section);
       else sections.push(section);
     }
+    if (sections[0]?.kind === "education" && educationAfterExperience(
+      profile?.gradDate ?? null,
+      experiences.filter((experience) => (selected.get(experience.id)?.length ?? 0) > 0),
+    )) {
+      const [education] = sections.splice(0, 1);
+      const trailingSkills = sections.at(-1)?.kind === "skills";
+      sections.splice(trailingSkills ? sections.length - 1 : sections.length, 0, education);
+    }
     // Merged lines ("Excel (pivot tables, XLOOKUP, VLOOKUP)") still trace to every fact behind them.
     const included = new Set(lines.flatMap((line) => line.items.map(skillKey)));
     facts.filter((f) => ["skill", "tool", "certification"].includes(f.category) && included.has(skillKey(f.content))).forEach((f) => sourceFactIds.add(f.id));
@@ -303,12 +319,12 @@ export async function tailorResume(
   }
   const why: WhyItem[] = chosen.map((s) => {
     const beat = cutByExperience.get(s.experience.id)?.[0];
-    const strength = (s.bullet.score ?? 0) >= 85 ? " It's also one of your strongest bullets by our standards." : "";
+    const detail = (s.bullet.score ?? 0) >= 85 ? " Its clear action and concrete detail make it a stronger example." : "";
     const reason = s.covers.length
-      ? `Proves ${s.covers.slice(0, 2).map((c) => c.replace(/ \(.*\)$/, "")).join(" and ")}, which the posting asks for.${strength}`
+      ? `Shows ${s.covers.slice(0, 2).map((c) => c.replace(/ \(.*\)$/, "")).join(" and ")}, which the posting asks for.${detail}`
       : job
-        ? `Shows real results from ${s.experience.org}. Nothing here repeats a listed requirement, but it's among your best evidence.${strength}`
-        : `One of your strongest bullets.${strength}`;
+        ? `Adds a confirmed example from ${s.experience.org}, though it does not directly match a stated requirement.${detail}`
+        : `Shows work you confirmed at ${s.experience.org}.${detail}`;
     return {
       bulletId: s.bullet.id,
       text: s.bullet.text,

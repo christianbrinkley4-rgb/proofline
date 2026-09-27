@@ -7,7 +7,7 @@ import { db, schema } from "@/lib/db";
  */
 
 export async function exportAccount(userId: string) {
-  const [user, profile, experiences, facts, bullets, questions, storyNotes, matches, savedSearches, resumes, applications, packets, chat, events, tokens] =
+  const [user, profile, experiences, facts, bullets, questions, storyNotes, matches, savedSearches, resumes, applications, packets, chat, events, tokens, careerGoals, careerCheckins] =
     await Promise.all([
       db.query.user.findFirst({ where: eq(schema.user.id, userId), columns: { id: true, name: true, email: true, createdAt: true } }),
       db.query.profile.findFirst({ where: eq(schema.profile.userId, userId) }),
@@ -25,6 +25,8 @@ export async function exportAccount(userId: string) {
       db.query.chatMessage.findMany({ where: eq(schema.chatMessage.userId, userId) }),
       db.query.agentEvent.findMany({ where: eq(schema.agentEvent.userId, userId) }),
       db.query.apiToken.findMany({ where: eq(schema.apiToken.userId, userId), columns: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true, revokedAt: true } }),
+      db.query.careerGoal.findMany({ where: eq(schema.careerGoal.userId, userId) }),
+      db.query.careerCheckin.findMany({ where: eq(schema.careerCheckin.userId, userId) }),
     ]);
   const jobIds = [...new Set([...matches.map((m) => m.jobId), ...applications.flatMap((a) => (a.jobId ? [a.jobId] : []))])];
   const jobs = jobIds.length
@@ -49,6 +51,8 @@ export async function exportAccount(userId: string) {
     chat,
     activity: events,
     connections: tokens,
+    careerGoals,
+    careerCheckins,
   };
 }
 

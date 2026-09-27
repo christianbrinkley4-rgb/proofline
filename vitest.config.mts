@@ -7,6 +7,7 @@ export default defineConfig({
   },
   test: {
     include: ["**/*.test.ts"],
+    maxWorkers: 4,
     exclude: ["node_modules/**", ".next/**"],
   },
 });

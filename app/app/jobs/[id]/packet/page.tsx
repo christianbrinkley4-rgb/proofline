@@ -5,6 +5,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { StepSection } from "@/components/coach/step-section";
+import { FeedbackControl } from "@/components/feedback/feedback-control";
 import { ApplicationAnswers } from "@/components/packet/application-answers";
 import { CoverLetterEditor, type SourceView } from "@/components/packet/cover-letter-editor";
 import { InterviewPrep } from "@/components/packet/interview-prep";
@@ -12,7 +13,12 @@ import { Button } from "@/components/ui/button";
 import { packetStep } from "@/lib/agent/coach";
 import { requireSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
+import { loadCandidate } from "@/lib/fit/candidate";
+import { scoreFit } from "@/lib/fit/engine";
+import { jobDocumentImprovementSteps } from "@/lib/jobs/coaching";
+import { requirementsOf } from "@/lib/jobs/store";
 import { getProfile } from "@/lib/kb/profile";
+import { hasUsableJobDescription } from "@/lib/jobs/description";
 import { letterStatus } from "@/lib/packet/cover-letter";
 import { packetView } from "@/lib/packet/service";
 import { VARIANT_LABEL } from "@/lib/resume/document";
@@ -46,6 +52,12 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
   const attached = application?.resumeId ? resumes.find((r) => r.id === application.resumeId) : undefined;
   const sources: Record<string, SourceView> = Object.fromEntries(view.evidence.map((e) => [e.id, { id: e.id, text: e.text, org: e.org }]));
   const name = profile?.fullName || session.user.name;
+  const canDraft = hasUsableJobDescription(job.description);
+  const letterCoaching = view.letter ? jobDocumentImprovementSteps({
+    jobId: id,
+    fit: scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements: requirementsOf(job) }, await loadCandidate(userId)),
+    letterEvidence: view.letter.paragraphs.filter((paragraph) => paragraph.purpose === "evidence").map((paragraph) => paragraph.text),
+  }) : [];
 
   // One step at a time: attach a resume, finish the letter and the why, then apply and track.
   const letter = letterStatus(view.letter);
@@ -72,6 +84,11 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
         }
       />
 
+      {!canDraft && (
+        <div role="alert" className="mt-5 rounded-lg border border-pending/40 bg-pending-soft px-4 py-3 text-[13.5px] text-pending-ink">
+          Drafting for this job needs the full description. <Link href="/app#paste" className="underline underline-offset-2">Paste the posting on Today</Link>.
+        </div>
+      )}
       <div className="mt-8 space-y-3">
         <StepSection
           id="resume"
@@ -133,18 +150,30 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
           }
         >
           <p className="mb-4 text-[13px] leading-5 text-muted-foreground">
-            Built from confirmed evidence. Hover a source to see the fact behind it. The one part only you can write is why you want this job. Downloads
-            check every claim again first.
+            Built from confirmed evidence. Each paragraph names the experience it came from. The one part only you can write is why you want this
+            job. Downloads check every claim again first.
           </p>
+          {letterCoaching.length > 0 && (
+            <div className="mb-4 rounded-lg border bg-muted/40 p-3 text-[13px]">
+              <p className="font-medium">Improve this letter for the posting</p>
+              <ul className="mt-2 space-y-2 text-muted-foreground">
+                {letterCoaching.slice(0, 2).map((step) => (
+                  <li key={step.id}><Link href={step.href} className="font-medium text-foreground underline-offset-2 hover:underline">{step.title}</Link>. {step.detail}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <CoverLetterEditor
             jobId={id}
             company={job.company}
             signature={name}
             initialLetter={view.letter}
+            canDraft={canDraft}
             initialWhy={view.why}
             checks={view.checks}
             sources={sources}
           />
+          {view.letter && <FeedbackControl kind="cover_letter" subjectId={id} className="mt-6" />}
         </StepSection>
 
         <StepSection
@@ -190,7 +219,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
           <p className="mb-4 text-[13px] leading-5 text-muted-foreground">
             Paste a short-answer question from the form. The draft uses your strongest matching evidence and leaves what only you know for you to write.
           </p>
-          <ApplicationAnswers jobId={id} answers={view.answers} sources={sources} />
+          <ApplicationAnswers jobId={id} answers={view.answers} sources={sources} canDraft={canDraft} />
         </StepSection>
         <StepSection
           id="interview"

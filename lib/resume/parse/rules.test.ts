@@ -81,6 +81,33 @@ describe("parseResumeText", () => {
   });
 });
 
+describe("pasted resume edge cases", () => {
+  it("splits an organization, title, and dates written on one line", () => {
+    const parsed = parseResumeText("Avery Lee\nEXPERIENCE\nBull City Bistro, General Manager, March 2019 - Present\n• Scheduled staff shifts and tracked daily sales");
+    expect(parsed.entries[0]).toMatchObject({ org: "Bull City Bistro", title: "General Manager", startDate: "2019-03", endDate: null });
+  });
+
+  it("recognizes a title line followed by a company line", () => {
+    const parsed = parseResumeText("Avery Lee\nEXPERIENCE\nGeneral Manager\nBull City Bistro\n• Scheduled staff shifts and tracked daily sales");
+    expect(parsed.entries[0]).toMatchObject({ org: "Bull City Bistro", title: "General Manager" });
+  });
+
+  it("keeps a comma inside a school's name when the degree is on that line", () => {
+    const parsed = parseResumeText("Avery Lee\nEDUCATION\nUniversity of California, Berkeley, Bachelor of Science in Computer Science, 2018");
+    expect(parsed.education[0]).toMatchObject({
+      school: "University of California, Berkeley",
+      degree: "Bachelor of Science",
+      major: "Computer Science",
+      gradDate: "2018",
+    });
+  });
+
+  it("reads one-line education and keeps a certificate date with its credential", () => {
+    const parsed = parseResumeText("Avery Lee\nEDUCATION\nDurham Technical Community College, Associate in Applied Science, Hospitality Management, 2016\nCERTIFICATIONS\nCertified Clinical Data Manager (CCDM), 2016");
+    expect(parsed.education[0]).toMatchObject({ school: "Durham Technical Community College", degree: "Associate in Applied Science", major: "Hospitality Management", gradDate: "2016" });
+    expect(parsed.certifications).toEqual(["Certified Clinical Data Manager (CCDM), 2016"]);
+  });
+});
 describe("dates", () => {
   it.each([
     ["May 2025", "2025-05"],

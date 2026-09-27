@@ -106,6 +106,7 @@ async function modelCandidates(userId: string, org: string, title: string | null
   try {
     return await llm.generateObject({
       purpose: "bullets.generate",
+      userId,
       promptVersion: BULLETS_V2.version,
       system: BULLETS_V2.system,
       input,

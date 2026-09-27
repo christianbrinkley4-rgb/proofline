@@ -45,9 +45,9 @@ export default async function SettingsPage() {
       </div>
 
       <section id="ai" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
-        <div className="flex items-center gap-2"><Bot className="size-4 text-brand" /><h2 className="text-[16px] font-semibold">Use your own AI</h2></div>
+        <div className="flex items-center gap-2"><Bot className="size-4 text-brand" /><h2 className="text-[16px] font-semibold">Optional AI connection</h2></div>
         <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-muted-foreground">
-          Connect Claude, Cursor, or any app that supports MCP. Your AI can read your confirmed story, search jobs, tailor resumes, draft cover letters, and help you prep for interviews, using your own AI plan instead of ours.
+          No API key is needed to use Proofline. If you already use Claude, Cursor, or another app that supports MCP, you can connect it to your confirmed story, job search, resumes, letters, and interview prep.
         </p>
         <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-[12.5px] leading-5">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />

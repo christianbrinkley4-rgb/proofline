@@ -17,7 +17,7 @@ const count = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 const EXAMPLES = ["Why are you interested in this role?", "Describe a time you solved a problem at work.", "What experience do you have with Excel?"];
 
-export function ApplicationAnswers({ jobId, answers, sources }: { jobId: string; answers: ApplicationAnswer[]; sources: Record<string, SourceView> }) {
+export function ApplicationAnswers({ jobId, answers, sources, canDraft }: { jobId: string; answers: ApplicationAnswer[]; sources: Record<string, SourceView>; canDraft: boolean }) {
   const router = useRouter();
   const [question, setQuestion] = useState("");
   const [limit, setLimit] = useState("");
@@ -57,7 +57,7 @@ export function ApplicationAnswers({ jobId, answers, sources }: { jobId: string;
             <span>Word limit <span className="text-muted-foreground">(optional)</span></span>
             <Input value={limit} onChange={(e) => setLimit(e.target.value.replace(/[^\d]/g, ""))} inputMode="numeric" className="w-28" placeholder="150" />
           </label>
-          <Button type="submit" disabled={pending || question.trim().length < 5}>
+          <Button type="submit" disabled={pending || !canDraft || question.trim().length < 5}>
             {pending ? <LoaderCircle className="animate-spin" /> : <Sparkle data-icon="inline-start" />}
             Draft an answer
           </Button>

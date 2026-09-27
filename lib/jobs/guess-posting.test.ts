@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { guessPosting, isLink } from "./guess-posting";
 
 describe("guessPosting", () => {
+  it("prefers the opening title and company over later hiring prose", () => {
+    expect(guessPosting("Staff Accountant\nOakridge Manufacturing Co.\nOakridge is hiring a Staff Accountant to support month-end close and financial reporting.")).toMatchObject({
+      title: "Staff Accountant", company: "Oakridge Manufacturing Co.",
+    });
+  });
   it("reads LinkedIn's copy order: company, title, place", () => {
     const text = "Acme Health\nStaff Accountant Intern\nRaleigh, NC · Hybrid · 2 weeks ago · 48 applicants\nAbout the job\nWe are looking for...";
     expect(guessPosting(text)).toEqual({ title: "Staff Accountant Intern", company: "Acme Health", location: "Raleigh, NC" });
@@ -26,6 +31,21 @@ describe("guessPosting", () => {
     });
   });
 
+  it("keeps a parenthesized role title instead of picking a responsibility line", () => {
+    const text = [
+      "Bookkeeper (Part-Time)",
+      "Westfield Services",
+      "Remote",
+      "Responsibilities",
+      "Prepare simple monthly reports and reconcile accounts.",
+      "Help with payroll records and filing.",
+    ].join("\n");
+    expect(guessPosting(text)).toMatchObject({
+      title: "Bookkeeper (Part-Time)",
+      company: "Westfield Services",
+      location: "Remote",
+    });
+  });
   it("leaves blanks rather than guessing wildly", () => {
     expect(guessPosting("We make great software.\nJoin us.")).toEqual({ title: "", company: "", location: "" });
   });

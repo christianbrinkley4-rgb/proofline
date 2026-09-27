@@ -6,6 +6,7 @@ import { addFact, reviseFact } from "@/lib/kb/facts";
 import { ensureProfile } from "@/lib/kb/profile";
 import { createStoryNote } from "@/lib/kb/story";
 import { createToken } from "@/lib/agent/tokens";
+import { recordCareerCheckin, setCareerGoal } from "@/lib/career/service";
 import { deleteAccount, exportAccount } from "./data";
 
 const userId = "test-user-account";
@@ -19,6 +20,8 @@ beforeAll(async () => {
   await reviseFact(userId, fact.id, { content: "Trained 5 new hires" });
   await createStoryNote(userId, { body: "Ran the closing checklist on weekends" });
   await createToken(userId, "Claude");
+  const goal = await setCareerGoal(userId, { targetRole: "Explore career directions", targetMonth: null, motivation: "I am learning what fits", benchmarkJobId: null });
+  await recordCareerCheckin(userId, goal.id, "A volunteer shift helped me compare options.");
 }, 60_000);
 
 describe("account data", () => {
@@ -27,22 +30,28 @@ describe("account data", () => {
     expect(data.user?.email).toBe("delete-me@example.com");
     expect(data.facts.map((f) => f.content).sort()).toEqual(["Trained 4 new hires", "Trained 5 new hires"]);
     expect(data.storyNotes).toHaveLength(1);
+    expect(data.careerGoals[0].targetRole).toBe("Explore career directions");
+    expect(data.careerCheckins.some((entry) => entry.reflection?.includes("volunteer shift"))).toBe(true);
     expect(data.connections[0]).not.toHaveProperty("tokenHash");
   });
 
   it("deletes the account and everything tied to it", async () => {
     await deleteAccount(userId);
-    const [user, facts, notes, tokens, profile] = await Promise.all([
+    const [user, facts, notes, tokens, profile, goals, checkins] = await Promise.all([
       db.query.user.findFirst({ where: eq(schema.user.id, userId) }),
       db.query.fact.findMany({ where: eq(schema.fact.userId, userId) }),
       db.query.storyNote.findMany({ where: eq(schema.storyNote.userId, userId) }),
       db.query.apiToken.findMany({ where: eq(schema.apiToken.userId, userId) }),
       db.query.profile.findFirst({ where: eq(schema.profile.userId, userId) }),
+      db.query.careerGoal.findMany({ where: eq(schema.careerGoal.userId, userId) }),
+      db.query.careerCheckin.findMany({ where: eq(schema.careerCheckin.userId, userId) }),
     ]);
     expect(user).toBeUndefined();
     expect(facts).toEqual([]);
     expect(notes).toEqual([]);
     expect(tokens).toEqual([]);
     expect(profile).toBeUndefined();
+    expect(goals).toEqual([]);
+    expect(checkins).toEqual([]);
   });
 });

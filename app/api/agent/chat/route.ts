@@ -4,6 +4,7 @@ import { appendChat, clearChat, listChat } from "@/lib/agent/chat-store";
 import { offlineReply } from "@/lib/agent/offline";
 import { getProfile } from "@/lib/kb/profile";
 import { runChat, type ChatEvent } from "@/lib/llm/chat";
+import { ModelQuotaError, reserveModelCredits } from "@/lib/llm/quota";
 import { anthropicClient } from "@/lib/llm/provider";
 
 /**
@@ -24,10 +25,21 @@ export async function POST(request: Request) {
   if (!parsed.success) return new Response("Write a message first.", { status: 400 });
   const userId = session.user.id;
   const message = parsed.data.message;
+  let model = anthropicClient();
+  let quotaNotice: string | null = null;
+  if (model) {
+    try {
+      await reserveModelCredits(userId, "agent.chat", 4);
+    } catch (error) {
+      if (!(error instanceof ModelQuotaError)) throw error;
+      quotaNotice = error.message;
+      model = null;
+    }
+  }
 
   const [history, profile] = await Promise.all([listChat(userId, 20), getProfile(userId)]);
   await appendChat(userId, "user", message);
-  const model = anthropicClient();
+
 
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -50,7 +62,9 @@ export async function POST(request: Request) {
         } else {
           reply = await offlineReply(message, ctx, send);
           for (const t of reply.tools) send({ type: "tool_done", name: t.name, ok: t.ok });
-          send({ type: "text", delta: reply.text });
+          const notice = quotaNotice ? `${quotaNotice} I can still help with your profile and job using the built-in coach.\n\n` : "";
+          send({ type: "text", delta: notice + reply.text });
+          reply.text = notice + reply.text;
         }
         await appendChat(userId, "assistant", reply.text || "Done.", reply.tools);
         send({ type: "done", mode: model ? "model" : "offline" });

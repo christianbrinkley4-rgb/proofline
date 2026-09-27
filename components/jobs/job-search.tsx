@@ -281,10 +281,12 @@ export function JobSearch({
         <section className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-[13px] text-muted-foreground">
-              <span className="font-medium text-foreground">{results.length} matches</span>
+              <span className="font-medium text-foreground">
+                {results.length} {results.length === 1 ? "match" : "matches"}
+              </span>
               {stats
                 ? ` from ${stats.scanned.toLocaleString()} postings on ${stats.boardsSearched} employer boards and ${stats.sourcesSearched - 1} job ${stats.sourcesSearched - 1 === 1 ? "site" : "sites"}${stats.duplicatesMerged ? ` · ${stats.duplicatesMerged} duplicate${stats.duplicatesMerged === 1 ? "" : "s"} merged` : ""}${stats.staleDropped ? ` · ${stats.staleDropped} old listing${stats.staleDropped === 1 ? "" : "s"} skipped` : ""}`
-                : " from your last searches"}
+                : " saved from your searches and pasted jobs"}
             </p>
             <div className="flex items-center gap-1.5">
               <label className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">

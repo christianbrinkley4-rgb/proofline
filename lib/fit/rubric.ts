@@ -12,7 +12,7 @@ export const FIT_COMPONENTS = [
   { key: "experience", label: "Experience relevance", max: 25 },
   { key: "education", label: "Education and qualifications", max: 15 },
   { key: "preferredSkills", label: "Preferred skills", max: 15 },
-  { key: "keywords", label: "Keyword and ATS overlap", max: 10 },
+  { key: "keywords", label: "Posting keyword overlap", max: 10 },
   { key: "location", label: "Location and work mode", max: 5 },
 ] as const;
 

@@ -243,7 +243,7 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
   return ranked
     .sort((a, b) => a.rank - b.rank)
     .slice(0, CAP)
-    .map(({ rank: _rank, ...move }) => move);
+    .map(({ rank, ...move }) => { void rank; return move; });
 }
 
 /** The most useful next actions, in priority order. Shared by the Agent page and chat. */

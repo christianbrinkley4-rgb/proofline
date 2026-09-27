@@ -65,6 +65,18 @@ describe("draftFromStatement", () => {
     ["I run the club's social media", "Ran the club's social media"],
     ["reconciling bank statements every week", "Reconciled bank statements every week"],
     ["Helped customers find textbooks", "Helped customers find textbooks"],
+    ["I was verifying and balanced receipts", "Verified and balanced receipts"],
+    ["I answered phones and schedule patients", "Answered phones and scheduled patients"],
+    ["I reconcile accounts and match bank statements", "Reconciled accounts and matched bank statements"],
+    ["I send updates to families", "Sent updates to families"],
+    ["Read blueprints with a supervisor", "Read blueprints with a supervisor"],
+    ["Cleaned survey responses with Python", "Cleaned survey responses with Python"],
+    ["For a class project I led a survey of classmates", "Led a survey of classmates for a class project"],
+    ["Cashier and stocker for five years", ""],
+    ["cashier", ""],
+    ["stocking", ""],
+    ["I checked orders using a checklist I wrote", "Checked orders using a self-written checklist"],
+    ["I gave customer service, answering questions and helped shoppers", "Provided customer service, answering questions and helping shoppers"],
   ])("%j", (input, expected) => {
     expect(draftFromStatement(input)).toBe(expected);
   });

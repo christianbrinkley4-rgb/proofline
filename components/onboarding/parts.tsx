@@ -14,12 +14,14 @@ export function AgentSays({ children, className }: { children: React.ReactNode; 
         <span aria-hidden="true" className="absolute inset-0 rounded-full bg-brand/40 opacity-0 motion-safe:animate-ring-out" />
         <LogoMark className="relative size-4 [&_rect]:fill-transparent" />
       </span>
-      <div className="pt-0.5 font-display text-[21px] leading-8 font-semibold tracking-[-0.02em] text-balance sm:text-[23px]">
+      {/* The agent's line is the step's heading, so screen readers can jump straight to it. */}
+      <h1 className="pt-0.5 font-display text-[21px] leading-8 font-semibold tracking-[-0.02em] text-balance sm:text-[23px]">
         {text === null ? (
           children
         ) : (
           // Words settle in one at a time, like the agent is talking. Screen readers get the sentence whole.
-          <span aria-label={text}>
+          <span>
+            <span className="sr-only">{text}</span>
             {text.split(/(\s+)/).map((part, i) =>
               /^\s+$/.test(part) ? (
                 part
@@ -36,7 +38,7 @@ export function AgentSays({ children, className }: { children: React.ReactNode; 
             )}
           </span>
         )}
-      </div>
+      </h1>
     </div>
   );
 }
@@ -62,14 +64,21 @@ export function ChipInput({
   suggestions = [],
   placeholder,
   id,
+  ariaLabel,
+  visible = Infinity,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
   suggestions?: readonly string[];
   placeholder?: string;
   id?: string;
+  /** For inputs without a visible <label>. */
+  ariaLabel?: string;
+  /** How many suggestions to show before "More ideas", so a long list doesn't bury the rest of the form on a phone. */
+  visible?: number;
 }) {
   const [draft, setDraft] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const add = (raw: string) => {
     const item = raw.trim().replace(/,$/, "");
     if (item && !value.some((v) => v.toLowerCase() === item.toLowerCase())) onChange([...value, item]);
@@ -89,13 +98,13 @@ export function ChipInput({
     <div>
       <div className="flex min-h-11 flex-wrap items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
         {value.map((item) => (
-          <span key={item} className="inline-flex items-center gap-1 rounded-md bg-muted py-1 pr-1 pl-2 text-[13px]">
+          <span key={item} className="inline-flex items-center gap-0.5 rounded-md bg-muted py-0.5 pr-0.5 pl-2 text-[13px]">
             {item}
             <button
               type="button"
               aria-label={`Remove ${item}`}
               onClick={() => onChange(value.filter((v) => v !== item))}
-              className="grid size-4 place-items-center rounded text-subtle-foreground hover:bg-background hover:text-foreground"
+              className="grid size-6 place-items-center rounded text-subtle-foreground hover:bg-background hover:text-foreground"
             >
               <X className="size-3" />
             </button>
@@ -103,6 +112,7 @@ export function ChipInput({
         ))}
         <input
           id={id}
+          aria-label={ariaLabel}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
@@ -113,17 +123,26 @@ export function ChipInput({
       </div>
       {remaining.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {remaining.map((s) => (
+          {(showAll ? remaining : remaining.slice(0, visible)).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => add(s)}
-              className="inline-flex items-center gap-1 rounded-md border border-dashed border-border-strong px-2 py-1 text-[12.5px] text-muted-foreground transition-colors hover:border-solid hover:bg-muted hover:text-foreground"
+              className="inline-flex items-center gap-1 rounded-md border border-dashed border-border-strong px-2 py-1 text-[12.5px] text-muted-foreground transition-colors hover:border-solid hover:bg-muted hover:text-foreground pointer-coarse:py-2"
             >
               <Plus className="size-3" />
               {s}
             </button>
           ))}
+          {!showAll && remaining.length > visible && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="rounded-md px-2 py-1 text-[12.5px] font-medium underline-offset-4 hover:underline pointer-coarse:py-2"
+            >
+              More ideas ({remaining.length - visible})
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -136,14 +155,17 @@ export function PillChoice<T extends string>({
   value,
   onChange,
   multiple,
+  label,
 }: {
   options: ReadonlyArray<{ value: T; label: string }>;
   value: T[];
   onChange: (next: T[]) => void;
   multiple?: boolean;
+  /** Names the group for screen readers, since a visible label can't point at several buttons. */
+  label?: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
       {options.map((o) => {
         const selected = value.includes(o.value);
         return (
@@ -155,7 +177,7 @@ export function PillChoice<T extends string>({
               onChange(multiple ? (selected ? value.filter((v) => v !== o.value) : [...value, o.value]) : selected ? [] : [o.value])
             }
             className={cn(
-              "rounded-full border px-3.5 py-1.5 text-[13.5px] transition-colors",
+              "rounded-full border px-3.5 py-1.5 text-[13.5px] transition-colors pointer-coarse:py-2.5",
               selected ? "border-foreground bg-foreground text-background" : "bg-background hover:border-border-strong",
             )}
           >

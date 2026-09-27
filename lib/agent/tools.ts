@@ -1,10 +1,14 @@
 import { z } from "zod";
 import { loadJobProgress, loadJourney, storyReady } from "@/lib/agent/coach";
+import { careerDashboard } from "@/lib/career/service";
 import { declinedSkills } from "@/lib/agent/gap-store";
+import { listFeedback } from "@/lib/feedback/service";
 import { hardGaps, skillGaps } from "@/lib/fit/gaps";
 import { logEvent } from "@/lib/agent/events";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
+import { jobDocumentImprovementSteps } from "@/lib/jobs/coaching";
+import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
 import { formatPay, searchJobs } from "@/lib/jobs/search";
 import { THIN_RESULTS, widerSearches } from "@/lib/jobs/widen";
 import { watchSearch } from "@/lib/jobs/saved";
@@ -19,6 +23,7 @@ import { draftAnswer, draftCoverLetter, packetView } from "@/lib/packet/service"
 import { VARIANT_LABEL, type VariantId } from "@/lib/resume/document";
 import { formatRange } from "@/lib/resume/parse/dates";
 import { saveTailoredResume, tailorResume } from "@/lib/resume/tailor";
+import { rolePromptIdeas } from "@/lib/resume/onet-prompts";
 import { followUpDraft, StageSchema, STAGE_LABEL } from "@/lib/tracker/model";
 import { getApplication, listApplications, moveApplication, trackJob } from "@/lib/tracker/service";
 
@@ -99,6 +104,50 @@ export const TOOLS: AgentTool[] = [
   }),
 
   tool({
+    name: "get_career_plan",
+    title: "Get career plan",
+    description: "Read the person's chosen or exploratory career direction, real posting benchmark, observed progress, reflections, and next actions. Use before advising on career goals or when someone feels lost. Counts are evidence, not hiring odds.",
+    input: {},
+    readOnly: true,
+    run: async (_args, ctx) => {
+      const plan = await careerDashboard(ctx.userId);
+      return plan.goal
+        ? {
+            goal: { role: plan.goal.targetRole, why: plan.goal.motivation, targetMonth: plan.goal.targetMonth },
+            benchmark: plan.benchmark,
+            current: plan.current,
+            actions: plan.actions,
+            recentCheckins: plan.checkins.slice(0, 3).map((entry) => ({
+              at: entry.createdAt.toISOString(), reflection: entry.reflection, completedActionId: entry.completedActionId,
+              confirmedFacts: entry.confirmedFacts, activeBullets: entry.activeBullets,
+              matchedRequired: entry.matchedRequired, totalRequired: entry.totalRequired,
+            })),
+            planUrl: link("/app/career"),
+          }
+        : {
+            goal: null,
+            discovery: "The person has not chosen a career direction. Ask about energizing tasks, constraints, and a small experiment before suggesting a role.",
+            planUrl: link("/app/career"),
+          };
+    },
+  }),
+  tool({
+    name: "get_quality_feedback",
+    title: "Get quality feedback",
+    description: "Read this person's recent ratings and comments on Proofline resumes, letters, job coaching, and career plans. Use when revising advice; a rating is not evidence of a hiring outcome.",
+    input: {},
+    readOnly: true,
+    run: async (_args, ctx) => (await listFeedback(ctx.userId, 10)).map((event) => ({
+      at: event.createdAt.toISOString(),
+      kind: event.data.kind,
+      subjectId: event.data.subjectId,
+      rating: event.data.rating,
+      issue: event.data.issue,
+      comment: event.data.comment,
+      outcomeEvidence: false,
+    })),
+  }),
+  tool({
     name: "list_facts",
     title: "List facts",
     description:
@@ -122,6 +171,28 @@ export const TOOLS: AgentTool[] = [
         experience: f.experienceId ? org.get(f.experienceId) ?? null : null,
         experienceId: f.experienceId,
       }));
+    },
+  }),
+
+  tool({
+    name: "get_role_task_prompts",
+    title: "Get role task questions",
+    description: "Find typical work questions for one profile experience, optionally ranked against a full job posting. These are prompts, not claims about the person. Ask whether they actually did the work, one at a time.",
+    input: { experienceId: z.uuid(), jobId: z.uuid().optional(), count: z.number().int().min(1).max(12).optional() },
+    readOnly: true,
+    run: async (args, ctx) => {
+      const experience = (await listExperiences(ctx.userId)).find((item) => item.id === args.experienceId);
+      if (!experience) throw new Error("Experience not found on this profile.");
+      const data = args.jobId ? await getJobForUser(ctx.userId, args.jobId) : null;
+      if (args.jobId && !data) throw new Error("Job not found.");
+      if (data && !hasUsableJobDescription(data.job.description)) throw new Error(JOB_DESCRIPTION_REQUIRED);
+      return {
+        experience: { id: experience.id, title: experience.title, organization: experience.org },
+        posting: data ? { id: data.job.id, title: data.job.title, company: data.job.company } : null,
+        prompts: rolePromptIdeas(experience.title, data?.job.description, args.count ?? 8),
+        rule: "Each result is a question about typical work, not a fact. Only save something the person says they actually did. It must be confirmed before it can appear in a resume or letter.",
+        profileUrl: link("/app/profile"),
+      };
     },
   }),
 
@@ -338,6 +409,8 @@ export const TOOLS: AgentTool[] = [
         cappedBy: fit.cappedBy?.reason ?? null,
         strengths: fit.strengths,
         gaps: fit.gaps,
+        nextSteps: fit.nextSteps,
+        documentCoaching: hasUsableJobDescription(job.description) ? jobDocumentImprovementSteps({ jobId: job.id, fit }) : [],
         points: fit.points,
         description: (job.description ?? "").slice(0, 4000),
         url: link(`/app/jobs/${job.id}`),

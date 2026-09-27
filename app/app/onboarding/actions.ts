@@ -61,7 +61,7 @@ const BasicsSchema = z.object({
   degree: z.string().trim(),
   major: z.string().trim(),
   minor: z.string().trim(),
-  gradDate: z.string().trim().regex(/^(\d{4}(-\d{2})?)?$/, "Use a date like 2028-05"),
+  gradDate: z.string().trim().regex(/^(\d{4}(-(0[1-9]|1[0-2]))?)?$/, "Use a year like 2016 or a month like 2028-05"),
   gpa: z.string().trim().regex(/^([0-4](\.\d{1,2})?)?$/, "GPA looks like 3.6"),
 });
 

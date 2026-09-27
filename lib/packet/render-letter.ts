@@ -59,10 +59,21 @@ export async function renderLetterPdf(letter: CoverLetter, header: LetterHeader,
     build();
   }
 
-  const page = pdf.addPage([PAGE.width, PAGE.height]);
+  let page = pdf.addPage([PAGE.width, PAGE.height]);
   let y = PAGE.height - margin;
   for (const block of blocks) {
+    // Longer user-edited letters can exceed one page even at the smallest
+    // readable size. Keep the complete paragraph visible in the exported PDF.
+    const blockHeight = block.lines.length * block.size * 1.3 + block.gapAfter;
+    if (y - blockHeight < margin && y < PAGE.height - margin) {
+      page = pdf.addPage([PAGE.width, PAGE.height]);
+      y = PAGE.height - margin;
+    }
     for (const line of block.lines) {
+      if (y - block.size * 1.3 < margin) {
+        page = pdf.addPage([PAGE.width, PAGE.height]);
+        y = PAGE.height - margin;
+      }
       y -= block.size * 1.3;
       const text = sanitize(line);
       const x = block.align === "center" ? (PAGE.width - block.font.widthOfTextAtSize(text, block.size)) / 2 : margin;

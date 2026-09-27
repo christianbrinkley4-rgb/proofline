@@ -1,0 +1,1 @@
+ALTER TABLE "career_checkin" ADD COLUMN "reflection" text;

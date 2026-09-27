@@ -16,6 +16,12 @@ PGlite is the default local database, stored in `.data/pglite`. It is single-pro
 
 In development, `/api/dev/login` signs in a test student and `/api/dev/seed` gives them a complete sample profile.
 
+## Small beta sharing
+
+The signup page is open to anyone with the link. The in-app account menu has a **Share feedback** email link. To collect useful feedback, ask testers to try a real or sample posting and tell you what worked, what was confusing, and whether they would use the result.
+
+Before sharing a hosted link, configure a persistent Postgres `DATABASE_URL`, a unique `BETTER_AUTH_SECRET`, and both `BETTER_AUTH_URL` and `NEXT_PUBLIC_SITE_URL` set to the final HTTPS origin. Set `ANTHROPIC_API_KEY` only if the hosted beta should use paid AI drafting; rules-based features work without it. Vercel deployments fail fast if the database URL or authentication secret is missing. Keep `.env.local` and hosted secrets out of Git. See [beta sharing handoff](docs/handoff/BETA-SHARING.md).
+
 ## Checks
 
 - npm run typecheck

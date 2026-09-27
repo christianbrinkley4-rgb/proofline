@@ -7,6 +7,7 @@ import type { TemplateId, VariantId } from "@/lib/resume/document";
 import { saveTailoredResume, tailorResume } from "@/lib/resume/tailor";
 import { defaultTemplateFor } from "@/lib/resume/templates";
 import { parseIntent } from "@/lib/jobs/intent";
+import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
 
 const VARIANTS: VariantId[] = ["experience", "skills", "ats"];
 const TEMPLATE_IDS: TemplateId[] = ["classic", "technical"];
@@ -17,6 +18,7 @@ export async function createResumeAction(input: { jobId?: string | null; variant
   const variant = VARIANTS.includes(input.variant as VariantId) ? (input.variant as VariantId) : "experience";
   const job = input.jobId ? await db.query.job.findFirst({ where: (j, { eq }) => eq(j.id, input.jobId!) }) : null;
   if (input.jobId && !job) return { ok: false, error: "That job isn't available anymore." };
+  if (job && !hasUsableJobDescription(job.description)) return { ok: false, error: JOB_DESCRIPTION_REQUIRED };
 
   const template = TEMPLATE_IDS.includes(input.template as TemplateId)
     ? (input.template as TemplateId)

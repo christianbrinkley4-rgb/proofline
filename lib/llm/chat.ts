@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { runTool, TOOLS, type ToolContext } from "@/lib/agent/tools";
-import { CHAT_V2 } from "./prompts/chat.v2";
+import { CHAT_V6 } from "./prompts/chat.v6";
 import { anthropicClient, chatModel } from "./provider";
 import { logLlmCall } from "./log";
 
@@ -19,7 +19,7 @@ export type ChatEvent =
 
 export type ChatTurn = { role: "user" | "assistant"; text: string };
 
-const MAX_STEPS = 8;
+const MAX_STEPS = 4;
 
 /** Tool definitions for the API, from the tool layer's zod shapes. */
 export function apiTools(): Anthropic.Beta.BetaTool[] {
@@ -60,13 +60,13 @@ export async function runChat(
   for (let step = 0; step < MAX_STEPS; step++) {
     const stream = llm.client.beta.messages.stream({
       model,
-      max_tokens: 16000,
+      max_tokens: 4096,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       thinking: { type: "disabled" },
       output_config: { effort: "low" },
       system: [
-        { type: "text", text: CHAT_V2.system, cache_control: { type: "ephemeral" } },
+        { type: "text", text: CHAT_V6.system, cache_control: { type: "ephemeral" } },
         { type: "text", text: `The student's name is ${ctx.name || "unknown"}. Today is ${ctx.today}.` },
       ],
       tools,
@@ -114,6 +114,6 @@ export async function runChat(
     }
   }
 
-  await logLlmCall({ purpose: "agent.chat", promptVersion: CHAT_V2.version, model, ms: Date.now() - started, input: history.at(-1)?.text ?? "", output: { text, tools: used } });
+  await logLlmCall({ purpose: "agent.chat", promptVersion: CHAT_V6.version, model, ms: Date.now() - started, input: history.at(-1)?.text ?? "", output: { text, tools: used } });
   return { text: text.trim(), tools: used };
 }

@@ -70,7 +70,7 @@ function ExperienceGroup({ experience }: { experience: ExperienceView }) {
             disabled={pending}
             onClick={() => startTransition(() => confirmFactsAction(unconfirmed.map((f) => f.id)))}
           >
-            All {unconfirmed.length} are right
+            {unconfirmed.length === 2 ? "Both are right" : `All ${unconfirmed.length} are right`}
           </Button>
         )}
       </div>

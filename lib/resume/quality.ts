@@ -12,7 +12,7 @@ import { verifyBullet } from "./verify";
  * The same checks run on the live preview and right before a file is built.
  */
 export type QualityCheck = {
-  id: "facts" | "one-page" | "em-dash" | "openers" | "repeats" | "filler" | "pronouns" | "contact" | "numbers" | "tense" | "proofread" | "requirements";
+  id: "facts" | "substance" | "depth" | "one-page" | "em-dash" | "openers" | "repeats" | "filler" | "pronouns" | "contact" | "numbers" | "tense" | "proofread" | "requirements";
   label: string;
   status: "pass" | "warn" | "fail";
   detail: string;
@@ -46,11 +46,15 @@ export function runQualityGate(
   const pronouns = bullets.filter((b) => PRONOUNS.test(b.text));
 
   // Career-center top mistakes: missing contact details, duties without results, mixed tense, typos.
-  const contact = doc.header.contact.join(" ");
+  const contactItems = doc.header.contact;
+  const hasPhone = contactItems.some((item) => {
+    if (/@|https?:\/\/|www\./i.test(item) || !/^[+()\d\s.-]+$/.test(item.trim())) return false;
+    const digits = item.replace(/\D/g, "");
+    return digits.length >= 10 && digits.length <= 15;
+  });
   const missingContact = [
-    ...(/@/.test(contact) ? [] : ["email"]),
-    ...(/\d{3}\D{0,3}\d{3}\D?\d{4}/.test(contact) ? [] : ["phone"]),
-    ...(/linkedin\.com/i.test(contact) ? [] : ["LinkedIn URL"]),
+    ...(contactItems.some((item) => /@/.test(item)) ? [] : ["email"]),
+    ...(hasPhone ? [] : ["phone"]),
   ];
   const measured = bullets.filter((b) => hasNumber(b.text)).length;
   const wrongTense = doc.sections.flatMap((s) =>
@@ -74,6 +78,24 @@ export function runQualityGate(
       blocking: true,
     },
     {
+      id: "substance",
+      label: "Shows at least one confirmed work or project example",
+      status: bullets.length ? "pass" : "fail",
+      detail: bullets.length
+        ? `${bullets.length} confirmed ${bullets.length === 1 ? "example" : "examples"} on this resume.`
+        : "Add one real task from work, school, volunteering, or a project to your profile before exporting.",
+      blocking: true,
+    },
+    {
+      id: "depth",
+      label: "Enough evidence to tell your story",
+      status: bullets.length < 3 ? "warn" : "pass",
+      detail: bullets.length < 3
+        ? `This version has ${bullets.length} ${bullets.length === 1 ? "bullet" : "bullets"} and leaves most of the page empty. Add a real project, responsibility, or result to your profile, then make a new version.`
+        : `${bullets.length} confirmed examples give the reader more to assess.`,
+      blocking: false,
+    },
+    {
       id: "one-page",
       label: "Fits on one page",
       status: layout.overflow ? "fail" : "pass",
@@ -84,7 +106,7 @@ export function runQualityGate(
       id: "openers",
       label: "Strong opening verbs",
       status: weak.length ? "warn" : "pass",
-      detail: weak.length ? `Weak openers: ${[...new Set(weak)].join(", ")}.` : "Every bullet opens with an action verb.",
+      detail: weak.length ? `Rewrite bullets that start with ${[...new Set(weak)].join(", ")}. Name the specific action and a result you can verify.` : "Every bullet opens with an action verb.",
       blocking: false,
     },
     {
@@ -110,11 +132,11 @@ export function runQualityGate(
     },
     {
       id: "contact",
-      label: "Email, phone, and LinkedIn at the top",
+      label: "Email and phone at the top",
       status: missingContact.length ? "warn" : "pass",
       detail: missingContact.length
         ? `Missing ${missingContact.join(", ")}. Add ${missingContact.length === 1 ? "it" : "them"} under About you on your profile.`
-        : "Recruiters can reach you and check your LinkedIn.",
+        : "Recruiters have your email and phone.",
       blocking: false,
     },
     {

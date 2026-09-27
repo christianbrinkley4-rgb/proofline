@@ -3,7 +3,7 @@ import { isRemoteText, matchesPlace, resolvePlace } from "@/lib/jobs/locations";
 import type { JobLevel, JobMode } from "@/lib/jobs/types";
 import type { Requirements } from "./requirements";
 import { computeFit, ELIGIBILITY_CAP, type EligibilityGate, type FitComponentKey, type FitPoints, type FitResult } from "./rubric";
-import { extractSkills, isHardSkill } from "./skills";
+import { extractEvidenceSkills, isHardSkill } from "./skills";
 
 /** Scores the evidence in one person's profile against a posting, rules only. */
 
@@ -44,13 +44,15 @@ export type FitReport = FitResult & {
   strengths: string[];
   gaps: string[];
   nextSteps: string[];
+  /** Skills inferred from prose rather than explicitly marked required. */
+  requirementsInferred?: boolean;
 };
 
 export type CandidateIndex = { skills: Set<string>; corpus: string };
 
 export function indexCandidate(c: CandidateProfile): CandidateIndex {
   const corpus = [...c.confirmedText, ...c.experienceTitles, c.major ?? "", c.minor ?? "", ...c.credentials].join("\n");
-  return { skills: new Set(extractSkills(corpus)), corpus: corpus.toLowerCase() };
+  return { skills: new Set(extractEvidenceSkills(corpus)), corpus: corpus.toLowerCase() };
 }
 
 const round = (n: number) => Math.round(n);
@@ -77,7 +79,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const gates: EligibilityGate[] = [];
 
   // ── Required skills (30)
-  const reqGroups = req.requiredGroups?.length ? req.requiredGroups : (req.required.length ? req.required : req.mentioned).map((sk) => [sk]);
+  const reqGroups = req.requiredGroups?.length ? req.requiredGroups : req.required.map((sk) => [sk]);
   const reqCov = coverage(reqGroups, index.skills);
   if (reqCov.ratio === null) {
     points.requiredSkills = 20;
@@ -86,7 +88,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     points.requiredSkills = round(30 * reqCov.ratio);
     const total = reqCov.matched.length + reqCov.missing.length;
     details.requiredSkills = {
-      note: `Covers ${reqCov.matched.length} of the ${total} skill requirements.`,
+      note: `Covers ${reqCov.matched.length} of the ${total} ${req.requiredLines.length ? "listed skill requirements" : "skills mentioned in the posting"}.`,
       matched: reqCov.matched,
       missing: reqCov.missing,
     };
@@ -235,7 +237,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     ...gates.map((g) => g.reason),
     ...reqCov.missing.slice(0, 3),
     ...experienceMissing,
-    ...prefCov.missing.slice(0, 2).map((s) => `${s} (nice to have)`),
+    ...prefCov.missing.filter((s) => !reqCov.missing.includes(s)).slice(0, 2).map((s) => `${s} (nice to have)`),
   ].slice(0, 5);
 
   const nextSteps = [
@@ -253,7 +255,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     ...(!candidate.confirmedText.length ? ["Describe work, projects, or volunteering on your profile so the comparison has evidence to use."] : []),
   ].slice(0, 4);
 
-  return { ...result, points, details, gates, strengths, gaps, nextSteps };
+  return { ...result, points, details, gates, strengths, gaps, nextSteps, requirementsInferred: req.requiredLines.length === 0 };
 }
 
 /** A quick relevance check used while searching, before full scoring: does the title fit the role words? */

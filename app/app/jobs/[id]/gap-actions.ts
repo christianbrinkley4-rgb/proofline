@@ -54,6 +54,8 @@ export async function answerGapAction(input: GapAnswer): Promise<GapResult> {
 
   const data = await getJobForUser(userId, jobId);
   if (!data) return { ok: false, error: "This job isn't available anymore." };
+  const used = skillFromAnswer(skill, text);
+  if (!used) return { ok: false, error: `Name ${skill} in your answer if that is what you did, and describe the task in your own words.` };
   const before = data.match?.fitScore ?? (await rescore(userId, jobId))?.score ?? 0;
 
   let expId = experienceId;
@@ -69,7 +71,6 @@ export async function answerGapAction(input: GapAnswer): Promise<GapResult> {
   }
 
   const started = new Date();
-  const used = skillFromAnswer(skill, text);
   await addFact(userId, { category: "experience", content: text, experienceId: expId, source: "user_stated", sourceDetail: `gap:${jobId}` });
   await addFact(userId, { category: "skill", content: used, experienceId: null, source: "user_stated", sourceDetail: `gap:${jobId}` });
   await generateBullets(userId, expId, [used]);

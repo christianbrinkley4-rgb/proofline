@@ -12,7 +12,7 @@ export const ACTION_VERBS = {
   analysis: [
     "Analyzed", "Assessed", "Audited", "Calculated", "Compared", "Evaluated", "Examined", "Forecasted", "Identified",
     "Investigated", "Measured", "Modeled", "Projected", "Quantified", "Researched", "Reviewed", "Surveyed", "Tested",
-    "Tracked", "Validated", "Verified", "Diagnosed", "Mapped",
+    "Tracked", "Validated", "Verified", "Diagnosed", "Mapped", "Read", "Cleaned",
   ],
   finance: [
     "Reconciled", "Prepared", "Filed", "Budgeted", "Allocated", "Balanced", "Billed", "Collected", "Posted",
@@ -34,7 +34,7 @@ export const ACTION_VERBS = {
     "Translated", "Edited", "Published", "Interviewed", "Facilitated", "Hosted", "Moderated", "Corresponded", "Wrote",
   ],
   service: [
-    "Served", "Assisted", "Supported", "Answered", "Resolved", "Handled", "Welcomed", "Scheduled", "Greeted",
+    "Served", "Assisted", "Supported", "Provided", "Answered", "Resolved", "Handled", "Welcomed", "Scheduled", "Greeted",
     "Onboarded", "Counseled", "Guided", "Responded",
   ],
   achievement: [

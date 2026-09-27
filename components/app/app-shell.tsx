@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   FileText,
+  Goal,
   House,
   LogOut,
+  MessageSquareText,
   Search,
   Settings,
   Sparkle,
@@ -34,6 +36,7 @@ const NAV: NavItem[] = [
   { href: "/app/jobs", label: "Jobs", icon: Search, mobile: true },
   { href: "/app/resumes", label: "Resumes", icon: FileText, mobile: true },
   { href: "/app/tracker", label: "Tracker", icon: SquareKanban, mobile: true },
+  { href: "/app/career", label: "Career", icon: Goal, mobile: true },
   { href: "/app/profile", label: "Profile", icon: UserRound, mobile: true },
   { href: "/app/agent", label: "Agent", icon: Sparkle },
 ];
@@ -88,7 +91,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
             <Link
               href="/app/agent"
               aria-label="Agent"
-              className="grid size-9 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+              className="grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-muted"
             >
               <Sparkle className="size-[18px]" />
             </Link>
@@ -104,7 +107,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
 
         <nav
           aria-label="App"
-          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
         >
           {NAV.filter((n) => n.mobile).map(({ href, label, icon: Icon }) => (
             <Link
@@ -122,7 +125,8 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
           ))}
         </nav>
       </div>
-      <Toaster position="bottom-right" />
+      {/* On phones, keep toasts above the bottom tab bar instead of covering it. */}
+      <Toaster position="bottom-right" mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)" }} />
     </div>
   );
 }
@@ -163,6 +167,7 @@ function UserMenu({ user, compact, className }: { user: ShellUser; compact?: boo
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        aria-label={`Account menu for ${user.name}`}
         className={cn(
           "flex items-center gap-2.5 rounded-md text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
           compact ? "p-1" : "w-full p-1 hover:bg-background/60",
@@ -185,6 +190,12 @@ function UserMenu({ user, compact, className }: { user: ShellUser; compact?: boo
         <DropdownMenuItem onSelect={() => router.push("/app/settings")}>
           <Settings />
           Settings and connections
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <a href={`mailto:${site.contactEmail}?subject=${encodeURIComponent("Proofline beta feedback")}&body=${encodeURIComponent("What worked well?\nWhat was confusing or missing?\nWould you use Proofline for a real application?\n")}`}>
+            <MessageSquareText />
+            Share feedback
+          </a>
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={async () => {

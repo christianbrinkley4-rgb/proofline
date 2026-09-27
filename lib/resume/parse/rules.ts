@@ -139,7 +139,14 @@ function parseEntry(section: ParsedEntry["section"], header: string[], bullets: 
     }
     return [p];
   });
-  const [org = header[0] ?? "Untitled", title = null] = withoutLocation;
+  const TITLE_NOUN = /\b(manager|assistant|analyst|accountant|cashier|clerk|coordinator|director|engineer|intern|receptionist|representative|specialist|supervisor|technician|server|stock(er)?|consultant|associate|lead|nurse|teacher|tutor)\b/i;
+  let roleParts = withoutLocation;
+  if (roleParts.length === 1) {
+    const comma = roleParts[0].match(/^(.+?),\s+(.+)$/);
+    if (comma && TITLE_NOUN.test(comma[2])) roleParts = [comma[1], comma[2]];
+  }
+  let [org = header[0] ?? "Untitled", title = null] = roleParts;
+  if (title && TITLE_NOUN.test(org) && !TITLE_NOUN.test(title)) [org, title] = [title, org];
 
   return {
     section,
@@ -166,11 +173,17 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       })
       .filter(Boolean)
       .join(", ");
+    let detailText = text;
+    let detailClean = clean;
     if (SCHOOL.test(text) && !DEGREE.test(text.split(",")[0])) {
       if (current) results.push(current);
+      const degreeBreak = text.match(new RegExp(",\\s*(?=" + DEGREE.source + ")", "i"));
+      const inline = degreeBreak?.index != null ? text.slice(degreeBreak.index + degreeBreak[0].length).trim() : "";
+      const hasInlineDegree = Boolean(inline);
+      const schoolLine = hasInlineDegree ? text.slice(0, degreeBreak!.index) : text;
       const range = findDateRange(text);
       current = {
-        school: clean.replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
+        school: (hasInlineDegree ? schoolLine : clean).replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
         degree: null,
         major: null,
         minor: null,
@@ -179,18 +192,20 @@ function parseEducation(lines: string[]): ParsedEducation[] {
         honors: [],
         coursework: [],
       };
-      continue;
+      if (!hasInlineDegree) continue;
+      detailText = inline;
+      detailClean = stripDates(inline).trim();
     }
     if (!current) continue;
-    const gpa = text.match(GPA);
+    const gpa = detailText.match(GPA);
     if (gpa) current.gpa = Number(gpa[1] ?? gpa[2]);
-    const range = findDateRange(text);
+    const range = findDateRange(detailText);
     if (range && !current.gradDate) current.gradDate = range.end;
-    if (DEGREE.test(text) && !current.degree) {
-      const body = clean.replace(GPA_TEXT, "").replace(/[,|;\s]+$/, "").replace(/,\s*,/g, ",");
-      const abbreviated = body.match(/^((?:[BMA]\.?\s?[SAB]\.?(?:\s?[AS]\.?)?|Ph\.?\s?D\.?))\s+(?!in\b)([^,]+)/i);
-      const [degreePart, ...rest] = abbreviated ? [abbreviated[1], abbreviated[2]] : body.split(/\s+in\s+|,\s*/i);
-      // "Bachelor of Science - BS" (LinkedIn) reads as "Bachelor of Science".
+    if (DEGREE.test(detailText) && !current.degree) {
+      const body = detailClean.replace(GPA_TEXT, "").replace(/[,|;\s]+$/, "").replace(/,\s*,/g, ",");
+      const applied = body.match(/^(Associate (?:in|of) Applied Science)(?:,\s*([^,]+))?/i);
+      const abbreviated = body.match(/^((?:[BMA]\.?(?:\s?[SAB]\.?)?(?:\s?[AS]\.?)?|Ph\.?\s?D\.?))\s+(?!in\b)([^,]+)/i);
+      const [degreePart, ...rest] = applied ? [applied[1], applied[2] ?? ""] : abbreviated ? [abbreviated[1], abbreviated[2]] : body.split(/\s+in\s+|,\s*/i);
       current.degree = degreePart.trim().replace(/\s+-\s+[A-Z][A-Za-z.]{1,5}$/, "") || null;
       const majorPart = rest.join(", ").replace(/,?\s*minor.*$/i, "").replace(/[\s,;|]+$/, "").trim();
       current.major = majorPart || null;
@@ -230,6 +245,15 @@ function splitList(text: string): string[] {
   return items;
 }
 
+function parseCertifications(lines: string[]): string[] {
+  const merged: string[] = [];
+  for (const item of parseList(lines)) {
+    if (/^(?:19|20)\d{2}$/.test(item)) {
+      if (merged.length) merged[merged.length - 1] += `, ${item}`;
+    } else merged.push(item);
+  }
+  return merged;
+}
 function parseList(lines: string[]): string[] {
   return lines
     .flatMap((l) => splitList(l.replace(BULLET, "").replace(/^[A-Za-z &]+:\s*/, "")))
@@ -305,6 +329,6 @@ export function parseResumeText(text: string): ParsedResume {
     education: parseEducation(buckets.get("education") ?? []),
     entries,
     skills: parseList(buckets.get("skills") ?? []),
-    certifications: parseList(buckets.get("certifications") ?? []),
+    certifications: parseCertifications(buckets.get("certifications") ?? []),
   };
 }

@@ -55,7 +55,7 @@ export function OnboardingFlow({ data }: { data: OnboardingData }) {
           ))}
         </ol>
         {step !== "done" && (
-          <Link href="/app" className="shrink-0 text-[13px] text-muted-foreground hover:text-foreground">
+          <Link href="/app" className="-my-2 shrink-0 py-2 text-[13px] text-muted-foreground hover:text-foreground">
             Finish later
           </Link>
         )}
@@ -82,8 +82,8 @@ export function OnboardingFlow({ data }: { data: OnboardingData }) {
         {step === "review" && <ReviewStep experiences={data.experiences} looseFacts={data.looseFacts} onContinue={() => go("basics")} />}
         {step === "basics" && <BasicsStep initial={basics} onSaved={() => go("experience")} />}
         {step === "experience" && <ExperienceStep experiences={data.experiences} onBack={() => go("basics")} onContinue={() => go("skills")} />}
-        {step === "skills" && <SkillsStep skills={data.skills} onBack={() => go("experience")} onSaved={() => go("goals")} />}
-        {step === "goals" && <GoalsStep initial={data.goals} onBack={() => go("skills")} onSaved={() => go("done")} />}
+        {step === "skills" && <SkillsStep skills={data.skills} experiences={data.experiences} onBack={() => go("experience")} onSaved={() => go("goals")} />}
+        {step === "goals" && <GoalsStep initial={data.goals} experiences={data.experiences} onBack={() => go("skills")} onSaved={() => go("done")} />}
         {step === "done" && <DoneStep data={data} onGo={go} />}
       </div>
     </div>
@@ -170,7 +170,7 @@ function UploadStep({ onBack, onDone }: { onBack: () => void; onDone: (basics: O
 
   return (
     <div>
-      <AgentSays>Drop your resume here. I&apos;ll read it and ask you to confirm what I find.</AgentSays>
+      <AgentSays>Add your resume here. I&apos;ll read it and ask you to confirm what I find.</AgentSays>
       <StepHint>Nothing goes on a new resume until you say yes to it. An old or rough resume is fine.</StepHint>
 
       <div className="mt-8 sm:pl-11">
@@ -194,12 +194,15 @@ function UploadStep({ onBack, onDone }: { onBack: () => void; onDone: (basics: O
           {status && !error ? (
             <>
               <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
-              <p className="mt-3 text-[14px] text-muted-foreground">{status}</p>
+              <p role="status" className="mt-3 text-[14px] text-muted-foreground">{status}</p>
+              <p className="mt-1 text-[12.5px] text-subtle-foreground">This usually takes under a minute. Keep this page open.</p>
             </>
           ) : (
             <>
               <FileUp className="size-6 text-muted-foreground" strokeWidth={1.75} />
-              <p className="mt-3 text-[15px] font-medium">Drag a PDF or DOCX here</p>
+              {/* Phones can't drag files, so don't ask them to. */}
+              <p className="mt-3 text-[15px] font-medium pointer-coarse:hidden">Drag a PDF or DOCX here</p>
+              <p className="mt-3 hidden text-[15px] font-medium pointer-coarse:block">Choose a PDF or DOCX file</p>
               <p className="mt-1 text-[13px] text-muted-foreground">Up to 5 MB</p>
               <Button type="button" variant="outline" className="mt-5 bg-background" onClick={() => input.current?.click()}>
                 Choose a file
@@ -223,7 +226,7 @@ function UploadStep({ onBack, onDone }: { onBack: () => void; onDone: (basics: O
           </p>
         )}
         <p className="mt-4 text-[12.5px] text-muted-foreground">
-          LinkedIn works too: on your profile, choose More, then Save to PDF, and drop that file here.
+          LinkedIn works too: on your profile, choose More, then Save to PDF, and add that file here.
         </p>
         {pasting ? (
           <form
@@ -260,7 +263,7 @@ function UploadStep({ onBack, onDone }: { onBack: () => void; onDone: (basics: O
           </button>
         )}
         <div>
-          <button type="button" onClick={onBack} className="mt-6 text-[13.5px] text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onBack} className="mt-4 py-2 text-[13.5px] text-muted-foreground hover:text-foreground">
             Back
           </button>
         </div>
@@ -326,6 +329,13 @@ function DoneStep({ data, onGo }: { data: OnboardingData; onGo: (step: Onboardin
     );
   }
 
+  const finish = (href: string) =>
+    startTransition(async () => {
+      await finishOnboardingAction();
+      router.push(href);
+    });
+
+  // Resume first: Today walks them from these facts to a general resume, then to a pasted job.
   return (
     <div>
       <AgentSays>That&apos;s enough to start, {data.firstName}. I&apos;ll keep learning as we go.</AgentSays>
@@ -338,23 +348,27 @@ function DoneStep({ data, onGo }: { data: OnboardingData; onGo: (step: Onboardin
           <circle cx="20" cy="20" r="18" pathLength={1} className="proof-stroke fill-none stroke-brand motion-safe:animate-draw" strokeWidth="2.5" />
           <path d="M12.5 20.5l5 5 10-11" pathLength={1} className="proof-stroke fill-none stroke-brand motion-safe:animate-draw motion-safe:[animation-delay:500ms]" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <div className="text-[12px] text-subtle-foreground">{role ? "First search" : "Next step"}</div>
-        <div className="mt-1 text-[15px] font-medium">{role ? <>&ldquo;{query}&rdquo;</> : "Explore roles based on your profile"}</div>
-        <Button
-          size="xl"
-          className="mt-5"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              await finishOnboardingAction();
-              router.push(role ? `/app/jobs?q=${encodeURIComponent(query)}` : "/app");
-            })
-          }
-        >
-          {pending ? <LoaderCircle className="animate-spin" /> : <Search data-icon="inline-start" />}
-          {role ? "Find my first jobs" : "See role ideas"}
+        <div className="text-[12px] text-subtle-foreground">Next step</div>
+        <div className="mt-1 text-[15px] font-medium">Turn these facts into your first resume</div>
+        <p className="mt-1 text-[13.5px] leading-5 text-muted-foreground">
+          One page, built only from what you confirmed. Then paste any job and I&apos;ll tailor it.
+        </p>
+        <Button size="xl" className="mt-5" disabled={pending} onClick={() => finish("/app")}>
+          {pending ? <LoaderCircle className="animate-spin" /> : null}
+          Show me the next step
           <ArrowRight data-icon="inline-end" />
         </Button>
+        {role && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => finish(`/app/jobs?q=${encodeURIComponent(query)}`)}
+            className="mt-3 flex min-h-10 items-center gap-1.5 text-left text-[13.5px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            <Search className="size-3.5 shrink-0" />
+            Or search &ldquo;{query}&rdquo; first
+          </button>
+        )}
       </div>
     </div>
   );

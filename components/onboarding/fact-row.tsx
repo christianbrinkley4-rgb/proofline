@@ -58,7 +58,7 @@ export function FactRow({ fact }: { fact: FactView }) {
           </div>
         </form>
       ) : (
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
           {state === "confirmed" ? (
             <Check className="mt-0.5 size-4 shrink-0 text-brand" strokeWidth={2.5} aria-label="Confirmed" />
           ) : (
@@ -66,9 +66,14 @@ export function FactRow({ fact }: { fact: FactView }) {
           )}
           <p className="min-w-0 flex-1 text-[14px] leading-6">
             {fact.content}
-            {state !== "confirmed" && origin(fact) && <span className="block text-[11.5px] leading-4 text-muted-foreground">{origin(fact)}</span>}
+            {state !== "confirmed" && (
+              <span className="block text-[11.5px] leading-4 text-muted-foreground">
+                {["Not on a resume until you say yes", origin(fact)].filter(Boolean).join(" · ")}
+              </span>
+            )}
           </p>
-          <div className="flex shrink-0 gap-1">
+          {/* On phones, Yes / No get their own row so the fact keeps a readable width. */}
+          <div className={cn("flex shrink-0 gap-1", state !== "confirmed" && "max-sm:basis-full max-sm:pl-7")}>
             {state !== "confirmed" && (
               <>
                 <Button size="xs" onClick={() => run(() => confirmFactAction(fact.id), "confirmed")}>

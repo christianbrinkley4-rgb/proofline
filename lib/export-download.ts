@@ -54,8 +54,11 @@ export async function downloadExport(url: string, fallbackName: string): Promise
     document.body.appendChild(a);
     a.click();
     a.remove();
-  } finally {
+    // Give the browser time to resolve the blob after the synthetic click.
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  } catch {
     URL.revokeObjectURL(objectUrl);
+    return { ok: false, kind: "error", message: "Couldn't start the download. Please try again." };
   }
   return { ok: true };
 }

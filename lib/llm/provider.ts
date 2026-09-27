@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { z } from "zod";
 import { logLlmCall } from "./log";
+import { reserveModelCredits } from "./quota";
 
 /**
  * The only door to a language model. Features ask for typed output through
@@ -17,6 +18,8 @@ export type LlmInput = string | Anthropic.Beta.BetaContentBlockParam[];
 export type ObjectTask<T> = {
   /** Short name for logs and metrics, e.g. "resume.parse". */
   purpose: string;
+  /** Account charged for this provider call; required in production. */
+  userId?: string;
   /** Prompt file version, e.g. "resume-parse.v1". */
   promptVersion: string;
   system: string;
@@ -58,10 +61,12 @@ class AnthropicProvider implements LlmProvider {
 
   async generateObject<T>(task: ObjectTask<T>): Promise<T> {
     const started = Date.now();
+    if (!task.userId && process.env.NODE_ENV === "production") throw new Error("Model calls require an account.");
+    if (task.userId) await reserveModelCredits(task.userId, task.purpose);
     try {
       const response = await this.client.beta.messages.parse({
         model: this.model,
-        max_tokens: task.maxTokens ?? 16000,
+        max_tokens: Math.min(task.maxTokens ?? 8192, 8192),
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
         thinking: { type: "adaptive" },
@@ -104,6 +109,8 @@ let cached: LlmProvider | null | undefined;
 
 /** The configured provider, or null in offline mode. */
 export function getLlm(): LlmProvider | null {
+  // The first beta deliberately uses the independent rules-based engine.
+  if (process.env.PROOFLINE_AI_MODE === "rules") return null;
   if (cached !== undefined) return cached;
   const key = process.env.ANTHROPIC_API_KEY?.trim();
   cached = key ? new AnthropicProvider(key, process.env.LLM_MODEL?.trim() || DEFAULT_MODEL) : null;

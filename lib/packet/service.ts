@@ -6,13 +6,14 @@ import { db, schema } from "@/lib/db";
 import { scoreFit } from "@/lib/fit/engine";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { ROLE_FAMILIES } from "@/lib/jobs/roles";
+import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
 import { requirementsOf, type JobRow } from "@/lib/jobs/store";
 import { roleName } from "@/lib/jobs/text";
 import { listExperiences } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { ANSWERS_V1 } from "@/lib/llm/prompts/answers.v1";
-import { COVER_LETTER_V1 } from "@/lib/llm/prompts/cover-letter.v1";
+import { COVER_LETTER_V2 } from "@/lib/llm/prompts/cover-letter.v2";
 import { getLlm } from "@/lib/llm/provider";
 import { listBullets } from "@/lib/resume/bullets/service";
 import { verifyBullet } from "@/lib/resume/verify";
@@ -25,9 +26,8 @@ import {
   WHY_PLACEHOLDER,
   type CoverLetter,
   type LetterContext,
-  type LetterParagraph,
 } from "./cover-letter";
-import { rankEvidence, recencyOf, requirementLabels, type Evidence, type EvidenceInput } from "./evidence";
+import { rankEvidence, recencyOf, requirementLabels, selectEvidenceForLetter, type Evidence, type EvidenceInput } from "./evidence";
 import { interviewPrep, type PrepQuestion } from "./interview";
 
 export type Packet = typeof schema.applicationPacket.$inferSelect;
@@ -36,6 +36,7 @@ export type Packet = typeof schema.applicationPacket.$inferSelect;
 const STORY_CATEGORIES = new Set(["experience", "metric", "leadership", "project", "award"]);
 
 export type PacketContext = {
+  userId: string;
   job: JobRow;
   evidence: Evidence[];
   factText: Map<string, string>;
@@ -85,13 +86,14 @@ export async function loadPacketContext(userId: string, jobId: string): Promise<
   }
 
   const titleWords = ROLE_FAMILIES.filter((fam) => fam.titleWords.some((w) => job.title.toLowerCase().includes(w))).flatMap((fam) => fam.titleWords);
-  const evidence = rankEvidence(items, requirementLabels(requirements), titleWords);
+  const evidence = rankEvidence(items, requirementLabels(requirements), titleWords, job.description);
   const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements }, candidate);
   const matched = fit.details.requiredSkills.matched.flatMap((m) => m.split(" or "));
   const shown = new Set(evidence.flatMap((e) => e.covers));
 
   const contact = application?.contacts?.find((c) => c.name?.trim());
   return {
+    userId,
     job,
     evidence,
     factText,
@@ -135,37 +137,27 @@ export function readLetter(packet: Packet | undefined): CoverLetter | null {
   return parsed.success ? parsed.data : null;
 }
 
-const ModelLetter = z.object({
-  paragraphs: z.array(z.object({ text: z.string(), sourceIds: z.array(z.string()) })).min(1).max(4),
-});
+const ModelSelection = z.object({ sourceIds: z.array(z.string()).min(1).max(3) });
 
-/** Model-written evidence paragraphs, kept only if every number traces to a cited fact. */
-async function modelParagraphs(ctx: PacketContext): Promise<LetterParagraph[] | null> {
+/** The model may rank sources, but all letter wording is assembled from confirmed evidence. */
+async function modelEvidence(ctx: PacketContext): Promise<Evidence[] | null> {
   const llm = getLlm();
   if (!llm || ctx.evidence.length === 0) return null;
   const top = ctx.evidence.slice(0, 8);
-  const byId = new Map(top.map((e) => [e.id, e]));
   try {
     const out = await llm.generateObject({
       purpose: "packet.cover_letter",
-      promptVersion: COVER_LETTER_V1.version,
-      system: COVER_LETTER_V1.system,
-      schema: ModelLetter,
+      userId: ctx.userId,
+      promptVersion: COVER_LETTER_V2.version,
+      system: COVER_LETTER_V2.system,
+      schema: ModelSelection,
       effort: "medium",
       input: JSON.stringify({
         posting: { company: ctx.job.company, title: ctx.job.title, asksFor: ctx.matched.concat(ctx.missing).slice(0, 12), description: (ctx.job.description ?? "").slice(0, 6000) },
         evidence: top.map((e) => ({ id: e.id, where: [e.title, e.org].filter(Boolean).join(" at "), text: e.text })),
       }),
     });
-    const paragraphs: LetterParagraph[] = [];
-    for (const p of out.paragraphs) {
-      const sources = p.sourceIds.filter((id) => byId.has(id));
-      if (!sources.length) return null;
-      const facts = sources.flatMap((id) => byId.get(id)!.factIds.map((f) => ctx.factText.get(f)!).filter(Boolean));
-      if (!verifyBullet(p.text, facts).ok) return null;
-      paragraphs.push({ text: p.text.trim(), sourceIds: sources, purpose: "evidence" });
-    }
-    return paragraphs;
+    return selectEvidenceForLetter(out.sourceIds, top);
   } catch {
     return null;
   }
@@ -175,18 +167,17 @@ async function modelParagraphs(ctx: PacketContext): Promise<LetterParagraph[] | 
 export async function draftCoverLetter(userId: string, jobId: string, why?: string | null): Promise<CoverLetter> {
   const ctx = await loadPacketContext(userId, jobId);
   if (!ctx) throw new Error("Job not found.");
+  if (!hasUsableJobDescription(ctx.job.description)) throw new Error(JOB_DESCRIPTION_REQUIRED);
   const existing = await getPacket(userId, jobId);
   const reason = why === undefined ? existing?.why ?? null : why?.trim() || null;
   const offline = draftCoverLetterOffline({ ...ctx.letterContext, why: reason });
   let letter = offline;
-  const middle = await modelParagraphs(ctx);
-  if (middle) {
-    const keep = offline.paragraphs.filter((p) => p.purpose !== "evidence" && p.purpose !== "fit");
+  const picked = await modelEvidence(ctx);
+  if (picked) {
     letter = {
-      ...offline,
-      paragraphs: [keep[0], ...middle, ...keep.slice(1)],
+      ...draftCoverLetterOffline({ ...ctx.letterContext, evidence: picked, why: reason }),
       generator: "anthropic",
-      promptVersion: COVER_LETTER_V1.version,
+      promptVersion: COVER_LETTER_V2.version,
     };
   }
   await upsertPacket(userId, jobId, { why: reason, coverLetter: letter as unknown as Record<string, unknown>, coverLetterAt: new Date() });
@@ -252,6 +243,7 @@ export async function draftAnswer(userId: string, jobId: string, question: strin
   const limit = wordLimit == null ? null : z.number().int().min(20).max(1000).parse(wordLimit);
   const [ctx, packet] = await Promise.all([loadPacketContext(userId, jobId), getPacket(userId, jobId)]);
   if (!ctx) throw new Error("Job not found.");
+  if (!hasUsableJobDescription(ctx.job.description)) throw new Error(JOB_DESCRIPTION_REQUIRED);
   const role = roleName(ctx.job.title);
   const answerCtx = { company: ctx.job.company, role, why: packet?.why ?? null, evidence: ctx.evidence };
   let draft = draftAnswerOffline(q, answerCtx, limit);
@@ -263,6 +255,7 @@ export async function draftAnswer(userId: string, jobId: string, question: strin
     try {
       const out = await llm.generateObject({
         purpose: "packet.answer",
+        userId: ctx.userId,
         promptVersion: ANSWERS_V1.version,
         system: ANSWERS_V1.system,
         schema: ModelAnswer,
@@ -324,7 +317,7 @@ export async function packetView(userId: string, jobId: string): Promise<PacketV
     letter,
     checks: letter ? checkCoverLetter(letter, ctx.factText, evidenceById) : [],
     why: packet?.why ?? "",
-    prep: interviewPrep({
+    prep: hasUsableJobDescription(ctx.job.description) ? interviewPrep({
       company: ctx.job.company,
       title: ctx.job.title,
       school: ctx.letterContext.school,
@@ -334,7 +327,7 @@ export async function packetView(userId: string, jobId: string): Promise<PacketV
       matched: ctx.matched,
       missing: ctx.missing,
       experiences: ctx.experiences,
-    }),
+    }) : [],
     notes: packet?.interviewNotes ?? {},
     answers: readAnswers(packet),
     evidence: ctx.evidence,

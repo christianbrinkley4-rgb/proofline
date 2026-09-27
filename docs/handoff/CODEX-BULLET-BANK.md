@@ -4,6 +4,13 @@
 
 Read `AGENTS.md`, `DESIGN.md`, `docs/PLAN.md` (latest sections), and `docs/research/RESUME-STANDARDS.md` first.
 
+## Current implementation
+
+The role-question source now includes O*NET 31.0 data: 18,838 tasks across 1,016 occupations. The safety and voice filters yield 7,051 base task questions, with optional method and result follow-ups after a task is confirmed (21,153 potential prompts). `lib/resume/onet-catalog.json`, `lib/resume/onet-tasks.ts`, and `lib/resume/onet-prompts.ts` hold the catalog, eligibility filters, and posting-aware ranking. The agent's read-only `get_role_task_prompts` tool returns up to 12 questions for an experience on the current person's profile. It can rank those questions against a full job description. The integration test confirms lookup saves no facts and cannot read another person's experience.
+
+This is a question catalog, not a bank of claims about any individual. The per-person suggestion deck, persistent answer history, and accept/reject table are implemented on Profile. A yes saves a confirmed fact and active bullet in one transaction; a no saves no claim and suppresses related tasks. Tailoring now removes near-duplicate bullets across the page. Do not count occupational tasks or online success posts as verified personal accomplishments or hiring outcomes. Build those remaining parts using the confirmation rule below. See `docs/research/MOCK-APPLICANT-BENCHMARK.md` for the repeatable 200-profile, 800-posting synthetic check.
+
+
 ## The rule that matters most
 
 Proofline never puts an unconfirmed claim on a resume. A suggestion is a **question**, not a bullet:

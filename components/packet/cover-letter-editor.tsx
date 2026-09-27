@@ -31,6 +31,7 @@ export function CoverLetterEditor({
   initialWhy,
   checks,
   sources,
+  canDraft,
 }: {
   jobId: string;
   company: string;
@@ -39,6 +40,7 @@ export function CoverLetterEditor({
   initialWhy: string;
   checks: LetterCheck[];
   sources: Record<string, SourceView>;
+  canDraft: boolean;
 }) {
   const router = useRouter();
   const [letter, setLetter] = useState<CoverLetter | null>(initialLetter);
@@ -62,7 +64,7 @@ export function CoverLetterEditor({
         setSaved(next);
         setSavedWhy(why);
         setConfirmRedraft(false);
-        toast(next.generator === "anthropic" ? "Drafted from your confirmed evidence. Every number was checked." : "Drafted from your confirmed evidence.");
+        toast("Drafted from your confirmed evidence.");
         router.refresh();
       } catch {
         toast.error("Couldn't draft the letter. Please try again.");
@@ -130,7 +132,7 @@ export function CoverLetterEditor({
           maxLength={1200}
           rows={2}
           className="mt-2 bg-background"
-          placeholder={`I've used ${company}'s product for two years, and I want to learn how the team behind it works.`}
+          placeholder="What really draws you here? Something you've read about their work, a person you met, or how the role fits your plans."
         />
         <div className="mt-2 flex justify-end">
           <Button size="sm" variant="outline" disabled={pending || why === savedWhy} onClick={saveReason}>
@@ -145,7 +147,7 @@ export function CoverLetterEditor({
           <p className="mx-auto mt-1 max-w-md text-[13px] leading-5 text-muted-foreground">
             Proofline picks your strongest confirmed evidence for this posting and shows where every sentence came from.
           </p>
-          <Button className="mt-4" onClick={draft} disabled={pending}>
+          <Button className="mt-4" onClick={draft} disabled={pending || !canDraft}>
             {pending ? <LoaderCircle className="animate-spin" /> : <Sparkle data-icon="inline-start" />}
             Draft cover letter
           </Button>
@@ -173,13 +175,18 @@ export function CoverLetterEditor({
                       rows={Math.max(2, Math.ceil(p.text.length / 90))}
                       className={cn("text-[14px] leading-6", needsYou && "border-pending/50 bg-pending-soft")}
                     />
+                    {needsYou && p.purpose === "motivation" && (
+                      <p className="mt-1.5 text-[12px] leading-5 text-pending-ink">
+                        Only you can write this part. <a href="#why" className="font-medium underline underline-offset-2">Write your reason above</a> and save it, or replace the bracketed text here.
+                      </p>
+                    )}
                     {p.sourceIds.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
                         <span>Based on</span>
                         {p.sourceIds.map((id) => {
                           const s = sources[id];
                           return (
-                            <span key={id} title={s?.text ?? "This evidence changed or was removed."} className={cn("rounded bg-muted px-1.5 py-0.5", !s && "bg-pending-soft text-pending-ink")}>
+                            <span key={id} title={s?.text ?? "This evidence changed or was removed."} aria-label={s ? `${s.org ?? "Your profile"}: ${s.text}` : "Changed evidence"} className={cn("rounded bg-muted px-1.5 py-0.5", !s && "bg-pending-soft text-pending-ink")}>
                               {s ? s.org ?? "Your profile" : "Changed evidence"}
                             </span>
                           );
@@ -229,8 +236,12 @@ export function CoverLetterEditor({
             <Button
               variant="outline"
               onClick={async () => {
-                await navigator.clipboard.writeText(letterText(letter, signature));
-                toast("Copied. Paste it into the application.");
+                try {
+                  await navigator.clipboard.writeText(letterText(letter, signature));
+                  toast("Copied. Paste it into the application.");
+                } catch {
+                  toast.error("Couldn't copy here. Download the PDF or DOCX instead.");
+                }
               }}
             >
               <Copy data-icon="inline-start" />
@@ -251,7 +262,7 @@ export function CoverLetterEditor({
             {confirmRedraft ? (
               <span className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
                 Replace your edits with a new draft?
-                <Button size="sm" variant="destructive" onClick={draft} disabled={pending}>
+                <Button size="sm" variant="destructive" onClick={draft} disabled={pending || !canDraft}>
                   Redraft
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setConfirmRedraft(false)}>
@@ -259,7 +270,7 @@ export function CoverLetterEditor({
                 </Button>
               </span>
             ) : (
-              <Button variant="ghost" onClick={() => (letter.generator === "user" || dirty ? setConfirmRedraft(true) : draft())} disabled={pending}>
+              <Button variant="ghost" onClick={() => (letter.generator === "user" || dirty ? setConfirmRedraft(true) : draft())} disabled={pending || !canDraft}>
                 <RefreshCw data-icon="inline-start" />
                 Redraft
               </Button>
@@ -267,7 +278,9 @@ export function CoverLetterEditor({
           </div>
           {blocked && !dirty && blockHint && <p className="text-[12.5px] text-pending-ink">{blockHint}</p>}
           {!blocked && !dirty && warns.length > 0 && (
-            <p className="text-[12.5px] text-muted-foreground">Style warnings won&apos;t block download.</p>
+            <p className="text-[12.5px] text-muted-foreground">
+              {warns.length} {warns.length === 1 ? "suggestion" : "suggestions"} to review above. Download still works.
+            </p>
           )}
         </>
       )}

@@ -5,6 +5,7 @@ import { PageBody, PageHeader } from "@/components/app/page-header";
 import { StoryStart } from "@/components/coach/story-start";
 import { QuestionCard } from "@/components/onboarding/experience-step";
 import { FactRow } from "@/components/onboarding/fact-row";
+import { EvidenceLegend } from "@/components/shared/evidence-tag";
 import { ExperienceCard } from "@/components/profile/experience-card";
 import { LifeNote } from "@/components/profile/life-note";
 import { StoryNotebook } from "@/components/profile/story-notebook";
@@ -43,6 +44,13 @@ export default async function ProfilePage() {
   // Nothing to show yet: one way in, not every capture tool at once.
   const empty = experiences.length === 0 && confirmedCount === 0 && waitingCount === 0;
   const firstName = (profile?.fullName || session.user.name).split(/\s+/)[0] ?? "";
+  // The one thing between them and a resume: a role with confirmed facts but no resume lines yet.
+  const needsLines = experiences.find(
+    (e) =>
+      e.kind !== "education" &&
+      !bullets.some((b) => b.experienceId === e.id && b.status === "active") &&
+      facts.some((f) => f.experienceId === e.id && f.verificationState === "confirmed"),
+  );
 
   return (
     <PageBody>
@@ -57,10 +65,28 @@ export default async function ProfilePage() {
 
       {empty && <StoryStart name={firstName} />}
 
+      {!empty && <EvidenceLegend className="mt-5" />}
+
+      {needsLines && (
+        <p className="mt-6 rounded-xl border border-brand/30 bg-brand-soft/50 px-4 py-3 text-[13.5px] leading-6">
+          <span className="font-medium">Next:</span> press <span className="font-medium">Write bullets</span> on {needsLines.org}. I&apos;ll draft
+          resume lines from its confirmed facts, and you can edit any of them. Roles without resume lines stay off your resume.
+        </p>
+      )}
+
       {waitingCount > 0 && (
         <section className="mt-8 rounded-2xl border border-pending/30 bg-pending-soft/40 p-5 sm:p-6">
-          <h2 className="text-[15px] font-semibold">Check these first <span className="font-normal text-pending-ink">({waitingCount} waiting on you)</span></h2>
-          <p className="mt-1 text-[13px] text-muted-foreground">Say yes to what&apos;s true, fix what&apos;s close. Confirmed facts power your matches and resumes.</p>
+          {waitingFacts.length > 0 ? (
+            <>
+              <h2 className="text-[15px] font-semibold">Check these first <span className="font-normal text-pending-ink">({waitingCount} waiting on you)</span></h2>
+              <p className="mt-1 text-[13px] text-muted-foreground">Say yes to what&apos;s true, fix what&apos;s close. Confirmed facts power your matches and resumes.</p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-[15px] font-semibold">Questions from your agent <span className="font-normal text-pending-ink">({questions.length}, optional)</span></h2>
+              <p className="mt-1 text-[13px] text-muted-foreground">An honest answer can make a resume line stronger. Skip anything you&apos;re unsure of.</p>
+            </>
+          )}
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             {questions.slice(0, 6).map((q) => (
               <QuestionCard
@@ -152,7 +178,7 @@ export default async function ProfilePage() {
               <Row label="Setup" value={profile?.workModes.join(", ")} />
               <Row label="Pay floor" value={profile?.payFloor ? `$${profile.payFloor}${profile.payFloor < 500 ? "/hr" : "/yr"}` : null} />
               <Row
-                label="Skip"
+                label="Deal-breakers"
                 value={profile?.dealBreakers.map((b) => (b.toLowerCase().startsWith("company:") ? `${b.slice(8).trim()} (company)` : b)).join(", ")}
               />
             </dl>
@@ -191,7 +217,7 @@ function SideCard({ title, edit, children }: { title: string; edit: string; chil
     <section className="rounded-xl border bg-background p-4">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-[13.5px] font-semibold">{title}</h2>
-        <Link href={edit} aria-label={`Edit ${title}`} className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
+        <Link href={edit} aria-label={`Edit ${title}`} className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground pointer-coarse:size-10">
           <Pencil className="size-3.5" />
         </Link>
       </div>
@@ -203,7 +229,7 @@ function SideCard({ title, edit, children }: { title: string; edit: string; chil
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex gap-3">
-      <dt className="w-20 shrink-0 text-subtle-foreground">{label}</dt>
+      <dt className="w-24 shrink-0 text-subtle-foreground">{label}</dt>
       <dd className="min-w-0 break-words">{value || <span className="text-subtle-foreground">Not set</span>}</dd>
     </div>
   );

@@ -11,7 +11,7 @@ export const DictationSchema = z.array(z.string().max(4000)).min(1).max(200);
  * Claude does a smoother cleanup that's kept only if it adds no numbers, doesn't
  * balloon, and passes the voice rules.
  */
-export async function cleanDictation(segments: string[]): Promise<{ text: string; method: "rules" | "model" }> {
+export async function cleanDictation(segments: string[], userId?: string): Promise<{ text: string; method: "rules" | "model" }> {
   const parts = DictationSchema.parse(segments);
   const rules = cleanTranscript(parts);
   const raw = parts.join(" ");
@@ -20,6 +20,7 @@ export async function cleanDictation(segments: string[]): Promise<{ text: string
   try {
     const out = await llm.generateObject({
       purpose: "voice.clean",
+      userId,
       promptVersion: TRANSCRIPT_V1.version,
       system: TRANSCRIPT_V1.system,
       schema: z.object({ text: z.string() }),

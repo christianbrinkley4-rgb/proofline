@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "eval:stress": "tsx scripts/mock-stress.mts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },

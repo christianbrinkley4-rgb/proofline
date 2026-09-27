@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ClipboardPaste, LoaderCircle } from "lucide-react";
 import { importLinkAction, importPastedJobAction } from "@/app/app/jobs/actions";
@@ -24,6 +24,7 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
   const [edits, setEdits] = useState<{ title?: string; company?: string; location?: string }>({});
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const textarea = useRef<HTMLTextAreaElement>(null);
 
   const trimmed = value.trim();
   const asLink = isLink(trimmed);
@@ -39,13 +40,15 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
     setError("");
     if (asLink) {
       startTransition(async () => {
-        const result = await importLinkAction(trimmed);
+        const result = await importLinkAction(trimmed).catch(() => ({ ok: false as const, error: "I couldn't reach that page." }));
         if (result.ok) return open(result.jobId);
         // Sign-in walls (LinkedIn, Handshake) and blocked sites: keep the link, ask for the text.
         setLink(trimmed);
         setValue("");
         setNeedsText(true);
-        setError(`${result.error} Copy the posting from that page and paste it here instead.`);
+        // Some reasons already say to paste the text; don't say it twice.
+        setError(/\bpaste\b/i.test(result.error) ? result.error : `${result.error} Copy the posting from that page and paste it here instead.`);
+        textarea.current?.focus();
       });
       return;
     }
@@ -58,7 +61,10 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
       return;
     }
     startTransition(async () => {
-      const result = await importPastedJobAction({ company, title, location, url: link, description: trimmed });
+      const result = await importPastedJobAction({ company, title, location, url: link, description: trimmed }).catch(() => ({
+        ok: false as const,
+        error: "Couldn't save this job. Check your connection and try again.",
+      }));
       if (result.ok) return open(result.jobId);
       setError(result.error);
     });
@@ -77,6 +83,7 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
         <div className="flex items-start gap-3 px-2 pt-2">
           <ClipboardPaste className="mt-1 size-4 shrink-0 text-subtle-foreground" />
           <textarea
+            ref={textarea}
             value={value}
             onChange={(e) => {
               setValue(e.target.value);
@@ -97,7 +104,11 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
                 ? "Paste the full job description here"
                 : "Paste a job link (LinkedIn, Indeed, Handshake, any company site) or the whole description"
             }
-            className="min-h-10 w-full resize-none bg-transparent py-1 text-[15px] leading-6 outline-none placeholder:text-subtle-foreground"
+            className={cn(
+              "min-h-10 w-full resize-none bg-transparent py-1 text-[15px] leading-6 outline-none placeholder:text-subtle-foreground",
+              // The placeholder wraps to three lines on a phone; show all of it.
+              !asText && "max-sm:min-h-[4.75rem]",
+            )}
           />
         </div>
 
@@ -126,7 +137,10 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
                 : "Scoring your fit"
               : asText
                 ? "Check the title and company I read, then go."
-                : link
+                : trimmed && !asLink
+                  ? // The button stays off until there's enough text to score; say why.
+                    `Keep going: paste the whole posting, duties and requirements included (${trimmed.length}/${MIN_TEXT} characters).`
+                  : link
                   ? `Saving the link too: ${new URL(link).hostname}`
                   : "You get a fit score, three tailored resumes, and what would make them stronger."}
           </p>

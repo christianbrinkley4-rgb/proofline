@@ -5,7 +5,9 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 import { saveBasicsAction, saveGoalsAction, type BasicsInput, type GoalsInput } from "@/app/app/onboarding/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { suggestedGoalsFor } from "@/lib/fit/suggested-goals";
 import { AgentSays, ChipInput, Field, PillChoice, StepHint } from "./parts";
+import type { ExperienceView } from "./types";
 
 function FormError({ error }: { error: string | null }) {
   if (!error) return null;
@@ -25,7 +27,7 @@ function Actions({ pending, onBack, label = "Continue" }: { pending: boolean; on
         {!pending && <ArrowRight data-icon="inline-end" />}
       </Button>
       {onBack && (
-        <button type="button" onClick={onBack} className="text-[13.5px] text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={onBack} className="-my-2 py-2 text-[13.5px] text-muted-foreground hover:text-foreground">
           Back
         </button>
       )}
@@ -48,9 +50,14 @@ export function BasicsStep({ initial, onSaved }: { initial: BasicsInput; onSaved
         onSubmit={(e) => {
           e.preventDefault();
           startTransition(async () => {
-            const result = await saveBasicsAction(values);
-            if (result.ok) onSaved();
-            else setError(result.error);
+            setError(null);
+            try {
+              const result = await saveBasicsAction(values);
+              if (result.ok) onSaved();
+              else setError(result.error);
+            } catch {
+              setError("Couldn't save. Check your connection and try again.");
+            }
           });
         }}
       >
@@ -85,8 +92,8 @@ export function BasicsStep({ initial, onSaved }: { initial: BasicsInput; onSaved
           <Field label="Minor" htmlFor="minor">
             <Input id="minor" value={values.minor} onChange={set("minor")} className="h-10" />
           </Field>
-          <Field label="Completed or expected" htmlFor="gradDate">
-            <Input id="gradDate" type="month" value={values.gradDate} onChange={set("gradDate")} className="h-10" />
+          <Field label="Completed or expected" htmlFor="gradDate" hint="Year is enough if you do not know the month.">
+            <Input id="gradDate" type="text" inputMode="numeric" value={values.gradDate} onChange={set("gradDate")} placeholder="2016 or 2016-05" className="h-10" />
           </Field>
           <Field label="GPA (optional)" htmlFor="gpa" hint="Only useful when a posting asks for it.">
             <Input id="gpa" inputMode="decimal" value={values.gpa} onChange={set("gpa")} placeholder="3.6" className="h-10" />
@@ -110,48 +117,23 @@ export function BasicsStep({ initial, onSaved }: { initial: BasicsInput; onSaved
   );
 }
 
-const ROLE_SUGGESTIONS = [
-  "Accounting intern",
-  "Audit intern",
-  "Tax intern",
-  "Financial analyst intern",
-  "FP&A intern",
-  "Investment banking intern",
-  "Business analyst intern",
-  "Data analyst intern",
-  "Software engineering intern",
-  "Marketing intern",
-  "Consulting intern",
-  "Staff accountant",
-  "Customer service representative",
-  "Administrative assistant",
-  "Retail associate",
-  "Medical assistant",
-  "Warehouse associate",
-  "Electrician apprentice",
-  "Project coordinator",
-] as const;
-
 const MODES = [
   { value: "remote", label: "Remote" },
   { value: "hybrid", label: "Hybrid" },
   { value: "onsite", label: "In person" },
 ] as const;
 
-const INDUSTRIES = ["Public accounting", "Banking", "Tech", "Healthcare", "Government", "Nonprofit", "Consulting", "Retail"] as const;
-
 const AUTH = [
   { value: "authorized", label: "Authorized to work in the U.S." },
   { value: "needs_sponsorship", label: "Will need visa sponsorship" },
 ] as const;
 
-const DEAL_BREAKERS = ["Unpaid", "Commission only", "Requires a CPA already", "Weekend shifts", "Relocation"] as const;
-
-export function GoalsStep({ initial, onBack, onSaved }: { initial: GoalsInput; onBack: () => void; onSaved: () => void }) {
+export function GoalsStep({ initial, experiences, onBack, onSaved }: { initial: GoalsInput; experiences: ExperienceView[]; onBack: () => void; onSaved: () => void }) {
   const [values, setValues] = useState<GoalsInput>(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const update = <K extends keyof GoalsInput>(key: K, value: GoalsInput[K]) => setValues((v) => ({ ...v, [key]: value }));
+  const suggestions = suggestedGoalsFor(experiences);
 
   return (
     <div>
@@ -162,14 +144,19 @@ export function GoalsStep({ initial, onBack, onSaved }: { initial: GoalsInput; o
         onSubmit={(e) => {
           e.preventDefault();
           startTransition(async () => {
-            const result = await saveGoalsAction(values);
-            if (result.ok) onSaved();
-            else setError(result.error);
+            setError(null);
+            try {
+              const result = await saveGoalsAction(values);
+              if (result.ok) onSaved();
+              else setError(result.error);
+            } catch {
+              setError("Couldn't save. Check your connection and try again.");
+            }
           });
         }}
       >
         <Field label="Kinds of roles (optional)" htmlFor="roles" hint="Not sure yet? Leave this blank. We'll suggest paths from what you've done.">
-          <ChipInput id="roles" value={values.targetRoles} onChange={(v) => update("targetRoles", v)} suggestions={ROLE_SUGGESTIONS} placeholder="Type a role and press Enter" />
+          <ChipInput id="roles" value={values.targetRoles} onChange={(v) => update("targetRoles", v)} suggestions={suggestions.roles} visible={8} placeholder="Type a role and press Enter" />
         </Field>
         <Field label="When (optional)" htmlFor="targetTerm" hint="Leave blank if you're open to roles posted now.">
           <Input id="targetTerm" value={values.targetTerm} onChange={(e) => update("targetTerm", e.target.value)} placeholder="Now, summer 2027, after graduation..." className="h-10" />
@@ -178,10 +165,10 @@ export function GoalsStep({ initial, onBack, onSaved }: { initial: GoalsInput; o
           <ChipInput id="locations" value={values.targetLocations} onChange={(v) => update("targetLocations", v)} suggestions={["Remote"]} placeholder="Raleigh, NC" />
         </Field>
         <Field label="Work setup you're open to">
-          <PillChoice multiple options={MODES} value={values.workModes} onChange={(v) => update("workModes", v)} />
+          <PillChoice multiple label="Work setup you're open to" options={MODES} value={values.workModes} onChange={(v) => update("workModes", v)} />
         </Field>
         <Field label="Industries (optional)" htmlFor="industries">
-          <ChipInput id="industries" value={values.industries} onChange={(v) => update("industries", v)} suggestions={INDUSTRIES} />
+          <ChipInput id="industries" value={values.industries} onChange={(v) => update("industries", v)} suggestions={suggestions.industries} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Lowest pay you'd take (optional)" htmlFor="pay" hint="Enter an hourly rate or annual salary. We'll infer the unit from the amount.">
@@ -192,10 +179,10 @@ export function GoalsStep({ initial, onBack, onSaved }: { initial: GoalsInput; o
           </Field>
         </div>
         <Field label="Work authorization" hint="Used only to skip jobs you can't be hired for. Never shown to employers.">
-          <PillChoice options={AUTH} value={values.workAuthorization ? [values.workAuthorization] : []} onChange={(v) => update("workAuthorization", v[0] ?? "")} />
+          <PillChoice label="Work authorization" options={AUTH} value={values.workAuthorization ? [values.workAuthorization] : []} onChange={(v) => update("workAuthorization", v[0] ?? "")} />
         </Field>
         <Field label="Deal-breakers (optional)" htmlFor="dealbreakers">
-          <ChipInput id="dealbreakers" value={values.dealBreakers} onChange={(v) => update("dealBreakers", v)} suggestions={DEAL_BREAKERS} />
+          <ChipInput id="dealbreakers" value={values.dealBreakers} onChange={(v) => update("dealBreakers", v)} suggestions={suggestions.dealBreakers} />
         </Field>
 
         <FormError error={error} />

@@ -5,6 +5,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, dbReady, schema } from "@/lib/db";
 
+if (process.env.VERCEL && !process.env.BETTER_AUTH_SECRET?.trim()) {
+  throw new Error("BETTER_AUTH_SECRET is required on Vercel to keep account sessions secure.");
+}
+
 export const auth = betterAuth({
   appName: "Proofline",
   database: drizzleAdapter(db, {

@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { db, dbReady, schema } from "@/lib/db";
+import { setCareerGoal, recordCareerCheckin } from "@/lib/career/service";
+import { submitFeedback } from "@/lib/feedback/service";
 import { createExperience } from "@/lib/kb/experiences";
 import { addFact, listFacts } from "@/lib/kb/facts";
 import { askQuestion } from "@/lib/kb/questions";
@@ -21,6 +23,67 @@ describe("agent tools", () => {
       expect(t.name).toMatch(/^[a-z_]+$/);
       expect(t.description.length).toBeGreaterThan(40);
     }
+  });
+
+  it("lets the agent read a person's goal and reflection without treating it as a resume fact", async () => {
+    const empty = (await runTool("get_career_plan", {}, ctx)) as { goal: null; discovery: string };
+    expect(empty.goal).toBeNull();
+    expect(empty.discovery).toContain("not chosen");
+
+    const goal = await setCareerGoal(userId, {
+      targetRole: "Explore career directions", targetMonth: null,
+      motivation: "I want to learn which work feels useful", benchmarkJobId: null,
+    });
+    await recordCareerCheckin(userId, goal.id, "I enjoyed helping a neighbor organize a community event.");
+    const plan = (await runTool("get_career_plan", {}, ctx)) as {
+      goal: { role: string }; recentCheckins: Array<{ reflection: string | null }>; actions: Array<{ id: string }>;
+    };
+    expect(plan.goal.role).toBe("Explore career directions");
+    expect(plan.recentCheckins[0].reflection).toContain("community event");
+    expect(plan.actions[0].id).toBe("notice-patterns");
+  });
+  it("reads only this person's quality feedback as self-reported advice context", async () => {
+    const [resume] = await db.insert(schema.resume).values({
+      userId, name: "Feedback example", template: "classic", variant: "base", content: {},
+    }).returning();
+    await submitFeedback(userId, {
+      kind: "resume", subjectId: resume.id, rating: "not_helpful",
+      issue: "generic", comment: "Make this more specific to my job.",
+    });
+    const otherId = "test-user-tools-feedback-other";
+    await db.insert(schema.user).values({
+      id: otherId, name: "Other Feedback", email: "feedback-other-tools@example.com",
+    }).onConflictDoNothing();
+    const [otherResume] = await db.insert(schema.resume).values({
+      userId: otherId, name: "Other resume", template: "classic", variant: "base", content: {},
+    }).returning();
+    await submitFeedback(otherId, {
+      kind: "resume", subjectId: otherResume.id, rating: "helpful", comment: "Private comment.",
+    });
+    const feedback = (await runTool("get_quality_feedback", {}, ctx)) as Array<{
+      subjectId: string; comment: string; outcomeEvidence: boolean;
+    }>;
+    expect(feedback.some((entry) => entry.subjectId === resume.id && entry.comment.includes("specific"))).toBe(true);
+    expect(feedback.some((entry) => entry.subjectId === otherResume.id)).toBe(false);
+    expect(feedback.every((entry) => entry.outcomeEvidence === false)).toBe(true);
+  });
+  it("offers occupation tasks only as questions and respects profile ownership", async () => {
+    const experience = await createExperience(userId, { kind: "work", org: "Local museum", title: "Museum collections assistant" });
+    const before = (await listFacts(userId)).length;
+    const result = (await runTool("get_role_task_prompts", { experienceId: experience.id, count: 8 }, ctx)) as {
+      prompts: Array<{ question: string; source: string }>;
+      rule: string;
+    };
+    expect(result.prompts.length).toBeGreaterThan(0);
+    expect(result.prompts.every((prompt) => prompt.question.startsWith("Have you done this work?"))).toBe(true);
+    expect(result.prompts.some((prompt) => prompt.source === "O*NET 31.0")).toBe(true);
+    expect(result.rule).toMatch(/not a fact/);
+    expect((await listFacts(userId)).length).toBe(before);
+
+    const otherId = "test-user-tools-other";
+    await db.insert(schema.user).values({ id: otherId, name: "Other Person", email: "other-tools@example.com" }).onConflictDoNothing();
+    const otherExperience = await createExperience(otherId, { kind: "work", org: "Other museum", title: "Curator" });
+    await expect(runTool("get_role_task_prompts", { experienceId: otherExperience.id }, ctx)).rejects.toThrow(/not found on this profile/);
   });
 
   it("saves what an AI proposes as unconfirmed, credited to that AI", async () => {

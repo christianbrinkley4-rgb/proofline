@@ -38,7 +38,7 @@ export default async function AgentPage() {
       </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(17rem,1fr)]">
-        <AgentChat initial={chat} mode={anthropicClient() ? "model" : "offline"} />
+        <AgentChat initial={chat} mode={anthropicClient() ? "model" : "offline"} targetRole={profile?.targetRoles[0] ?? null} hasApplications={applications.length > 0} />
         <aside className="space-y-4">
           <section className="rounded-xl border bg-background p-4 sm:p-5">
             <h2 className="text-[14px] font-semibold tracking-tight">What needs your attention</h2>
@@ -69,10 +69,10 @@ export default async function AgentPage() {
           <section className="rounded-xl border bg-background p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <Bot className="size-4 text-brand" />
-              <h2 className="text-[14px] font-semibold tracking-tight">Use your own AI</h2>
+              <h2 className="text-[14px] font-semibold tracking-tight">Optional AI connection</h2>
             </div>
             <p className="mt-1.5 text-[12.5px] leading-5 text-muted-foreground">
-              Prefer Claude or Cursor? Connect it and it gets the same tools and the same rules as this agent.
+              Proofline works without a key. If you already use Claude or Cursor, you can connect it to the same confirmed profile.
             </p>
             <Link href="/app/settings#ai" className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-medium hover:underline">
               Set up a connection <ArrowRight className="size-3.5" />

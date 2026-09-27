@@ -65,7 +65,8 @@ export const SKILLS: SkillDef[] = [
   s("AWS", "software", "aws", "amazon web services"),
   s("Git", "software", "git(hub)?"),
   // Tools
-  s("Excel", "tool", "excel", "spreadsheets?", "pivot tables?", "v ?lookups?", "x ?lookups?", "index[- ]match", "google sheets"),
+  s("Excel", "tool", "excel", "pivot tables?", "v ?lookups?", "x ?lookups?", "index[- ]match"),
+  s("Google Sheets", "tool", "google sheets"),
   s("QuickBooks", "tool", "quickbooks( online)?", "qbo"),
   s("NetSuite", "tool", "netsuite"),
   s("SAP", "tool", "sap"),
@@ -82,19 +83,31 @@ export const SKILLS: SkillDef[] = [
   s("Figma", "tool", "figma"),
   s("Google Analytics", "tool", "google analytics", "ga4"),
   // Service, operations, healthcare, and trades
-  s("Point-of-sale systems", "tool", "point[ -]of[ -]sale", "pos systems?", "pos terminal", "cash registers?"),
+  s("Point-of-sale systems", "tool", "point[ -]of[ -]sale", "pos systems?", "pos terminal", "cash registers?", "(?:ran|operated|used) (?:the |a )?register"),
   s("Electronic health records", "tool", "electronic health records?", "ehr", "emr"),
-  s("Cash handling", "business", "cash handl(ing|ed)", "balanc(ed|ing) (a |the )?cash drawer"),
-  s("Inventory management", "business", "inventory management", "inventory control", "cycle count(s|ing)?", "stock(ed|ing) shelves"),
+  s("Clinical data management", "business", "clinical data management", "clinical data manager", "clinical data review", "managed clinical data", "clinical data"),
+  s("Medidata Rave", "tool", "medidata rave", "rave edc"),
+  s("CDISC", "business", "cdisc"),
+  s("SDTM", "business", "sdtm"),
+  s("CDASH", "business", "cdash"),
+  s("Oncology", "business", "oncology", "oncology trials?"),
+  s("People management", "business", "people management", "manag(ed|ing) (?:a |the )?team", "supervis(ed|ing) (?:staff|analysts|teams?)", "coach(?:ed|ing)? (?:a |the )?team"),
+  s("Staff scheduling", "business", "staff schedul(ing|ed|es?)", "schedul(e|ed|ing|es?) (?:and (?:coach|manage) )?(?:a |the |\\d+ )?(?:team|staff|employees?|workers?|shifts?)"),
+  s("Cash handling", "business", "cash handl(ing|ed)", "balanc(ed|ing) (a |the )?cash drawer", "balanc(e|ed|ing) (?:daily )?receipts"),
+  s("Inventory management", "business", "inventory management", "inventory control", "cycle count(s|ing)?", "stock(ed|ing) shelves", "manag(e|ed|ing) inventory"),
+  s("Food safety", "business", "food safety", "food handling", "sanitation standards?"),
   s("Appointment scheduling", "business", "appointment schedul(e|ing|ed)", "schedul(ed|ing) appointments?"),
-  s("Patient care", "business", "patient care", "patient intake", "assisted patients?"),
+  s("Patient care", "business", "patient care", "assisted patients?"),
+  s("Patient intake", "business", "patient intake", "intake forms?"),
+  s("Scheduling software", "tool", "scheduling software", "appointment software"),
+  s("Insurance verification", "business", "insurance verification", "verif(y|ied|ying) insurance"),
   s("Vital signs", "business", "vital signs?", "blood pressure readings?"),
   s("Forklift operation", "business", "forklifts?", "lift trucks?"),
   s("Blueprint reading", "business", "blueprints?", "read(ing)? construction plans?"),
   s("Electrical wiring", "business", "electrical wiring", "install(ed|ing)? (electrical )?wiring"),
   // Business and soft skills
   s("Project management", "business", "project management", "managed projects?", "project manager"),
-  s("Customer service", "business", "customer service", "client service", "customer[- ]facing", "client[- ]facing", "front desk", "guest services"),
+  s("Customer service", "business", "customer service", "client service", "customer[- ]facing", "client[- ]facing", "front desk", "guest services", "help(?:ed|ing)? customers?", "assist(?:ed|ing)? shoppers?", "resolv(ed|ing|e) (?:customer|guest) (?:questions?|concerns?|issues?|complaints?)"),
   s("Communication", "soft", "communication", "written and verbal", "presentation skills"),
   s("Teamwork", "soft", "teamwork", "collaborat(e|ion|ive)", "team player", "cross[- ]functional"),
   s("Leadership", "soft", "leadership", "led (a|the|\\d)", "team lead", "president", "captain", "vice president"),
@@ -112,6 +125,7 @@ export const SKILLS: SkillDef[] = [
   s("CMA", "credential", "cma", "certified management accountant"),
   s("Enrolled Agent", "credential", "enrolled agent"),
   s("SIE", "credential", "sie exam", "securities industry essentials"),
+  s("ServSafe", "credential", "servsafe"),
 ];
 
 export function extractSkills(text: string): string[] {
@@ -121,6 +135,34 @@ export function extractSkills(text: string): string[] {
     if (skill.patterns.some((p) => p.test(text))) found.push(skill.name);
   }
   return found;
+}
+
+/**
+ * A profile can mention a skill to say the person has not used it. Such a
+ * mention is useful for coaching, but it must not count as demonstrated work.
+ * Positive mentions in a different clause still count.
+ */
+export function extractEvidenceSkills(text: string): string[] {
+  if (!text) return [];
+  const clauses = text.split(/(?:[.;\n]|\s+\bbut\b\s+)/i);
+  const found = new Set<string>();
+  for (const clause of clauses) {
+    const deniedList = /\b(?:no|without|lacking)\s+(?:(?:any|direct|prior|professional|formal|hands-on)\s+)?(?:experience|knowledge|background|skills?|proficiency|training|exposure)\s+(?:in|with|using|of|on)\b/i.exec(clause);
+    for (const skill of SKILLS) {
+      for (const pattern of skill.patterns) {
+        const match = pattern.exec(clause);
+        if (!match) continue;
+        const prefix = clause.slice(Math.max(0, match.index - 90), match.index);
+        if (deniedList && match.index > deniedList.index) continue;
+        if (/\b(?:no|without|lacking|limited)\s+(?:(?:any|direct|prior|professional|formal|hands-on)\s+)?(?:experience|knowledge|background|skills?|proficiency|training|exposure)\s+(?:in|with|using|of|on)\s*$/i.test(prefix)) continue;
+        if (/\b(?:never|haven't|have not|hasn't|has not|don't|do not|didn't|did not)\s+(?:(?:yet|personally|directly|professionally)\s+)?(?:used|worked with|learned|done|performed|practiced|studied)\s*$/i.test(prefix)) continue;
+        if (/\b(?:unfamiliar with|new to|need to learn|want to learn|learning|no|without)\s*$/i.test(prefix)) continue;
+        found.add(skill.name);
+        break;
+      }
+    }
+  }
+  return [...found];
 }
 
 export function skillCategory(name: string): SkillDef["category"] | null {

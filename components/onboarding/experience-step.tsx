@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { EvidenceTag } from "@/components/shared/evidence-tag";
 import { AgentSays, Field, PillChoice, StepHint } from "./parts";
 import type { ExperienceView, QuestionView } from "./types";
 
@@ -90,7 +91,7 @@ export function ExperienceStep({
             {experiences.length === 0 ? "Continue for now" : "That's everything for now"}
             <ArrowRight data-icon="inline-end" />
           </Button>
-          <button type="button" onClick={onBack} className="text-[13.5px] text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onBack} className="-my-2 py-2 text-[13.5px] text-muted-foreground hover:text-foreground">
             Back
           </button>
         </div>
@@ -105,6 +106,9 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
   const [pending, startTransition] = useTransition();
   const set = (key: keyof ExperienceFormInput) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setValues((v) => ({ ...v, [key]: e.target.value }));
+  // A couple of words ("cashier. stocking.") saves, but can only become a one-word bullet.
+  const noteLength = values.notes.trim().length;
+  const thin = noteLength > 0 && noteLength < 60;
 
   return (
     <form
@@ -112,7 +116,7 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
       onSubmit={(e) => {
         e.preventDefault();
         startTransition(async () => {
-          const result = await addExperienceAction(values);
+          const result = await addExperienceAction(values).catch(() => ({ ok: false as const, error: "Couldn't save. Check your connection and try again." }));
           if (!result.ok) return setError(result.error);
           setValues(EMPTY);
           setError(null);
@@ -120,7 +124,7 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
         });
       }}
     >
-      <PillChoice options={KINDS} value={[values.kind]} onChange={(v) => v[0] && setValues((s) => ({ ...s, kind: v[0] }))} />
+      <PillChoice label="Kind of experience" options={KINDS} value={[values.kind]} onChange={(v) => v[0] && setValues((s) => ({ ...s, kind: v[0] }))} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Where" htmlFor="org">
           <Input id="org" value={values.org} onChange={set("org")} placeholder="Employer, household, group, or project" required className="h-10" />
@@ -141,10 +145,16 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
           rows={5}
           value={values.notes}
           onChange={set("notes")}
+          aria-describedby={thin ? "notes-thin" : undefined}
           placeholder="I did the books part-time for a dental office. Mostly paying vendors in QuickBooks and matching statements. Found some double payments once."
           className="text-[14px] leading-6"
         />
       </Field>
+      {thin && (
+        <p id="notes-thin" className="-mt-3 text-[12.5px] leading-5 text-pending-ink">
+          A little more helps: what you did, how often, and who it helped. I can only write bullets from what you tell me, so a few words become a thin resume line.
+        </p>
+      )}
       {error && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
           {error}
@@ -201,8 +211,11 @@ export function QuestionCard({ question, org }: { question: QuestionView; org?: 
 
       }}
     >
-      {org && <div className="text-[12px] font-medium text-pending-ink">{org}</div>}
-      <p className="mt-1 text-[14.5px] leading-6">{question.prompt}</p>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <EvidenceTag kind="question">Question, optional</EvidenceTag>
+        {org && <span className="text-[12px] font-medium text-pending-ink">{org}</span>}
+      </div>
+      <p className="mt-1.5 text-[14.5px] leading-6">{question.prompt}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {question.kind === "yes_no" ? (
           <>
@@ -219,6 +232,7 @@ export function QuestionCard({ question, org }: { question: QuestionView; org?: 
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               inputMode={question.kind === "number" ? "numeric" : "text"}
+              aria-label={question.prompt}
               placeholder={question.kind === "number" ? "A number" : "Your answer"}
               className="h-9 min-w-0 flex-1 bg-background"
             />
@@ -238,6 +252,9 @@ export function QuestionCard({ question, org }: { question: QuestionView; org?: 
           Skip
         </Button>
       </div>
+      <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+        Your answer is saved as a fact in your own words. Not sure? Skip it rather than guess.
+      </p>
       {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
     </form>
   );

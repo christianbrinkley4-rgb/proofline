@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildJourney, firstSearch, packetStep, pickFocus, type FocusCandidate, type JourneyInput } from "./coach";
 
-const base: JourneyInput = { confirmedFacts: 0, pendingFacts: 0, experiences: 0, baseResume: false, focus: null };
-const ready: JourneyInput = { ...base, confirmedFacts: 6, experiences: 2, baseResume: true };
+const base: JourneyInput = { confirmedFacts: 0, pendingFacts: 0, usableBullets: 0, experiences: 0, baseResume: false, focus: null };
+const ready: JourneyInput = { ...base, confirmedFacts: 6, usableBullets: 2, experiences: 2, baseResume: true };
 const job = (over: Partial<FocusCandidate> = {}): FocusCandidate => ({
   jobId: "job-1",
   company: "Carrow Partners",
@@ -30,6 +30,13 @@ describe("buildJourney", () => {
     expect(j.action.detail).toContain("7 facts");
   });
 
+  it("asks for a usable bullet before sending someone to build a resume", () => {
+    const journey = buildJourney({ ...ready, baseResume: false, usableBullets: 0 });
+    expect(journey.current).toBe("resume");
+    expect(journey.action).toMatchObject({
+      title: "Turn an example into a resume bullet", href: "/app/profile",
+    });
+  });
   it("builds a general resume once there's evidence, then asks for a job", () => {
     expect(buildJourney({ ...ready, baseResume: false }).action).toMatchObject({ title: "Build your resume", href: "/app/resumes/new" });
     const paste = buildJourney(ready);

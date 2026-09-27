@@ -12,6 +12,11 @@ Living document. Updated as slices land.
 
 6. **Students first, everyone welcome.** Students and recent graduates are the primary audience. School, degree, and internship history are optional; paid work, caregiving, training, projects, and volunteering can support a profile. The core path is: who you are and what you have done, what you want next, suggested roles, fit and gaps, then concrete steps to improve. A fit score is not a hiring probability.
 
+## September 26 readiness
+
+The resume and cover-letter core is locally testable, but the hosted beta is intentionally on hold. After Claude Code's second UI pass and backend integration, the checkout passed 554 tests across 61 files, typecheck, lint without errors, and a production build. The deterministic 200-profile/800-posting evaluation also passes after the latest matching fixes. These checks cover consistency and claim support; they do not establish that a document wins interviews.
+
+Career planning now stores a chosen or exploratory direction, an optional real posting benchmark, evidence snapshots, reflections, completed exploration steps, and next actions. The agent can read that history. This is a first coaching loop, not the full life-coach product. Next priorities are full-flow user testing, consent-based quality/outcome feedback, broader goal domains, and recommendations that adapt to what a person actually tried. No foundation model has been fine-tuned on private resumes or self-reported Reddit success posts.
 ## Architecture
 
 ```
@@ -46,7 +51,7 @@ Memory, all per user, all in Postgres:
 - **Facts**: confirmed, unconfirmed, needs review. Append-only with history.
 - **Preferences**: target roles, places, work mode, pay floor, deal-breakers. Stated in onboarding, then learned from saves and dismissals ("You've skipped 6 onsite roles. Should I stop showing onsite?").
 - **Voice**: every edit the user makes to a generated bullet or email is kept as a sample, so later drafts sound like them.
-- **Outcomes**: every application's result (no response, assessment, interview, offer, rejection) linked to the resume version, template, and job type. The agent learns what gets responses for this person.
+- **Outcomes**: the tracker records application stages. Linking outcomes to exact document versions and using them to evaluate recommendations is planned; outcome signals need consent and careful interpretation.
 - **Open questions**: what the agent still wants to know, asked at the right moment instead of all at once.
 
 Proactive work: daily scans of saved searches, deadline and follow-up reminders, gap-closing suggestions from saved jobs.
@@ -63,7 +68,7 @@ Proactive work: daily scans of saved searches, deadline and follow-up reminders,
 
 ## Decisions (and why)
 
-- **PGlite + Drizzle instead of a hosted Supabase project for now.** The Supabase account is at its 2-project free limit. PGlite is real Postgres running in-process, so the schema and migrations move to Supabase or Neon unchanged by setting `DATABASE_URL`.
+- **PGlite locally, Neon for the hosted beta.** PGlite is real Postgres running in-process. A Neon Free project is prepared, with migrations through 0012 applied and the career and shared model-budget tables verified.
 - **Better Auth for accounts.** Open source, runs on our own database, has email/password, magic links, OAuth, and an MCP OAuth plugin for the bring-your-own-AI connector.
 - **Rules-first engine, AI second.** Everything that can be deterministic is. AI makes the writing better but the product never depends on it being available.
 - **Claude Opus 5 is the default model** when a key is set. The model is one environment variable, so switching to a cheaper model is a config change.
@@ -79,7 +84,7 @@ Proactive work: daily scans of saved searches, deadline and follow-up reminders,
 | 5 | Live job discovery and fit engine | Done |
 | 6 | Three per-job resume strategies, comparison, PDF and DOCX export, quality gate | Done |
 | 7 | Tracker with drag and drop, notes, fit guidance, follow-up drafts | Done |
-| 8 | Personal agent: workbench, learning signals, tool layer, and MCP connector done; in-app chat planned | In progress |
+| 8 | Personal agent: workbench, guarded tools, MCP connector, in-app chat, and career-plan context | In progress |
 | 9 | Landing page refresh | Done |
 | 10 | Application packet: grounded cover letters (PDF/DOCX), interview prep with the student's own stories | Done |
 
@@ -159,3 +164,9 @@ Career-center guidance (Harvard's "Create a strong resume" and common recruiter 
 - Why no summary, and how keyword mirroring stays honest: see docs/research/RESUME-STANDARDS.md.
 
 Next: let a student edit a tailored bullet inline and have the checks rerun live; suggest the specific number question for each unmeasured bullet from the resume page.
+
+## September 25 personal bullet bank
+
+Profile now offers an answerable bullet deck for each experience. It draws from confirmed facts, curated tasks, and the O*NET occupation catalog; the person can confirm, edit, or reject each card. A confirmed card becomes a sourced fact and active bullet atomically. Rejections are remembered, including related tasks that were marked untrue. The deck shows a running active-bullet count and source credit for O*NET wording. Tailoring removes near-duplicate bullets when selecting from a large bank. The occupational catalog remains a question source, not a set of claims about an individual or proof of hiring outcomes.
+
+Job gap questions now look across the person's past role titles and the occupation catalog for plausible tasks related to missing posting requirements. The UI names the prior experience, asks whether the task happened, and requires the person's own description before saving anything. Tasks previously rejected as untrue are excluded.

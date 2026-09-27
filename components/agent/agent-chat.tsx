@@ -33,9 +33,18 @@ const TOOL_LABEL: Record<string, string> = {
   plan_application: "Planned your next step",
 };
 
-const SUGGESTIONS = ["What should I do next?", "Find business internships for summer 2027", "Where do my applications stand?", "Help me prep for an interview"];
-
-export function AgentChat({ initial, mode }: { initial: ChatRecord[]; mode: "model" | "offline" }) {
+export function AgentChat({ initial, mode, targetRole, hasApplications }: {
+  initial: ChatRecord[];
+  mode: "model" | "offline";
+  targetRole: string | null;
+  hasApplications: boolean;
+}) {
+  const suggestions = [
+    "What should I do next?",
+    targetRole ? "Find " + targetRole + " jobs" : "I feel lost and don't know what career fits me",
+    hasApplications ? "Where do my applications stand?" : "Find jobs that fit my experience",
+    "Help me prep for an interview",
+  ];
   const router = useRouter();
   const [turns, setTurns] = useState<Turn[]>(initial.map((r) => ({ id: r.id, role: r.role, text: r.text, tools: r.tools })));
   const [input, setInput] = useState("");
@@ -130,7 +139,7 @@ export function AgentChat({ initial, mode }: { initial: ChatRecord[]; mode: "mod
               I work from your confirmed story. I draft; you decide what to send.
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button key={s} type="button" onClick={() => send(s)} className="rounded-full border px-3 py-1.5 text-[12.5px] text-muted-foreground hover:border-border-strong hover:text-foreground">
                   {s}
                 </button>
@@ -195,7 +204,7 @@ export function AgentChat({ initial, mode }: { initial: ChatRecord[]; mode: "mod
         <p className="mt-2 px-1 text-[11.5px] leading-4 text-subtle-foreground">
           {mode === "model"
             ? "Anything I learn about you waits for your confirmation on the Profile page."
-            : "Quick mode: I handle common requests without an AI model. Connect your own AI in Settings for open conversation."}
+            : "Quick mode works without a key. I can help with your profile, resumes, job gaps, and next steps. An external AI app is optional."}
         </p>
       </form>
     </section>

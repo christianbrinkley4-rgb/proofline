@@ -25,7 +25,7 @@ export type Requirements = {
 };
 
 const REQUIRED_HEADING =
-  /^(requirements?|qualifications?|minimum qualifications|basic qualifications|required qualifications|what you('ll)? (need|bring)|what we('re)? looking for|who you are|you (have|bring|are)|must[- ]haves?|skills (and|&) experience|about you|your background)\b/i;
+  /^(requirements?|qualifications?|minimum qualifications|basic qualifications|required qualifications|required|what you('ll)? (need|bring)|what we('re)? looking for|who you are|you (have|bring|are)|must[- ]haves?|skills (and|&) experience|about you|your background)\b/i;
 const PREFERRED_HEADING = /^(preferred( qualifications)?|nice[- ]to[- ]haves?|bonus( points)?|pluses|it'?s a plus|ideally|preferred skills|extra credit)\b/i;
 const OTHER_HEADING = /^(responsibilities|what you('ll)? do|the role|about (the role|us|the team)|benefits|perks|compensation|pay|salary|why (join|us)|our (team|company)|equal opportunity|eeo)\b/i;
 
@@ -37,12 +37,23 @@ const FIELDS = [
 
 export function parseRequirements(description: string | null | undefined): Requirements {
   const text = description ?? "";
-  const lines = text.split("\n").map((l) => l.replace(/^[•\-*·]\s*/, "").trim()).filter(Boolean);
+  const lines = text.replace(/\s+(?=(?:Required|Preferred|Nice to have)\s*:)/g, "\n").replace(/([.!?])\s+(?=[A-Z])/g, "$1\n").split("\n").map((l) => l.replace(/^[•\-*·]\s*/, "").trim()).filter(Boolean);
 
   const requiredLines: string[] = [];
   const preferredLines: string[] = [];
   let mode: "required" | "preferred" | "other" | null = null;
   for (const line of lines) {
+    const inline = line.match(/^([^:]{2,55}):\s*(.+)$/);
+    if (inline && PREFERRED_HEADING.test(inline[1])) {
+      mode = "preferred";
+      preferredLines.push(inline[2]);
+      continue;
+    }
+    if (inline && REQUIRED_HEADING.test(inline[1])) {
+      mode = "required";
+      requiredLines.push(inline[2]);
+      continue;
+    }
     const short = line.length < 70 && !/[.;]\s*\w/.test(line);
     const head = line.replace(/[:\s]+$/, "");
     if (short && PREFERRED_HEADING.test(head)) mode = "preferred";
@@ -57,15 +68,16 @@ export function parseRequirements(description: string | null | undefined): Requi
   const requiredText = requiredLines.join("\n");
   const preferredText = preferredLines.join("\n");
   const mentioned = extractSkills(text);
-  const preferred = extractSkills(preferredText);
-  let required = extractSkills(requiredText).filter((sk) => !preferred.includes(sk) || extractSkills(requiredText).includes(sk));
+  let required = extractSkills(requiredText);
+  const preferred = extractSkills(preferredText).filter((skill) => !required.includes(skill));
   // No requirement section? Treat skills in the whole posting as required, minus anything marked preferred.
   if (!requiredLines.length) required = mentioned.filter((sk) => !preferred.includes(sk));
 
   const lower = text.toLowerCase();
   const gpa = lower.match(/(?:minimum|min\.?|at least)?\s*(?:cumulative\s+)?(?:gpa|grade point average)\s*(?:of|:)?\s*(?:at least\s*)?([2-4]\.\d{1,2})/) ?? lower.match(/([2-4]\.\d{1,2})\s*(?:\/\s*4\.0\s*)?(?:cumulative\s+)?gpa/);
 
-  const years = requiredText.toLowerCase().match(/(\d+)\+?\s*(?:-\s*\d+\s*)?years?(?:'| of)?[^.\n]{0,40}\b(experience|work)/);
+  const yearsText = requiredText || lines.filter((line) => !preferredLines.includes(line)).join("\n");
+  const years = yearsText.toLowerCase().match(/(\d+)\+?\s*(?:-\s*\d+\s*)?years?(?:'| of)?[^.\n]{0,40}\b(experience|work)/);
 
   const noSponsorship =
     /(not|unable to|will not|won'?t|cannot|can'?t|does not|do not)\s+(provide|offer|sponsor|support)[^.\n]{0,40}(sponsorship|visa|h-?1b)/i.test(text) ||
@@ -83,13 +95,17 @@ export function parseRequirements(description: string | null | undefined): Requi
   ).filter((f, _, all) => !(f === "business" && all.includes("business administration")) && !(f === "math" && all.includes("mathematics")));
 
   // "Power BI or Tableau" is one requirement either skill meets; "reconciliations and journal entries" is two.
-  const groupsOf = (source: string[]) =>
-    source.flatMap((line) => {
-      const skills = extractSkills(line);
+  const groupsOf = (source: string[]) => {
+    const groups = source.flatMap((line) => line.split(/[;,]/).flatMap((part) => {
+      const skills = extractSkills(part);
       if (!skills.length) return [];
-      return /\bor\b|\//i.test(line) ? [skills] : skills.map((sk) => [sk]);
-    });
-  const preferredGroups = groupsOf(preferredLines);
+      // A slash or "or" joins alternatives only in its own clause, not
+      // every separate requirement on the same pasted line.
+      return skills.length === 2 && /\bor\b|\//i.test(part) ? [skills] : skills.map((skill) => [skill]);
+    }));
+    return groups.filter((group, index) => groups.findIndex((other) => other.join("|") === group.join("|")) === index);
+  };
+  const preferredGroups = groupsOf(preferredLines).filter((group) => group.some((skill) => !required.includes(skill)));
   const requiredGroups = requiredLines.length ? groupsOf(requiredLines) : required.map((sk) => [sk]);
 
   return {

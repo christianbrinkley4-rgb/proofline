@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findVoiceIssues } from "@/lib/voice/rules";
 import { checkCoverLetter, draftCoverLetterOffline, inSentence, letterText, roleWithNoun, WHY_PLACEHOLDER, type CoverLetter } from "./cover-letter";
-import { asSentence, lowerFirst, rankEvidence, requirementLabels, type EvidenceInput } from "./evidence";
+import { asSentence, lowerFirst, rankEvidence, requirementLabels, selectEvidenceForLetter, type EvidenceInput } from "./evidence";
 import { interviewPrep, storyParts } from "./interview";
 
 const item = (id: string, text: string, org: string, experienceId: string, extra: Partial<EvidenceInput> = {}): EvidenceInput => ({
@@ -54,6 +54,11 @@ describe("cover letter", () => {
     gradDate: "2028-05", company: "Northwind", title: "Audit Intern", evidence, now: new Date("2026-09-23T00:00:00Z"),
   };
 
+  it("blocks a generated letter with no confirmed example", () => {
+    const letter = draftCoverLetterOffline({ ...base, evidence: [], why: "I care about this team's work" });
+    const check = checkCoverLetter(letter, FACTS, BY_ID).find((item) => item.id === "specific-evidence");
+    expect(check).toMatchObject({ ok: false, blocking: true });
+  });
   it("uses only confirmed evidence and cites it", () => {
     const letter = draftCoverLetterOffline(base);
     expect(letter.greeting).toBe("Dear Hiring Team,");
@@ -63,6 +68,28 @@ describe("cover letter", () => {
     expect(evidenceParas.flatMap((p) => p.sourceIds).length).toBeGreaterThan(1);
     const checks = checkCoverLetter(letter, FACTS, BY_ID);
     expect(checks.find((c) => c.id === "evidence")!.ok).toBe(true);
+  });
+
+  it("uses the right article for a completed associate degree", () => {
+    const letter = draftCoverLetterOffline({ ...base, degree: "Associate in Applied Science", major: "Hospitality Management", gradDate: "2025", now: new Date("2026-09-23T00:00:00Z") });
+    expect(letter.paragraphs[0].text).toContain("with an Associate in Applied Science");
+  });
+
+  it("leads with confirmed work instead of old education for an established worker", () => {
+    const letter = draftCoverLetterOffline({ ...base, degree: "Associate in Applied Science", major: "Hospitality Management", gradDate: "2016", now: new Date("2026-09-23T00:00:00Z") });
+    expect(letter.paragraphs[0].text).not.toContain("graduated");
+    expect(letter.paragraphs.some((paragraph) => paragraph.purpose === "evidence")).toBe(true);
+  });
+
+  it("lets a model choose sources without letting it write claims", () => {
+    const ranked = rankEvidence(ITEMS, requirementLabels(req));
+    const chosen = selectEvidenceForLetter(["b3", "b1"], ranked);
+    expect(chosen?.map((item) => item.id)).toEqual(["b3", "b1"]);
+    const letter = draftCoverLetterOffline({ ...base, evidence: chosen!, why: "I want to work with this team" });
+    expect(letter.paragraphs.filter((paragraph) => paragraph.purpose === "evidence").flatMap((paragraph) => paragraph.sourceIds)).toEqual(["b3", "b1"]);
+    expect(checkCoverLetter(letter, FACTS, BY_ID).filter((check) => check.blocking && !check.ok)).toEqual([]);
+    expect(selectEvidenceForLetter(["b1", "invented-id"], ranked)).toBeNull();
+    expect(selectEvidenceForLetter(["b1", "b1"], ranked)).toBeNull();
   });
 
   it("never invents a reason for applying", () => {
@@ -81,6 +108,17 @@ describe("cover letter", () => {
     expect(findVoiceIssues(letterText(letter, "Jordan Reyes"))).toEqual([]);
   });
 
+  it("keeps a course number out of evidence-number checks", () => {
+    const classEvidence = rankEvidence([item("class", "Surveyed 60 responses in two weeks", "Intro to Business class (BUS 110)", "class-e")], requirementLabels(req));
+    const letter = draftCoverLetterOffline({ ...base, evidence: classEvidence, why: "I want to help this team" });
+    expect(letter.paragraphs.find((p) => p.purpose === "evidence")?.text).toContain("In Intro to Business class (BUS 110), I surveyed 60 responses");
+    const facts = new Map([["f-class", "Surveyed 60 responses in two weeks"]]);
+    const byId = new Map(classEvidence.map((e) => [e.id, e]));
+    expect(checkCoverLetter(letter, facts, byId).find((c) => c.id === "evidence")?.ok).toBe(true);
+    const changed = structuredClone(letter);
+    changed.paragraphs[1].text = changed.paragraphs[1].text.replace("60 responses", "90 responses");
+    expect(checkCoverLetter(changed, facts, byId).find((c) => c.id === "evidence")?.ok).toBe(false);
+  });
   it("flags a number that isn't in the cited facts", () => {
     const letter: CoverLetter = {
       ...draftCoverLetterOffline(base),

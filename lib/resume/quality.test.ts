@@ -40,13 +40,20 @@ describe("career-center checks in the quality gate", () => {
 
   it("flags missing contact details, unmeasured bullets, present tense in a past role, and typos", () => {
     const checks = gate(doc(["Manage the the front desk", "Answer patient calls", "Reconciled 40 accounts"], { contact: ["jordan@example.com"] }));
-    expect(checks.contact.detail).toContain("phone, LinkedIn URL");
+    expect(checks.contact.detail).toContain("phone");
     expect(checks.numbers.status).toBe("warn");
     expect(checks.tense.detail).toContain("Manage");
     expect(checks.proofread.detail).toContain('"the the"');
-    expect(Object.values(checks).every((c) => !c.blocking || c.id === "facts" || c.id === "one-page")).toBe(true);
+    expect(Object.values(checks).every((c) => !c.blocking || c.id === "facts" || c.id === "substance" || c.id === "one-page")).toBe(true);
   });
 
+  it("does not mistake digits in an email address for a phone number", () => {
+    const checks = gate(doc(["Scheduled 25 appointments each week"], { contact: ["dev.new.1790360978db@example.com"] }));
+    expect(checks.contact.status).toBe("warn");
+    expect(checks.contact.detail).toContain("Missing phone");
+    expect(checks.depth.status).toBe("warn");
+    expect(checks.depth.detail).toContain("leaves most of the page empty");
+  });
   it("allows present tense for a current role", () => {
     expect(gate(doc(["Manage 40 vendor accounts"], { dates: "May 2025 – Present" })).tense.status).toBe("pass");
   });
@@ -58,6 +65,11 @@ describe("career-center checks in the quality gate", () => {
     expect(checks.requirements.detail).toContain("1 of 2");
   });
 
+  it("blocks a resume with no confirmed work or project examples", () => {
+    const checks = gate(doc([]));
+    expect(checks.substance).toMatchObject({ status: "fail", blocking: true });
+    expect(checks.substance.detail).toContain("before exporting");
+  });
   it("flags recruiter buzzwords", () => {
     expect(gate(doc(["Detail-oriented team player who reconciled 40 accounts"])).filler.detail).toMatch(/detail-oriented|team player/);
   });

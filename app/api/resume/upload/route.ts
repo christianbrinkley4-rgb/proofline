@@ -38,8 +38,8 @@ export async function POST(request: Request) {
   try {
     const source = hasText ? "pasted text" : (file as File).name;
     const { parsed, method } = hasText
-      ? await parseResumeText(pasted)
-      : await parseResume({ name: (file as File).name, type: (file as File).type, bytes: new Uint8Array(await (file as File).arrayBuffer()) });
+      ? await parseResumeText(pasted, session.user.id)
+      : await parseResume({ name: (file as File).name, type: (file as File).type, bytes: new Uint8Array(await (file as File).arrayBuffer()) }, session.user.id);
     if (!parsed.entries.length && !parsed.education.length) {
       return fail(
         hasText

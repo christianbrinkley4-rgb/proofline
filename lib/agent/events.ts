@@ -11,6 +11,7 @@ export type AgentEventType =
   | "fact_revised"
   | "question_answered"
   | "bullet_generated"
+  | "suggestion_answered"
   | "bullet_edited"
   | "bullet_favorited"
   | "job_saved"

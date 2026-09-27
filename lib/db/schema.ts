@@ -254,6 +254,34 @@ export const bullet = pgTable(
   (t) => [index("bullet_user_idx").on(t.userId), index("bullet_experience_idx").on(t.experienceId)],
 );
 
+export const bulletSuggestionKindEnum = pgEnum("bullet_suggestion_kind", ["reframe", "likely_task", "skill_angle"]);
+export const bulletSuggestionStatusEnum = pgEnum("bullet_suggestion_status", ["pending", "accepted", "rejected"]);
+export const bulletSuggestionReasonEnum = pgEnum("bullet_suggestion_reason", ["not_true", "true_but_weak", "wording"]);
+
+/** A question about possible work, never resume evidence until the person says yes. */
+export const bulletSuggestion = pgTable(
+  "bullet_suggestion",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    experienceId: uuid("experience_id").notNull().references(() => experience.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    taskId: text("task_id"),
+    kind: bulletSuggestionKindEnum("kind").notNull(),
+    skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
+    sourceFactIds: uuid("source_fact_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    slot: text("slot"),
+    status: bulletSuggestionStatusEnum("status").notNull().default("pending"),
+    reason: bulletSuggestionReasonEnum("reason"),
+    batch: integer("batch").notNull(),
+    generator: text("generator").notNull(),
+    promptVersion: text("prompt_version"),
+    createdAt: createdAt(),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+  },
+  (t) => [index("bullet_suggestion_experience_status_idx").on(t.userId, t.experienceId, t.status)],
+);
+
 export const questionKindEnum = pgEnum("question_kind", ["yes_no", "number", "text", "choice"]);
 export const questionStatusEnum = pgEnum("question_status", ["open", "answered", "dismissed"]);
 
@@ -355,6 +383,42 @@ export const job = pgTable(
     index("job_dedupe_idx").on(t.dedupeKey),
     index("job_company_idx").on(t.companySlug),
   ],
+);
+
+/** A stated direction, kept separate from facts that can appear on an application. */
+export const careerGoal = pgTable(
+  "career_goal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    targetRole: text("target_role").notNull(),
+    targetMonth: text("target_month"),
+    motivation: text("motivation"),
+    benchmarkJobId: uuid("benchmark_job_id").references(() => job.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("active"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("career_goal_user_idx").on(t.userId, t.status)],
+);
+
+/** A user-initiated snapshot. Counts are observations, not a hiring probability. */
+export const careerCheckin = pgTable(
+  "career_checkin",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    goalId: uuid("goal_id").notNull().references(() => careerGoal.id, { onDelete: "cascade" }),
+    confirmedFacts: integer("confirmed_facts").notNull(),
+    activeBullets: integer("active_bullets").notNull(),
+    relevantBullets: integer("relevant_bullets").notNull(),
+    matchedRequired: integer("matched_required"),
+    totalRequired: integer("total_required"),
+    reflection: text("reflection"),
+    completedActionId: text("completed_action_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("career_checkin_goal_idx").on(t.goalId, t.createdAt)],
 );
 
 export const matchStatusEnum = pgEnum("match_status", ["new", "saved", "dismissed"]);
@@ -541,3 +605,9 @@ export const apiToken = pgTable(
   },
   (t) => [index("api_token_user_idx").on(t.userId)],
 );
+
+/** One atomic reservation counter shared by every beta account. */
+export const modelDailyBudget = pgTable("model_daily_budget", {
+  day: text("day").primaryKey(),
+  creditsUsed: integer("credits_used").notNull().default(0),
+});

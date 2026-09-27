@@ -31,7 +31,7 @@ const STEPS = ["Reading what the posting asks for", "Ranking your confirmed bull
  * Builds them on arrival from the paste box, and offers a rebuild when the student
  * has added evidence since.
  */
-export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked }: { jobId: string; resumes: TrioResume[]; bestId: string | null; stale: boolean; autoBuild: boolean; blocked: string | null }) {
+export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked, limitedEvidence }: { jobId: string; resumes: TrioResume[]; bestId: string | null; stale: boolean; autoBuild: boolean; blocked: string | null; limitedEvidence: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(0);
@@ -46,17 +46,20 @@ export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked }
       try {
         const result = await createVariantsAction(jobId);
         if (!result.ok) setError(result.error);
-        router.refresh();
+        // Don't rebuild just because the page reloads. Drop ?build=1 through the router
+        // rather than history.replaceState: changing the URL under an in-flight refresh
+        // left this card on "Building" forever.
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("build")) {
+          url.searchParams.delete("build");
+          router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+        } else {
+          router.refresh();
+        }
       } catch {
         setError("Couldn't build the versions. Try again.");
       } finally {
         clearInterval(ticker);
-        // Don't rebuild just because the page reloads.
-        const url = new URL(window.location.href);
-        if (url.searchParams.has("build")) {
-          url.searchParams.delete("build");
-          window.history.replaceState(null, "", url);
-        }
       }
     });
   };
@@ -83,7 +86,7 @@ export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked }
   if (pending || (!resumes.length && autoBuild && !error)) {
     return (
       <div className="rounded-2xl border bg-background p-6">
-        <p className="flex items-center gap-2 text-[15px] font-medium">
+        <p role="status" className="flex items-center gap-2 text-[15px] font-medium">
           <LoaderCircle className="size-4 animate-spin text-brand" />
           Building your three resumes
         </p>
@@ -126,30 +129,35 @@ export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked }
           </Button>
         </div>
       )}
+      {limitedEvidence && (
+        <p className="mb-3 rounded-xl border border-dashed px-4 py-3 text-[13px] leading-5 text-muted-foreground">
+          These versions may look similar because your profile has only a couple of confirmed examples. Add another real example on your profile to give each version more to work with.
+        </p>
+      )}
       <div className="grid gap-3 lg:grid-cols-3">
         {resumes.map((r) => {
           const best = r.id === bestId;
           return (
-            <article key={r.id} className={cn("flex flex-col rounded-2xl border bg-background p-5", best && "border-brand/50 shadow-lift ring-1 ring-brand/30")}>
+            <article key={r.id} className={cn("flex flex-col rounded-2xl border bg-background p-5", best ? "border-brand/50 shadow-lift ring-1 ring-brand/30 max-lg:order-first" : "max-lg:p-4")}>
               <div className="flex items-start justify-between gap-2">
                 <div>
                   {best ? (
                     <span className="inline-flex items-center gap-1 rounded-md bg-brand-soft px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">
                       <Check className="size-3" strokeWidth={3} />
-                      Best for this job
+                      Closest current version
                     </span>
                   ) : (
-                    <span className="text-[11px] text-subtle-foreground">Version {r.version}</span>
+                    <span className="text-[11px] text-subtle-foreground">Another angle</span>
                   )}
                   <h3 className="mt-1.5 text-[16px] font-semibold tracking-tight">{r.label}</h3>
                 </div>
                 <FileText className="size-5 shrink-0 text-subtle-foreground" />
               </div>
-              <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">{r.blurb}</p>
+              <p className={cn("mt-1 text-[12.5px] leading-5 text-muted-foreground", !best && "max-lg:hidden")}>{r.blurb}</p>
               {r.total > 0 && (
                 <div className="mt-3">
                   <div className="flex justify-between text-[12px]">
-                    <span className="text-muted-foreground">Requirements shown on the page</span>
+                    <span className="text-muted-foreground">Posting points shown on the page</span>
                     <span className="font-medium tabular-nums">
                       {r.covered}/{r.total}
                     </span>
@@ -159,7 +167,7 @@ export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked }
                   </div>
                 </div>
               )}
-              <ul className="mt-3 space-y-1.5">
+              <ul className={cn("mt-3 space-y-1.5", !best && "max-lg:hidden")}>
                 {r.top.slice(0, 2).map((t) => (
                   <li key={t} className="flex gap-2 text-[12.5px] leading-5">
                     <Check className="mt-0.5 size-3 shrink-0 text-brand" />
@@ -167,7 +175,7 @@ export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked }
                   </li>
                 ))}
               </ul>
-              <div className="mt-3 rounded-lg bg-muted/50 px-3 py-2 text-[12px] leading-5">
+              <div className={cn("mt-3 rounded-lg bg-muted/50 px-3 py-2 text-[12px] leading-5", !best && "max-lg:hidden")}>
                 <p className={cn("font-medium", !r.checksOk ? "text-pending-ink" : r.passed === r.totalChecks ? "text-brand-ink" : "text-foreground")}>
                   {!r.checksOk ? "Needs a look before you send it" : r.passed === r.totalChecks ? `All ${r.totalChecks} resume checks passed` : `${r.passed} of ${r.totalChecks} resume checks passed`}
                 </p>

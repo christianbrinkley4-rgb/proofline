@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Archive, Check, ChevronDown, CircleAlert, Pencil, Star } from "lucide-react";
+import { Archive, ChevronDown, CircleAlert, FileText, Pencil, Star } from "lucide-react";
 import { archiveBulletAction, editBulletAction, favoriteBulletAction } from "@/app/app/profile/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +30,9 @@ export function ScoreChip({ score }: { score: number }) {
       )}
       title="Bullet score out of 100"
     >
+      <span className="sr-only">Bullet score </span>
       {score}
+      <span className="sr-only"> out of 100</span>
     </span>
   );
 }
@@ -84,11 +86,16 @@ export function BulletRow({ bullet }: { bullet: BulletView }) {
         <>
           <div className="flex items-start gap-3">
             {bullet.verified ? (
-              <Check className="mt-1 size-4 shrink-0 text-brand" strokeWidth={2.5} aria-label="Every number traces to a confirmed fact" />
+              <FileText className="mt-1 size-4 shrink-0 text-brand" strokeWidth={2} aria-label="Resume line. Every number traces to a confirmed fact." />
             ) : (
-              <CircleAlert className="mt-1 size-4 shrink-0 text-pending" aria-label="Waiting on your OK" />
+              <CircleAlert className="mt-1 size-4 shrink-0 text-pending" aria-label="Draft, waiting on your OK" />
             )}
-            <p className="min-w-0 flex-1 text-[14px] leading-6">{bullet.text}</p>
+            <p className="min-w-0 flex-1 text-[14px] leading-6">
+              {bullet.text}
+              {!bullet.verified && (
+                <span className="block text-[11.5px] leading-4 text-pending-ink">Draft. Part of it isn&apos;t backed by a confirmed fact, so it stays off resumes until you edit it.</span>
+              )}
+            </p>
             {bullet.score != null && <ScoreChip score={bullet.score} />}
           </div>
           <div className="mt-2 flex items-center gap-1 pl-7">

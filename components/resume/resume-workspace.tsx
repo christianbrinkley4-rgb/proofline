@@ -71,14 +71,15 @@ export function ResumeWorkspace({
     <div>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex rounded-lg border bg-background p-0.5" role="group" aria-label="Strategy">
-          {(Object.keys(VARIANT_LABEL) as VariantId[]).map((v) => (
+          {/* Keyword matching needs a posting; a general resume has none. */}
+          {(Object.keys(VARIANT_LABEL) as VariantId[]).filter((v) => jobId || v !== "ats" || v === variant).map((v) => (
             <Link
               key={v}
               href={retailor({ variant: v })}
               prefetch={false}
               title={VARIANT_BLURB[v]}
               aria-current={v === variant ? "true" : undefined}
-              className={cn("rounded-md px-2.5 py-1 text-[12.5px] transition-colors", v === variant ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}
+              className={cn("rounded-md px-2.5 py-1 text-[12.5px] pointer-coarse:py-2.5 transition-colors", v === variant ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}
             >
               {VARIANT_LABEL[v]}
             </Link>
@@ -91,7 +92,7 @@ export function ResumeWorkspace({
               href={retailor({ template: t })}
               prefetch={false}
               aria-current={t === template ? "true" : undefined}
-              className={cn("rounded-md px-2.5 py-1 text-[12.5px] capitalize transition-colors", t === template ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}
+              className={cn("rounded-md px-2.5 py-1 text-[12.5px] pointer-coarse:py-2.5 capitalize transition-colors", t === template ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}
             >
               {t}
             </Link>
@@ -104,7 +105,9 @@ export function ResumeWorkspace({
             </button>
           )}
           {!blocked && warns.length > 0 && (
-            <span className="text-[12.5px] text-muted-foreground">Style warnings won&apos;t block export</span>
+            <button type="button" onClick={() => setPanel("checks")} className="min-h-10 text-left text-[12.5px] text-muted-foreground underline-offset-4 hover:underline">
+              {warns.length} {warns.length === 1 ? "suggestion" : "suggestions"} to review. Download still works.
+            </button>
           )}
           {(["pdf", "docx"] as const).map((format) => (
             <Button
@@ -155,7 +158,8 @@ export function ResumeWorkspace({
             <PagePreview ops={ops} family={family} hovered={hovered} />
           </div>
           <p className="mt-3 text-center text-[12px] text-subtle-foreground">
-            This is the exact page: same layout, same line breaks as the PDF. Hover a bullet to see why it&apos;s there.
+            This is the exact page: same layout, same line breaks as the PDF. Why this works explains every bullet on it.
+            <span className="sm:hidden"> To read it full size on a phone, download the PDF.</span>
           </p>
         </div>
 
@@ -172,10 +176,12 @@ export function ResumeWorkspace({
                 key={id}
                 role="tab"
                 type="button"
+                id={`resume-tab-${id}`}
+                aria-controls="resume-panel"
                 aria-selected={panel === id}
                 onClick={() => setPanel(id)}
                 className={cn(
-                  "rounded-md px-2.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors",
+                  "rounded-md px-2.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors pointer-coarse:py-2.5",
                   panel === id ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -183,7 +189,7 @@ export function ResumeWorkspace({
               </button>
             ))}
           </div>
-          <div className="scroll-thin space-y-2.5 overflow-y-auto p-3">
+          <div id="resume-panel" role="tabpanel" aria-labelledby={`resume-tab-${panel}`} className="scroll-thin space-y-2.5 overflow-y-auto p-3">
             {panel === "why" &&
               why.map((w) => (
                 <div

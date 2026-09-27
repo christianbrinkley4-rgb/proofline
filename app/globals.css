@@ -303,6 +303,16 @@
   [id] {
     scroll-margin-top: 5rem;
   }
+  /* On touch screens, compact buttons still get a 40px target so a thumb can hit them. */
+  @media (pointer: coarse) {
+    [data-slot="button"]:not([data-size="xl"]):not([data-size^="icon"]) {
+      min-height: 2.5rem;
+    }
+    [data-slot="button"][data-size^="icon"] {
+      min-width: 2.5rem;
+      min-height: 2.5rem;
+    }
+  }
   @media (prefers-reduced-motion: no-preference) {
     html {
       scroll-behavior: smooth;

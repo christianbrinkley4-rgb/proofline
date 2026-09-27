@@ -5,7 +5,7 @@
  */
 
 const ROLE_WORD =
-  /\b(intern(ship)?|co-?op|analyst|associate|assistant|coordinator|manager|engineer|developer|designer|specialist|representative|consultant|clerk|technician|officer|accountant|auditor|administrator|advisor|agent|cashier|nurse|teacher|tutor|fellow|trainee|apprentice|scientist|researcher|writer|editor|planner|recruiter|lead|director|supervisor|operator|driver|server|barista|host)\b/i;
+  /\b(intern(ship)?|co-?op|analyst|associate|assistant|coordinator|manager|engineer|developer|designer|specialist|representative|consultant|clerk|technician|officer|accountant|bookkeeper|auditor|administrator|advisor|agent|cashier|nurse|teacher|tutor|fellow|trainee|apprentice|scientist|researcher|writer|editor|planner|recruiter|lead|director|supervisor|operator|driver|mechanic|electrician|plumber|welder|carpenter|cook|chef|caregiver|aide|therapist|paralegal|librarian|server|barista|host)\b/i;
 
 const NOISE = /^(about (the )?(job|role|company|us)|job description|description|overview|responsibilities|qualifications|apply( now)?|save|share|easy apply|show more|see more|promoted|reposted.*|\d+ (applicants|people clicked).*)$/i;
 
@@ -30,6 +30,12 @@ export function guessPosting(text: string): PostingGuess {
     .filter((l) => l && l.length <= 140 && !NOISE.test(l))
     .slice(0, 12);
   const out: PostingGuess = { title: "", company: "", location: "" };
+  // A short title followed by a company is stronger evidence than a later
+  // sentence saying the company "is hiring" for that role.
+  if (lines.length >= 2 && ROLE_WORD.test(lines[0]) && lines[0].split(/\s+/).length <= 8 &&
+      !/[.!?]$/.test(lines[0]) && !/\s+(?:at|@)\s+/i.test(lines[0]) && !ROLE_WORD.test(lines[1]) && !PLACE.test(lines[1]) && lines[1].length <= 70) {
+    return withPlace({ title: segments(lines[0])[0] ?? lines[0], company: segments(lines[1])[0] ?? lines[1], location: "" }, lines);
+  }
 
   for (const line of lines.slice(0, 4)) {
     const at = line.match(/^(.{3,90}?)\s+(?:at|@)\s+(.{2,70})$/i);

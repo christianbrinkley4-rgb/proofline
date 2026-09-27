@@ -62,6 +62,9 @@ function lockDataDir(dataDir: string) {
 
 function create(): DbState {
   const url = process.env.DATABASE_URL;
+  if (process.env.VERCEL && !url) {
+    throw new Error("DATABASE_URL is required on Vercel so tester profiles persist across requests.");
+  }
   if (url) {
     const client = postgres(url, { prepare: false });
     const db = drizzlePostgres(client, { schema });

@@ -1,5 +1,6 @@
 import { extractSkills } from "@/lib/fit/skills";
 import type { Requirements } from "@/lib/fit/requirements";
+import { postingOverlap } from "@/lib/jobs/relevance";
 
 /**
  * The pieces of a person's confirmed story that can back a cover letter or an
@@ -31,6 +32,17 @@ export type EvidenceInput = Omit<Evidence, "covers" | "relevance">;
 
 export type RequirementLabels = { required: Set<string>; preferred: Set<string>; mentioned: Set<string> };
 
+/** Validate the model's choices before deterministic letter composition. */
+export function selectEvidenceForLetter(ids: string[], available: Evidence[]): Evidence[] | null {
+  if (ids.length < 1 || ids.length > 3 || new Set(ids).size !== ids.length) return null;
+  const byId = new Map(available.map((item) => [item.id, item]));
+  const selected = ids.map((id) => byId.get(id));
+  if (selected.some((item) => !item)) return null;
+  const picked = selected as Evidence[];
+  if (available.some((item) => item.covers.length) && !picked.some((item) => item.covers.length)) return null;
+  return picked;
+}
+
 export function requirementLabels(req: Requirements | null): RequirementLabels {
   return {
     required: new Set((req?.requiredGroups ?? []).flat()),
@@ -47,7 +59,7 @@ export function recencyOf(endDate: string | null, now = new Date()): number {
 }
 
 /** Most useful first: what the posting asks for, then quality, then how recent. */
-export function rankEvidence(items: EvidenceInput[], labels: RequirementLabels, titleWords: string[] = []): Evidence[] {
+export function rankEvidence(items: EvidenceInput[], labels: RequirementLabels, titleWords: string[] = [], description?: string | null): Evidence[] {
   const ranked = items.map((item) => {
     const skills = extractSkills(item.text);
     const covers = [
@@ -60,7 +72,8 @@ export function rankEvidence(items: EvidenceInput[], labels: RequirementLabels, 
       skills.filter((s) => labels.required.has(s)).length * 3 +
       skills.filter((s) => labels.preferred.has(s)).length * 2 +
       skills.filter((s) => labels.mentioned.has(s)).length +
-      Math.min(words, 2);
+      Math.min(words, 2) +
+      postingOverlap(item.text, description) * 2;
     return { ...item, covers, relevance };
   });
   const score = (e: Evidence) => 0.5 * Math.min(e.relevance / 8, 1) + 0.3 * e.quality + 0.2 * e.recency + (e.kind === "bullet" ? 0.05 : 0);
@@ -80,7 +93,7 @@ export function asSentence(text: string, opts: { org?: string | null; lead?: "at
   const mine = /^(i|i'm|i've|my|we|our)\b/i.test(clean);
   if (mine) return `${clean[0].toUpperCase()}${clean.slice(1)}.`;
   const verb = lowerFirst(clean);
-  if (opts.lead === "at" && opts.org) return `At ${opts.org}, I ${verb}.`;
+  if (opts.lead === "at" && opts.org) return /\b(class|course|seminar)\b/i.test(opts.org) ? `In ${opts.org}, I ${verb}.` : `At ${opts.org}, I ${verb}.`;
   if (opts.lead === "also") return `I also ${verb}.`;
   return `I ${verb}.`;
 }

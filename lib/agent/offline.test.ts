@@ -19,6 +19,8 @@ import { runTool } from "./tools";
 describe("offline agent routing", () => {
   it.each([
     ["hi", "help"],
+    ["I feel lost and do not know what to do with my life", "explore"],
+    ["How do I figure out my career path?", "explore"],
     ["what can you do?", "help"],
     ["help me prep for Robinhood", "prep"],
     ["I have an interview with Deloitte on Friday", "prep"],
@@ -50,6 +52,11 @@ describe("offline agent routing", () => {
     expect(watchQuery(message)).toBe(query);
   });
 
+  it("keeps the rules-based help useful without asking beta testers for an API key", async () => {
+    const reply = await offlineReply("help", { userId: "u", email: "e@example.com", client: "Proofline" });
+    expect(reply.text).toContain("This beta needs no API key from you");
+    expect(reply.text).not.toContain("add an Anthropic API key");
+  });
   it("finds the named company, preferring tracked applications and longer names", () => {
     const jobs = [
       { company: "Coin", title: "Intern", jobId: "1" },

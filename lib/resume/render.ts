@@ -43,6 +43,7 @@ const twip = (points: number) => Math.round(points * 20);
  * `layout` is accepted for call-site parity with PDF (quality gate already measured).
  */
 export async function renderDocx(doc: ResumeDocument, t: Template, _layout?: LayoutResult): Promise<Buffer> {
+  void _layout;
   const contentWidth = twip(PAGE.width - 2 * t.margin);
   const font = t.docxFont;
   const size = pt(t.bodySize);

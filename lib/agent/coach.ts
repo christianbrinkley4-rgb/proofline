@@ -4,7 +4,9 @@ import type { FitReport } from "@/lib/fit/engine";
 import { skillGaps } from "@/lib/fit/gaps";
 import { listMatches } from "@/lib/jobs/store";
 import { listExperiences } from "@/lib/kb/experiences";
-import { factCounts } from "@/lib/kb/facts";
+import { factCounts, listFacts } from "@/lib/kb/facts";
+import { listBullets } from "@/lib/resume/bullets/service";
+import { verifyBullet } from "@/lib/resume/verify";
 import { letterStatus, type LetterStatus } from "@/lib/packet/cover-letter";
 import { readLetter } from "@/lib/packet/service";
 import { listApplications, type Application } from "@/lib/tracker/service";
@@ -57,6 +59,7 @@ export type FocusJob = {
 export type JourneyInput = {
   confirmedFacts: number;
   pendingFacts: number;
+  usableBullets: number;
   experiences: number;
   /** A general (not job-specific) resume exists. */
   baseResume: boolean;
@@ -120,7 +123,14 @@ function actionFor(id: JourneyStepId | "done", input: JourneyInput): CoachAction
           cta: "Add your story",
         };
       }
-      return {
+      if (input.usableBullets === 0) {
+        return {
+          title: "Turn an example into a resume bullet",
+          detail: "Your confirmed facts are a start. Review or write one bullet on your profile that you can explain in an interview, then build the resume.",
+          href: "/app/profile",
+          cta: "Write a bullet",
+        };
+      }      return {
         title: "Build your resume",
         detail: "One page from your confirmed facts, checked line by line. It's the base every tailored version starts from.",
         href: "/app/resumes/new",
@@ -270,15 +280,22 @@ export async function loadJobProgress(userId: string, applications?: Application
 
 /** Loads the student's journey. Reads only; safe to call on every Today render. */
 export async function loadJourney(userId: string): Promise<Journey> {
-  const [facts, experiences, jobs, base] = await Promise.all([
+  const [facts, experiences, jobs, base, bullets, confirmedFacts] = await Promise.all([
     factCounts(userId),
     listExperiences(userId),
     loadJobProgress(userId),
     db.query.resume.findFirst({ where: and(eq(schema.resume.userId, userId), isNull(schema.resume.jobId)), columns: { id: true } }),
+    listBullets(userId),
+    listFacts(userId, { states: ["confirmed"] }),
   ]);
+  const confirmed = new Map(confirmedFacts.map((fact) => [fact.id, fact.content]));
+  const usableBullets = bullets.filter((bullet) => bullet.status === "active" && bullet.factIds.length > 0 &&
+    bullet.factIds.every((id) => confirmed.has(id)) &&
+    verifyBullet(bullet.text, bullet.factIds.map((id) => confirmed.get(id)!)).ok).length;
   return buildJourney({
     confirmedFacts: facts.confirmed,
     pendingFacts: facts.toReview,
+    usableBullets,
     experiences: experiences.length,
     baseResume: Boolean(base),
     focus: pickFocus(jobs),

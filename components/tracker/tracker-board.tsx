@@ -64,7 +64,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
         ))}
       </div>
       <div className="mt-7 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+        <div className="relative min-w-0 flex-1 max-sm:basis-full sm:max-w-xs">
           <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-subtle-foreground" />
           <Input aria-label="Search applications" placeholder="Find a role or company..." value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
         </div>

@@ -13,6 +13,11 @@ describe("probeExperience", () => {
     expect(qs.length).toBeLessThanOrEqual(3);
   });
 
+  it("keeps a person's volume answer and unit intact", () => {
+    const question = probeExperience({ org: "Intro to Business class (BUS 110)", notes: "I surveyed students for a class project." })
+      .find((item) => /how many students/i.test(item.prompt));
+    expect(question?.factTemplate).toBe("Volume: {answer} (Intro to Business class (BUS 110))");
+  });
   it("asks for team size when someone led people without saying how many", () => {
     const [first] = probeExperience({ org: "Beta Alpha Psi", notes: "Led our case competition team and we placed second." });
     expect(first.prompt).toMatch(/How many were on the team/);

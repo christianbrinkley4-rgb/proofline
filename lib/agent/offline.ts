@@ -1,3 +1,4 @@
+import { careerDashboard } from "@/lib/career/service";
 import { listMatches } from "@/lib/jobs/store";
 import { familiesFor } from "@/lib/jobs/roles";
 import { roleName } from "@/lib/jobs/text";
@@ -21,13 +22,14 @@ const HELP = `Here's what I can do right now:
 - **Find jobs**: "find accounting internships in Raleigh for summer 2027"
 - **Watch a search**: "keep an eye on tax internships in Charlotte"
 - **Plan your day**: "what should I do next?"
+- **Explore your direction**: "I feel lost and do not know what career fits me"
 - **Check your applications**: "where do my applications stand?"
 - **Draft a cover letter**: "cover letter for Robinhood"
 - **Prep for an interview**: "help me prep for Deloitte"
 - **Draft a follow-up**: "follow up with Coinbase"
 - **Save something you did**: just tell me, like "Last summer I ran the front desk at a dental office and cut check-in time in half."
 
-For open conversation, add an Anthropic API key to Proofline or connect your own AI in [Settings](/app/settings#ai).`;
+For a question I do not recognize, start with [your career plan](/app/career) or a specific job on [Jobs](/app/jobs). This beta needs no API key from you.`;
 
 type SearchResult = {
   scanned: number;
@@ -55,7 +57,7 @@ export function pickJob(message: string, jobs: JobRef[]): JobRef | null {
   return named.sort((a, b) => b.company.length - a.company.length || Number(Boolean(b.applicationId)) - Number(Boolean(a.applicationId)))[0];
 }
 
-export type Intent = "help" | "next" | "search" | "watch" | "letter" | "prep" | "follow_up" | "status" | "story" | "unknown";
+export type Intent = "help" | "explore" | "next" | "search" | "watch" | "letter" | "prep" | "follow_up" | "status" | "story" | "unknown";
 
 const WATCH = /\b(keep (an eye|watching)|watch for|watch|alert me|notify me|let me know (when|if)|tell me when)\b/;
 
@@ -74,6 +76,7 @@ export function watchQuery(message: string): string {
 export function classify(message: string): Intent {
   const m = message.toLowerCase().trim();
   if (/cover letter/.test(m)) return "letter";
+  if (/\b(lost|calling|purpose|career path|career goals?|what career|what to do with my life|don't know what (to do|i want)|dont know what (to do|i want)|figure out (my|what))\b/.test(m)) return "explore";
   if (WATCH.test(m) && /\b(jobs?|internships?|roles?|positions?|openings?|co-?ops?)\b/.test(m)) return "watch";
   if (/\b(interview|prep(are)?|practice)\b/.test(m)) return "prep";
   if (/\bfollow[- ]?up\b/.test(m)) return "follow_up";
@@ -113,6 +116,22 @@ export async function offlineReply(message: string, ctx: ToolContext, emit: Offl
     case "help":
       return { text: HELP, tools };
 
+    case "explore": {
+      const plan = await careerDashboard(ctx.userId);
+      if (!plan.goal) {
+        return {
+          text: "You don't need to know your job title yet. Start with one clue: what is a real task that made you feel useful or curious, even outside paid work? Put that on [your career plan](/app/career), and we'll use it to choose a small experiment.",
+          tools,
+        };
+      }
+      const action = plan.actions[0];
+      return {
+        text: action
+          ? `Your current direction is **${plan.goal.targetRole}**. ${action.detail} Start with [${action.title}](${action.href}). After you try it, save what you learned in [your career check-in](/app/career).`
+          : `Your current direction is **${plan.goal.targetRole}**. Record what you learned and choose your next small experiment in [your career plan](/app/career).`,
+        tools,
+      };
+    }
     case "next": {
       const [journey, moves] = await Promise.all([loadJourney(ctx.userId), nextMoves(ctx.userId)]);
       const { action } = journey;

@@ -8,8 +8,10 @@ import { FactRow } from "@/components/onboarding/fact-row";
 import type { FactView } from "@/components/onboarding/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EvidenceTag } from "@/components/shared/evidence-tag";
 import { cn } from "@/lib/utils";
 import { BulletRow, type BulletView } from "./bullet-row";
+import { BulletDeck } from "./bullet-deck";
 import { ExperienceEdit, type EditableExperience } from "./experience-edit";
 
 export type ExperienceCardData = {
@@ -40,6 +42,7 @@ export function ExperienceCard({ experience }: { experience: ExperienceCardData 
   const [pending, startTransition] = useTransition();
   const [newFact, setNewFact] = useState("");
   const confirmed = experience.facts.filter((f) => f.state === "confirmed").length;
+  const waiting = experience.facts.filter((f) => f.state === "unconfirmed" || f.state === "needs_review").length;
 
   const write = () =>
     startTransition(async () => {
@@ -77,18 +80,34 @@ export function ExperienceCard({ experience }: { experience: ExperienceCardData 
             {[experience.title, experience.location, experience.dates].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <Button size="sm" variant={experience.bullets.length ? "outline" : "default"} onClick={write} disabled={pending || confirmed === 0}>
-          {pending ? <LoaderCircle className="animate-spin" /> : <Sparkle data-icon="inline-start" />}
-          {experience.bullets.length ? "Write more bullets" : "Write bullets"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <BulletDeck experienceId={experience.id} />
+          <Button size="sm" variant={experience.bullets.length ? "outline" : "default"} onClick={write} disabled={pending || confirmed === 0}>
+            {pending ? <LoaderCircle className="animate-spin" /> : <Sparkle data-icon="inline-start" />}
+            {experience.bullets.length ? "Write more bullets" : "Write bullets"}
+          </Button>
+        </div>
       </header>
 
-      {experience.bullets.length > 0 && (
-        <ul className="space-y-2 px-4 pb-4 sm:px-5">
-          {experience.bullets.map((b) => (
-            <BulletRow key={b.id} bullet={b} />
-          ))}
-        </ul>
+      {experience.bullets.length > 0 ? (
+        <section aria-label={`Resume lines for ${experience.org}`} className="px-4 pb-4 sm:px-5">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <EvidenceTag kind="resume">Resume lines ({experience.bullets.length})</EvidenceTag>
+            <span className="text-[12px] text-muted-foreground">Finished wording, built from the confirmed facts below.</span>
+          </div>
+          <ul className="space-y-2">
+            {experience.bullets.map((b) => (
+              <BulletRow key={b.id} bullet={b} />
+            ))}
+          </ul>
+        </section>
+      ) : (
+        confirmed > 0 && (
+          <p className="px-4 pb-4 text-[13px] leading-5 text-muted-foreground sm:px-5">
+            No resume lines yet. <span className="text-foreground">Write bullets</span> turns the confirmed facts below into lines you can edit. This role
+            stays off your resume until it has one.
+          </p>
+        )
       )}
 
       <div className="border-t">
@@ -96,10 +115,12 @@ export function ExperienceCard({ experience }: { experience: ExperienceCardData 
           type="button"
           aria-expanded={showFacts}
           onClick={() => setShowFacts((s) => !s)}
-          className="flex w-full items-center justify-between px-4 py-3 text-left text-[13px] text-muted-foreground hover:text-foreground sm:px-5"
+          className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2 text-left text-[13px] text-muted-foreground hover:text-foreground sm:px-5"
         >
-          <span>
-            What I know about this <span className="tabular-nums">({confirmed} confirmed)</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <EvidenceTag kind="confirmed">Confirmed facts ({confirmed})</EvidenceTag>
+            {waiting > 0 && <span className="text-pending-ink">{waiting} waiting on your yes</span>}
+            <span className="hidden sm:inline">What you told me. Only these can become resume lines.</span>
           </span>
           <ChevronDown className={cn("size-4 transition-transform", showFacts && "rotate-180")} />
         </button>
@@ -128,6 +149,7 @@ export function ExperienceCard({ experience }: { experience: ExperienceCardData 
                 value={newFact}
                 onChange={(e) => setNewFact(e.target.value)}
                 placeholder="Add something you did or achieved here"
+                aria-label={`Add a fact about ${experience.org}`}
                 className="h-9"
               />
               <Button type="submit" size="sm" variant="outline" className="h-9" disabled={newFact.trim().length < 3}>

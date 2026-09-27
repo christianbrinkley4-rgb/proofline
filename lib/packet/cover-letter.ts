@@ -56,13 +56,17 @@ function studentLine(ctx: LetterContext): string | null {
   if (!ctx.school) return null;
   const field = ctx.major ? `${ctx.major} ` : "";
   const grad = ctx.gradDate ? new Date(`${ctx.gradDate.length === 4 ? `${ctx.gradDate}-05` : ctx.gradDate}-01T00:00:00Z`) : null;
-  const future = grad ? grad.getTime() > (ctx.now ?? new Date()).getTime() : true;
+  const now = ctx.now ?? new Date();
+  const future = grad ? grad.getTime() > now.getTime() : true;
+  // For established workers, lead with work rather than a long-past graduation.
+  if (grad && !future && ctx.evidence.length && now.getFullYear() - grad.getUTCFullYear() > 4) return null;
   if (future) {
     const article = /^[aeiou]/i.test(field || "student") ? "an" : "a";
     return `I'm ${article} ${field}student at ${ctx.school}${grad ? `, graduating in ${formatMonth(ctx.gradDate)}` : ""}.`;
   }
   const degree = [ctx.degree, ctx.major ? `in ${ctx.major}` : null].filter(Boolean).join(" ");
-  return `I graduated from ${ctx.school}${degree ? ` with a ${degree}` : ""} in ${formatMonth(ctx.gradDate)}.`;
+  const article = /^[aeiou]/i.test(degree) ? "an" : "a";
+  return `I graduated from ${ctx.school}${degree ? ` with ${article} ${degree}` : ""} in ${formatMonth(ctx.gradDate)}.`;
 }
 
 /** "Accounting Intern role", but "Financial Accounting Internship" on its own. */
@@ -167,7 +171,7 @@ export function letterStatus(letter: CoverLetter | null | undefined): LetterStat
  * may only use numbers found in the facts it cites; the person's own edits are
  * theirs to stand behind, so they are only held to the voice rules.
  */
-export function checkCoverLetter(letter: CoverLetter, factTextById: Map<string, string>, evidenceById: Map<string, { factIds: string[] }>): LetterCheck[] {
+export function checkCoverLetter(letter: CoverLetter, factTextById: Map<string, string>, evidenceById: Map<string, { factIds: string[]; org?: string | null }>): LetterCheck[] {
   const checks: LetterCheck[] = [];
   const all = [letter.greeting, ...letter.paragraphs.map((p) => p.text), letter.signoff].join("\n");
 
@@ -180,6 +184,16 @@ export function checkCoverLetter(letter: CoverLetter, factTextById: Map<string, 
     detail: placeholder ? "Replace the bracketed prompt with your own words first." : "Every part is filled in.",
   });
 
+  const hasEvidence = letter.paragraphs.some((p) => p.purpose === "evidence" && p.sourceIds.length > 0);
+  checks.push({
+    id: "specific-evidence",
+    ok: hasEvidence,
+    blocking: letter.generator !== "user",
+    label: "Includes a specific, confirmed example",
+    detail: hasEvidence
+      ? "At least one work or project example supports this letter."
+      : "Add a real work, school, volunteer, or project example to your profile, then redraft this letter.",
+  });
   const unsupported: string[] = [];
   let stale = false;
   if (letter.generator !== "user") {
@@ -188,7 +202,14 @@ export function checkCoverLetter(letter: CoverLetter, factTextById: Map<string, 
       const factIds = p.sourceIds.flatMap((id) => evidenceById.get(id)?.factIds ?? []);
       const texts = factIds.map((id) => factTextById.get(id)).filter((t): t is string => Boolean(t));
       if (texts.length < factIds.length || factIds.length === 0) stale = true;
-      unsupported.push(...verifyBullet(p.text, texts).unsupported);
+      // An experience name can contain a course number (BUS 110); it is
+      // context, not a numeric outcome claimed by the cited bullet.
+      let claimText = p.text;
+      for (const id of p.sourceIds) {
+        const org = evidenceById.get(id)?.org;
+        if (org) claimText = claimText.replaceAll(org, "");
+      }
+      unsupported.push(...verifyBullet(claimText, texts).unsupported);
     }
   }
   checks.push({

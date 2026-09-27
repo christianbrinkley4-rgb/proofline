@@ -1,3 +1,4 @@
+import { extractSkills, skillCategory } from "./skills";
 import type { FitReport } from "./engine";
 
 /**
@@ -7,7 +8,9 @@ import type { FitReport } from "./engine";
  * (degree, years, eligibility) come back as plain advice instead.
  */
 
-export type GapKind = "required" | "preferred" | "keyword";
+export type GapKind = "required" | "listed" | "preferred" | "keyword";
+
+export type GapPrompt = { experienceId: string; org: string; taskId: string; task: string; source: "O*NET 31.0" | "Proofline" };
 
 export type Gap = {
   /** Stable key for the skill, e.g. "google-sheets". */
@@ -17,12 +20,15 @@ export type Gap = {
   kind: GapKind;
   question: string;
   why: string;
+  /** A plausible task to ask about, never a claim that the person did it. */
+  suggestion?: GapPrompt;
 };
 
 const WHY: Record<GapKind, string> = {
-  required: "It's a listed requirement, worth up to 30 points of your fit.",
-  preferred: "It's a nice-to-have. Showing it moves you ahead of people who only meet the basics.",
-  keyword: "The posting uses this term. Having it on the page helps a recruiter or screening system find it.",
+  required: "The posting lists this as required. A real example helps you judge how well your experience fits.",
+  listed: "This work appears in the role description, but the posting does not clearly call it a requirement. Include it only if you have a real example.",
+  preferred: "The posting lists this as preferred. Include it only if you have a real example.",
+  keyword: "The posting uses this term. Use the same wording only when it accurately describes your experience.",
 };
 
 export function gapId(skill: string): string {
@@ -34,18 +40,23 @@ export function gapId(skill: string): string {
 
 /** "Journal entries" reads as "journal entries" mid-sentence; "SQL" and "QuickBooks" keep their capitals. */
 export function inSentence(skill: string): string {
+  const first = skill.split(/\s+or\s+/i)[0];
+  const genericNames = new Set(["Point-of-sale systems", "Electronic health records", "Scheduling software", "Tax software", "Data analysis", "Statistics", "Machine learning"]);
+  if (["tool", "data", "software", "language"].includes(skillCategory(first) ?? "") && !genericNames.has(first)) return skill;
   return /^[A-Z][a-z]/.test(skill) && !/[A-Z]/.test(skill.slice(1).split(/\s/)[0]) ? skill[0].toLowerCase() + skill.slice(1) : skill;
 }
 
 function question(label: string, kind: GapKind): string {
   const skill = inSentence(label);
-  if (kind === "required") return `They require ${skill}. Where have you used it?`;
-  if (kind === "preferred") return `They'd like ${skill}. Have you used it anywhere?`;
-  return `The posting mentions ${skill}. Have you worked with it?`;
+  const pronoun = /\b(?:entries|records|reports|statements|documents|invoices|payments|accounts|spreadsheets|tables|dashboards|systems)\b/i.test(skill) ? "them" : "it";
+  if (kind === "required") return `They require ${skill}. Where have you used ${pronoun}?`;
+  if (kind === "listed") return `The role mentions ${skill}. Have you used ${pronoun} anywhere?`;
+  if (kind === "preferred") return `They'd like ${skill}. Have you used ${pronoun} anywhere?`;
+  return `The posting mentions ${skill}. Have you worked with ${pronoun}?`;
 }
 
 /** Skill gaps worth asking about, required first, minus anything the student said they haven't done. */
-export function skillGaps(fit: Pick<FitReport, "details">, declined: Iterable<string> = [], limit = 6): Gap[] {
+export function skillGaps(fit: Pick<FitReport, "details"> & { requirementsInferred?: boolean }, declined: Iterable<string> = [], limit = 6): Gap[] {
   const skip = new Set([...declined].map(gapId));
   const seen = new Set<string>();
   const out: Gap[] = [];
@@ -58,7 +69,7 @@ export function skillGaps(fit: Pick<FitReport, "details">, declined: Iterable<st
     for (const p of parts) seen.add(p);
     out.push({ id, skill, kind, question: question(skill, kind), why: WHY[kind] });
   };
-  for (const s of fit.details.requiredSkills?.missing ?? []) add(s, "required");
+  for (const s of fit.details.requiredSkills?.missing ?? []) add(s, fit.requirementsInferred ? "listed" : "required");
   for (const s of fit.details.preferredSkills?.missing ?? []) add(s, "preferred");
   for (const s of (fit.details.keywords?.missing ?? []).slice(0, 3)) add(s, "keyword");
   return out.slice(0, limit);
@@ -77,8 +88,26 @@ export function hardGaps(fit: Pick<FitReport, "details" | "gates">): string[] {
  * Which alternative the student actually named in their answer ("Excel or Google Sheets"
  * and they wrote about Sheets), so the skill fact says what they really used.
  */
-export function skillFromAnswer(skill: string, answer: string): string {
+export function skillFromAnswer(skill: string, answer: string): string | null {
   const options = skill.split(/\s+or\s+/i).map((s) => s.trim()).filter(Boolean);
-  const text = answer.toLowerCase();
-  return options.find((o) => text.includes(o.toLowerCase())) ?? options[0] ?? skill;
+  // Treat each affirmative clause separately. "I never used Excel, but used
+  // Google Sheets" should establish only Google Sheets.
+  const clauses = answer.split(/[.!?;]|\bbut\b|\bhowever\b/i).map((part) => part.trim()).filter(Boolean);
+  for (const clause of clauses) {
+    if (/\b(?:never|not|without|didn'?t|haven'?t|wasn'?t|couldn'?t|don'?t|doesn'?t|can'?t|won'?t|no experience with)\b/i.test(clause)) continue;
+    const named = options.find((option) => {
+      const escaped = option.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i").test(clause);
+    });
+    if (named) return named;
+    // An action can establish a skill without using the exact label, e.g.
+    // "reconciled vendor balances" establishes account reconciliation.
+    const detected = new Set(extractSkills(clause));
+    // Named software needs an explicit name. A transferable spreadsheet skill
+    // is useful, but it does not prove the person used Excel itself.
+    const namedTools = new Set(["Excel", "Google Sheets", "QuickBooks", "NetSuite", "SAP", "Oracle", "Workday", "Salesforce", "HubSpot", "PowerPoint", "Bloomberg", "Capital IQ", "FactSet", "Jira", "Figma", "Google Analytics", "Tableau", "Power BI", "Alteryx"]);
+    const inferred = options.find((option) => !namedTools.has(option) && detected.has(option) && extractSkills(option).includes(option));
+    if (inferred) return inferred;
+  }
+  return null;
 }
