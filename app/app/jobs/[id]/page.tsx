@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { ArrowDown, ArrowLeft, ArrowUpRight, Check, Minus, PenLine, TriangleAlert } from "lucide-react";
 import { FitBreakdown } from "@/components/jobs/fit-breakdown";
 import { GapCoach } from "@/components/jobs/gap-coach";
+import { JobEvidenceMap } from "@/components/jobs/job-evidence-map";
 import { MeasureBullets, type Unmeasured } from "@/components/jobs/measure-bullets";
 import { JobActions } from "@/components/jobs/job-actions";
 import { ResumeTrio, type TrioResume } from "@/components/jobs/resume-trio";
@@ -122,9 +123,21 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
     };
   });
   const best = [...trio].sort((a, b) => b.covered - a.covered || Number(b.checksOk) - Number(a.checksOk) || b.passed - a.passed)[0] ?? null;
+  // A sparse profile can give each strategy the same examples. Show each distinct
+  // evidence selection once; keep layout variants available on the compare page.
+  const seenDocuments = new Set<string>();
+  const distinctTrio = (best ? [best, ...trio.filter((r) => r.id !== best.id)] : trio).filter((r) => {
+    const doc = forJob.find((stored) => stored.row.id === r.id)?.document;
+    const signature = JSON.stringify(doc?.sections.flatMap((section) => section.kind === "entries" ? section.entries.flatMap((entry) => entry.bullets.map((bullet) => bullet.text)) : []).sort() ?? []);
+    if (seenDocuments.has(signature)) return false;
+    seenDocuments.add(signature);
+    return true;
+  });
+  const hiddenStrategies = trio.filter((r) => !distinctTrio.some((shown) => shown.id === r.id)).map((r) => r.label);
   // Bullets on the best version that don't carry a number yet, skipping any already rewritten.
   const liveIds = new Set(liveBullets.filter((b) => b.status === "active").map((b) => b.id));
   const bestDoc = best ? forJob.find((r) => r.row.id === best.id)?.document : undefined;
+  const evidenceMap = bestDoc ? screeningReport(bestDoc, requirements, candidate.confirmedText).requiredEvidence : [];
   const limitedEvidence = (bestDoc?.sections.flatMap((section) => section.kind === "entries" ? section.entries.flatMap((entry) => entry.bullets) : []).length ?? 0) <= 2;
   const unmeasured: Unmeasured[] = (bestDoc?.sections ?? [])
     .flatMap((s) => (s.kind === "entries" ? s.entries.flatMap((e) => e.bullets.map((b) => ({ bulletId: b.id, text: b.text, org: e.org }))) : []))
@@ -248,7 +261,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
       <section id="resumes" aria-labelledby="resumes-heading" className="mt-10 scroll-mt-20">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="resumes-heading" className="font-display text-[24px] font-semibold">
-            Your three resumes
+            {distinctTrio.length === 1 && trio.length ? "Your tailored resume" : "Your tailored resumes"}
           </h2>
           {best && best.total > 0 && (
             <p className="text-[13px] text-muted-foreground">
@@ -256,8 +269,10 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
             </p>
           )}
         </div>
-        <ResumeTrio jobId={job.id} resumes={trio} bestId={best?.id ?? null} stale={stale} autoBuild={autoBuild && ready} blocked={blocked} limitedEvidence={limitedEvidence} />
+        <ResumeTrio jobId={job.id} resumes={distinctTrio} bestId={best?.id ?? null} stale={stale} autoBuild={autoBuild && ready} blocked={blocked} limitedEvidence={limitedEvidence} hiddenStrategies={hiddenStrategies} />
       </section>
+
+      <JobEvidenceMap items={evidenceMap} inferred={requirements.requiredLines.length === 0} profileFit={fit.score} />
 
       <section id="strengthen" aria-labelledby="strengthen-heading" className="mt-10 scroll-mt-20">
         <h2 id="strengthen-heading" className="font-display text-[24px] font-semibold">

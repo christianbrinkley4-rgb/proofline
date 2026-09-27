@@ -31,7 +31,7 @@ const STEPS = ["Reading what the posting asks for", "Ranking your confirmed bull
  * Builds them on arrival from the paste box, and offers a rebuild when the student
  * has added evidence since.
  */
-export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked, limitedEvidence }: { jobId: string; resumes: TrioResume[]; bestId: string | null; stale: boolean; autoBuild: boolean; blocked: string | null; limitedEvidence: boolean }) {
+export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked, limitedEvidence, hiddenStrategies = [] }: { jobId: string; resumes: TrioResume[]; bestId: string | null; stale: boolean; autoBuild: boolean; blocked: string | null; limitedEvidence: boolean; hiddenStrategies?: string[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(0);
@@ -129,12 +129,21 @@ export function ResumeTrio({ jobId, resumes, bestId, stale, autoBuild, blocked, 
           </Button>
         </div>
       )}
-      {limitedEvidence && (
+      {hiddenStrategies.length > 0 && (
+        <div className="mb-3 rounded-xl border border-brand/25 bg-brand-soft/40 px-4 py-3 text-[13px] leading-5">
+          <p className="font-medium">{resumes.length === 1 ? "One evidence selection is ready from your current profile." : `${resumes.length} distinct evidence selections are ready.`}</p>
+          <p className="mt-0.5 text-muted-foreground">
+            {hiddenStrategies.join(" and ")} use the same examples with a different layout or skills order. Compare the layouts, or add another real example and rebuild to get a different selection.
+          </p>
+          <div className="mt-1 flex flex-wrap gap-x-4"><Link href={`/app/resumes/compare?job=${jobId}`} className="inline-flex min-h-8 items-center font-medium text-brand-ink underline underline-offset-2">Compare layouts</Link><Link href="/app/profile" className="inline-flex min-h-8 items-center font-medium text-brand-ink underline underline-offset-2">Add an example</Link></div>
+        </div>
+      )}
+      {limitedEvidence && hiddenStrategies.length === 0 && (
         <p className="mb-3 rounded-xl border border-dashed px-4 py-3 text-[13px] leading-5 text-muted-foreground">
           These versions may look similar because your profile has only a couple of confirmed examples. Add another real example on your profile to give each version more to work with.
         </p>
       )}
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className={cn("grid gap-3", resumes.length === 1 ? "max-w-2xl" : resumes.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3")}>
         {resumes.map((r) => {
           const best = r.id === bestId;
           return (
