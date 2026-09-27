@@ -7,7 +7,7 @@ import { scoreFit } from "@/lib/fit/engine";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { ROLE_FAMILIES } from "@/lib/jobs/roles";
 import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
-import { requirementsOf, type JobRow } from "@/lib/jobs/store";
+import { getJobForUser, requirementsOf, type JobRow } from "@/lib/jobs/store";
 import { roleName } from "@/lib/jobs/text";
 import { listExperiences } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
@@ -49,8 +49,9 @@ export type PacketContext = {
 /** Confirmed evidence ranked for one job, plus what the posting asks for that the person hasn't shown. */
 export async function loadPacketContext(userId: string, jobId: string): Promise<PacketContext | null> {
   z.uuid().parse(jobId);
-  const job = await db.query.job.findFirst({ where: eq(schema.job.id, jobId) });
-  if (!job) return null;
+  const data = await getJobForUser(userId, jobId);
+  if (!data) return null;
+  const { job } = data;
   const [profile, experiences, bullets, facts, candidate, application] = await Promise.all([
     getProfile(userId),
     listExperiences(userId),

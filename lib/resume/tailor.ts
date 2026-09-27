@@ -6,6 +6,7 @@ import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
 import { ROLE_FAMILIES } from "@/lib/jobs/roles";
 import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
 import { postingOverlap } from "@/lib/jobs/relevance";
+import { getJobForUser } from "@/lib/jobs/store";
 import { listExperiences, type Experience } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
@@ -82,7 +83,7 @@ export async function tailorResume(
     listExperiences(userId),
     listBullets(userId),
     listFacts(userId, { states: ["confirmed"] }),
-    opts.jobId ? db.query.job.findFirst({ where: eq(schema.job.id, opts.jobId) }) : Promise.resolve(null),
+    opts.jobId ? getJobForUser(userId, opts.jobId).then((data) => data?.job ?? null) : Promise.resolve(null),
   ]);
   if (opts.jobId && !job) throw new Error("Job not found.");
   if (job && !hasUsableJobDescription(job.description)) throw new Error(JOB_DESCRIPTION_REQUIRED);

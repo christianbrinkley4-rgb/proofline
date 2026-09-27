@@ -2,19 +2,19 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
-import { db, schema } from "@/lib/db";
 import { defaultTemplateFor } from "@/lib/resume/templates";
 import { parseIntent } from "@/lib/jobs/intent";
+import { getJobForUser } from "@/lib/jobs/store";
 import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
 import { saveTailoredResume, tailorResume } from "@/lib/resume/tailor";
 import type { VariantId } from "@/lib/resume/document";
-import { eq } from "drizzle-orm";
 
 export async function createVariantsAction(jobId: string): Promise<{ ok: true; ids: string[] } | { ok: false; error: string }> {
   const session = await requireSession();
   if (!z.uuid().safeParse(jobId).success) return { ok: false, error: "Choose a job first." };
-  const job = await db.query.job.findFirst({ where: eq(schema.job.id, jobId) });
-  if (!job) return { ok: false, error: "This job is no longer available." };
+  const data = await getJobForUser(session.user.id, jobId);
+  if (!data) return { ok: false, error: "This job is not available to your account." };
+  const { job } = data;
   if (!hasUsableJobDescription(job.description)) return { ok: false, error: JOB_DESCRIPTION_REQUIRED };
   const template = defaultTemplateFor(parseIntent(job.title).roles);
   const ids: string[] = [];

@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth";
-import { db } from "@/lib/db";
 import type { TemplateId, VariantId } from "@/lib/resume/document";
 import { saveTailoredResume, tailorResume } from "@/lib/resume/tailor";
 import { defaultTemplateFor } from "@/lib/resume/templates";
 import { parseIntent } from "@/lib/jobs/intent";
+import { getJobForUser } from "@/lib/jobs/store";
 import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
 
 const VARIANTS: VariantId[] = ["experience", "skills", "ats"];
@@ -16,8 +16,9 @@ export async function createResumeAction(input: { jobId?: string | null; variant
   const session = await requireSession();
   const userId = session.user.id;
   const variant = VARIANTS.includes(input.variant as VariantId) ? (input.variant as VariantId) : "experience";
-  const job = input.jobId ? await db.query.job.findFirst({ where: (j, { eq }) => eq(j.id, input.jobId!) }) : null;
-  if (input.jobId && !job) return { ok: false, error: "That job isn't available anymore." };
+  const data = input.jobId ? await getJobForUser(userId, input.jobId) : null;
+  const job = data?.job ?? null;
+  if (input.jobId && !job) return { ok: false, error: "That job is not available to your account." };
   if (job && !hasUsableJobDescription(job.description)) return { ok: false, error: JOB_DESCRIPTION_REQUIRED };
 
   const template = TEMPLATE_IDS.includes(input.template as TemplateId)

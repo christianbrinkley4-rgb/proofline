@@ -16,7 +16,7 @@ import { db, schema } from "@/lib/db";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { jobDocumentImprovementSteps } from "@/lib/jobs/coaching";
-import { requirementsOf } from "@/lib/jobs/store";
+import { getJobForUser, requirementsOf } from "@/lib/jobs/store";
 import { getProfile } from "@/lib/kb/profile";
 import { hasUsableJobDescription } from "@/lib/jobs/description";
 import { letterStatus } from "@/lib/packet/cover-letter";
@@ -25,8 +25,9 @@ import { VARIANT_LABEL } from "@/lib/resume/document";
 import { STAGE_LABEL } from "@/lib/tracker/model";
 
 export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]/packet">): Promise<Metadata> {
-  const job = await db.query.job.findFirst({ where: eq(schema.job.id, (await params).id), columns: { company: true } }).catch(() => null);
-  return { title: job ? `Packet for ${job.company}` : "Application packet" };
+  const session = await requireSession();
+  const data = await getJobForUser(session.user.id, (await params).id);
+  return { title: data ? `Packet for ${data.job.company}` : "Application packet" };
 }
 
 const ORDER = ["resume", "letter", "track"] as const;
@@ -36,8 +37,9 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
   const userId = session.user.id;
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const job = await db.query.job.findFirst({ where: eq(schema.job.id, id) });
-  if (!job) notFound();
+  const data = await getJobForUser(userId, id);
+  if (!data) notFound();
+  const { job } = data;
   const [view, profile, application, resumes] = await Promise.all([
     packetView(userId, id),
     getProfile(userId),

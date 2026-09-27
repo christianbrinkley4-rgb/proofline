@@ -2,13 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, Check, FileText } from "lucide-react";
-import { eq } from "drizzle-orm";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { VariantCompareActions } from "@/components/resume/variant-compare";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth";
-import { db, schema } from "@/lib/db";
-import { VARIANT_BLURB, VARIANT_LABEL } from "@/lib/resume/document";
+import { VARIANT_BLURB, VARIANT_LABEL, type VariantId } from "@/lib/resume/document";
+import { getJobForUser } from "@/lib/jobs/store";
 import { listResumes } from "@/lib/resume/store";
 import { TEMPLATES } from "@/lib/resume/templates";
 
@@ -17,13 +16,16 @@ export default async function ComparePage({ searchParams }: PageProps<"/app/resu
   const session = await requireSession();
   const { job: id, select } = await searchParams;
   if (typeof id !== "string") notFound();
-  const job = await db.query.job.findFirst({ where: eq(schema.job.id, id) });
-  if (!job) notFound();
-  const resumes = (await listResumes(session.user.id)).filter((r) => r.row.jobId === id);
+  const data = await getJobForUser(session.user.id, id);
+  if (!data) notFound();
+  const { job } = data;
+  const history = (await listResumes(session.user.id)).filter((r) => r.row.jobId === id);
+  const order: VariantId[] = ["experience", "skills", "ats"];
+  const resumes = order.flatMap((variant) => history.find((resume) => resume.variant === variant) ?? []);
   const selected = typeof select === "string" && resumes.some((r) => r.row.id === select) ? select : null;
   return <PageBody>
     <Link href={"/app/jobs/" + id} className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3.5" /> Back to job</Link>
-    <PageHeader className="mt-4" title="Choose your best evidence" description={`${job.title} at ${job.company}. Compare three strategies built from your confirmed history. Each is saved as a separate, one-page version.`} />
+    <PageHeader className="mt-4" title="Choose your best evidence" description={`${job.title} at ${job.company}. Compare the latest version of each strategy, built from your confirmed history.`} />
     <div className="mt-6"><VariantCompareActions jobId={id} selected={selected} /></div>
     {resumes.length === 0 ? <div className="mt-8 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Build three versions to see how your experience, skills, and keywords tell different true stories for this posting.</div> :
       <div className="mt-7 grid gap-4 lg:grid-cols-3">{resumes.map((r) => {
@@ -40,6 +42,7 @@ export default async function ComparePage({ searchParams }: PageProps<"/app/resu
           <div className="mt-4 flex flex-wrap gap-2"><Button size="sm" asChild variant={isSelected ? "secondary" : "outline"}><Link href={`/app/resumes/compare?job=${id}&select=${r.row.id}`}>{isSelected ? "Selected" : "Select"}</Link></Button><Button size="sm" asChild variant="ghost"><Link href={`/app/resumes/${r.row.id}`}>Review page<ArrowUpRight data-icon="inline-end" /></Link></Button></div>
         </article>;
       })}</div>}
+    {history.length > resumes.length && <p className="mt-4 text-xs text-muted-foreground">Showing the latest of each strategy. {history.length - resumes.length} older {history.length - resumes.length === 1 ? "version remains" : "versions remain"} saved in your Resumes list.</p>}
     <p className="mt-5 text-xs leading-5 text-muted-foreground">A tailored resume can reorder or omit your real accomplishments. It cannot add an unconfirmed claim. Review the full version before applying.</p>
   </PageBody>;
 }

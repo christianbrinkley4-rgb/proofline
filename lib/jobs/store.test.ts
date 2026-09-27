@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { db, dbReady, schema } from "@/lib/db";
-import { saveMatches, upsertJobs } from "./store";
+import { getJobForUser, saveMatches, setMatchStatus, upsertJobs } from "./store";
 import type { NormalizedJob } from "./types";
 import type { FitReport } from "@/lib/fit/engine";
 
@@ -48,6 +48,7 @@ describe("batch upsertJobs / saveMatches", () => {
   beforeAll(async () => {
     await dbReady;
     await db.insert(schema.user).values({ id: userId, name: "Batch", email: "batch@example.com" }).onConflictDoNothing();
+    await db.insert(schema.user).values({ id: "test-user-private-posting", name: "Other", email: "other-private@example.com" }).onConflictDoNothing();
   }, 60_000);
 
   it("upserts many jobs in one pass and keeps an existing description when the refresh omits it", async () => {
@@ -62,6 +63,18 @@ describe("batch upsertJobs / saveMatches", () => {
     expect(refreshed.get("greenhouse|batch-test:2")?.title).toBe("Role 2 Updated");
     expect(refreshed.get("greenhouse|batch-test:2")?.description).toContain("accounting");
     expect(refreshed.get("greenhouse|batch-test:4")?.sourceId).toBe("batch-test:4");
+  });
+
+  it("keeps a pasted description with the account that added it", async () => {
+    const rows = await upsertJobs([{ ...baseJob(99), source: "link", sourceId: "pasted:batch-private-99", description: "Private campus posting for one applicant." }]);
+    const privateJob = rows.get("link|pasted:batch-private-99")!;
+    await saveMatches(userId, [{ job: privateJob, fit: fit(74) }]);
+    expect((await getJobForUser(userId, privateJob.id))?.job.id).toBe(privateJob.id);
+    expect(await getJobForUser("test-user-private-posting", privateJob.id)).toBeNull();
+    await expect(setMatchStatus("test-user-private-posting", privateJob.id, "saved")).rejects.toThrow("not available");
+    expect(await getJobForUser("test-user-private-posting", privateJob.id)).toBeNull();
+    const publicJob = (await upsertJobs([baseJob(98)])).get("greenhouse|batch-test:98")!;
+    expect((await getJobForUser("test-user-private-posting", publicJob.id))?.job.id).toBe(publicJob.id);
   });
 
   it("saves match rows in chunks for the same user", async () => {

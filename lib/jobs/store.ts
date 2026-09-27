@@ -118,6 +118,9 @@ export async function getJobForUser(userId: string, jobId: string) {
   const job = await db.query.job.findFirst({ where: eq(schema.job.id, jobId) });
   if (!job) return null;
   const match = await db.query.jobMatch.findFirst({ where: and(eq(schema.jobMatch.userId, userId), eq(schema.jobMatch.jobId, jobId)) });
+  // Pasted descriptions may come from private emails or campus portals. Their
+  // source ID is user-keyed, and only the account with a match may read them.
+  if (job.sourceId.startsWith("pasted:") && !match) return null;
   return { job, match: match ?? null };
 }
 
@@ -134,6 +137,7 @@ export async function listMatches(userId: string, status: Array<MatchRow["status
 }
 
 export async function setMatchStatus(userId: string, jobId: string, status: MatchRow["status"], dismissReason?: string) {
+  if (!(await getJobForUser(userId, jobId))) throw new Error("This job is not available to your account.");
   await db
     .insert(schema.jobMatch)
     .values({ userId, jobId, status, dismissReason: dismissReason ?? null })
