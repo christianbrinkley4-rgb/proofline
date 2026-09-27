@@ -14,7 +14,7 @@ Status: **small beta live** at https://proofline-beta.vercel.app. The founder au
 
 ## Prepared infrastructure
 
-- Vercel project: proofline-beta in christianbrinkley4-5140s-projects, linked to this checkout. Production deployment dpl_9AoE3YhZm5vZC8DR4jWfcoYhgmqx reported READY and is aliased to https://proofline-beta.vercel.app.
+- Vercel project: proofline-beta in christianbrinkley4-5140s-projects, linked to this checkout. Production deployment dpl_3htDLt1asN2UxTHpmcTs15DWhdj5 reported READY and is aliased to https://proofline-beta.vercel.app.
 - Neon project: Proofline beta on the Free plan, production branch in AWS us-east-2. Hosted migrations through 0012 are applied. The career tables, completion column, and shared model-budget table were verified.
 - Vercel production settings include DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, NEXT_PUBLIC_SITE_URL, and CRON_SECRET.
 - The founder chose an independent rules-based first beta. Vercel production has PROOFLINE_AI_MODE=rules, so no external model call runs even if a key is later present. No Anthropic key is configured or needed for this beta. Per-account and platform-wide model credit ceilings remain implemented for a future optional model mode; the platform setting is 80 credits per UTC day, but credits are request reservations, not a dollar budget.
@@ -32,6 +32,12 @@ This update passed 561 tests across 63 files, typecheck, lint, local and Vercel 
 A sparse profile previously showed three nearly identical resume cards as separate strategies. The job page now groups variants that choose the same resume examples, keeps their layouts available through Compare layouts, and points to adding another confirmed example. The new job evidence map names each parsed posting skill, shows the actual resume line that demonstrates it, and separates listed skills, profile-only evidence, and unconfirmed gaps. The map explains why the profile fit score and visible resume coverage differ. Coverage no longer treats a company name or job title as proof of a skill, and negated profile mentions do not count.
 
 Commit 688e6b9 passed 563 tests across 63 files, typecheck, lint, a local and hosted production build, and the deterministic 200-profile/800-posting evaluation with zero unsupported claims detected in its checked outputs. The local synthetic restaurant-manager page showed one evidence selection and a nine-term evidence map. Production deployment dpl_9AoE3YhZm5vZC8DR4jWfcoYhgmqx reported READY; the public landing and signup returned 200, signed-out /app/jobs redirected to login, and /api/dev/login returned 404. The evaluation remains synthetic and cannot establish employer screening or interview outcomes.
+
+## September 27 pasted-posting privacy and comparison update
+
+Pasted job descriptions are now readable only by the account that imported them. The shared lookup and status writer enforce this, and resume generation, comparison, cover-letter packet, and interview context use the guarded lookup. The database test checks that another account cannot read or save a pasted posting while a public listing remains accessible. The comparison page shows the latest version of each resume strategy and notes that older versions remain in the Resumes list.
+
+Commit 087d821 passed 564 tests across 63 files, typecheck, lint, and local and Vercel production builds. The local synthetic account still opened its compare and packet pages. Deployment dpl_3htDLt1asN2UxTHpmcTs15DWhdj5 reported READY. The live landing and signup returned 200, signed-out comparison redirected to login, and /api/dev/login returned 404. The cross-account denial was verified in a database regression test; a second authenticated hosted account was not used for this release check.
 
 ## Release verification and current limits
 
