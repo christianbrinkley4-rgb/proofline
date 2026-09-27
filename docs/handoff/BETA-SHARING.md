@@ -14,12 +14,18 @@ Status: **small beta live** at https://proofline-beta.vercel.app. The founder au
 
 ## Prepared infrastructure
 
-- Vercel project: proofline-beta in christianbrinkley4-5140s-projects, linked to this checkout. Production deployment dpl_Eko4ryDsBVzFondEE4XWsnhFQW2V reported READY and is aliased to https://proofline-beta.vercel.app.
+- Vercel project: proofline-beta in christianbrinkley4-5140s-projects, linked to this checkout. Production deployment dpl_H6qZLj1BkPLXzoWAoqpgHDiY1Tdf reported READY and is aliased to https://proofline-beta.vercel.app.
 - Neon project: Proofline beta on the Free plan, production branch in AWS us-east-2. Hosted migrations through 0012 are applied. The career tables, completion column, and shared model-budget table were verified.
 - Vercel production settings include DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, NEXT_PUBLIC_SITE_URL, and CRON_SECRET.
 - The founder chose an independent rules-based first beta. Vercel production has PROOFLINE_AI_MODE=rules, so no external model call runs even if a key is later present. No Anthropic key is configured or needed for this beta. Per-account and platform-wide model credit ceilings remain implemented for a future optional model mode; the platform setting is 80 credits per UTC day, but credits are request reservations, not a dollar budget.
 
 Secrets are in ignored local files and Vercel environment settings. Never commit or paste them into docs, issues, or chat.
+
+## September 27 bank and profile-search update
+
+Production logs showed two profile 500s caused by answering a suggestion after it had already been answered. The answer path is now idempotent, and the bullet-bank dialog prevents rapid double submissions and offers an inline refresh when a save fails. Onboarding and profile experience forms now search job titles; the basics form searches U.S. schools, degrees, and programs; goal-role chips search occupations. All fields still accept free text. The school catalog has 6,290 currently operating institution records from the May 2025 College Scorecard download; see `docs/research/PROFILE-SEARCH.md`.
+
+This update passed 561 tests across 63 files, typecheck, lint, local and Vercel production builds. The live `/api/profile-options` endpoint returned relevant results in all four categories, signed-out profile access redirected to login, and no new production 500s appeared in the first 15-minute log check.
 
 ## Release verification and current limits
 
