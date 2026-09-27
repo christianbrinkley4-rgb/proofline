@@ -5,6 +5,7 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 import { saveBasicsAction, saveGoalsAction, type BasicsInput, type GoalsInput } from "@/app/app/onboarding/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchableInput } from "@/components/shared/searchable-input";
 import { suggestedGoalsFor } from "@/lib/fit/suggested-goals";
 import { AgentSays, ChipInput, Field, PillChoice, StepHint } from "./parts";
 import type { ExperienceView } from "./types";
@@ -80,14 +81,14 @@ export function BasicsStep({ initial, onSaved }: { initial: BasicsInput; onSaved
           <summary className="cursor-pointer text-[13.5px] font-medium">Education or training (optional)</summary>
           <p className="mt-2 text-[12.5px] text-muted-foreground">High school, college, a trade program, a certificate, or nothing yet. Your job matches won&apos;t require a degree unless the posting does.</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="School" htmlFor="school">
-            <Input id="school" value={values.school} onChange={set("school")} className="h-10" />
+          <Field label="School" htmlFor="school" hint="Search U.S. colleges and training schools, or type any school in your own words.">
+            <SearchableInput id="school" kind="schools" value={values.school} onChange={(school) => setValues((v) => ({ ...v, school }))} placeholder="Search U.S. schools or type your own" />
           </Field>
-          <Field label="Degree or credential" htmlFor="degree">
-            <Input id="degree" value={values.degree} onChange={set("degree")} placeholder="Diploma, GED, certificate, or degree" className="h-10" />
+          <Field label="Degree or credential" htmlFor="degree" hint="Pick a common label or enter the exact credential you earned.">
+            <SearchableInput id="degree" kind="degrees" value={values.degree} onChange={(degree) => setValues((v) => ({ ...v, degree }))} placeholder="Search degrees or type your credential" />
           </Field>
           <Field label="Field or program" htmlFor="major">
-            <Input id="major" value={values.major} onChange={set("major")} placeholder="Accounting, welding, nursing..." className="h-10" />
+            <SearchableInput id="major" kind="fields" value={values.major} onChange={(major) => setValues((v) => ({ ...v, major }))} placeholder="Search programs or type your field" />
           </Field>
           <Field label="Minor" htmlFor="minor">
             <Input id="minor" value={values.minor} onChange={set("minor")} className="h-10" />
@@ -156,7 +157,7 @@ export function GoalsStep({ initial, experiences, onBack, onSaved }: { initial: 
         }}
       >
         <Field label="Kinds of roles (optional)" htmlFor="roles" hint="Not sure yet? Leave this blank. We'll suggest paths from what you've done.">
-          <ChipInput id="roles" value={values.targetRoles} onChange={(v) => update("targetRoles", v)} suggestions={suggestions.roles} visible={8} placeholder="Type a role and press Enter" />
+          <ChipInput id="roles" value={values.targetRoles} onChange={(v) => update("targetRoles", v)} suggestions={suggestions.roles} searchKind="roles" visible={8} placeholder="Search roles or type your own" />
         </Field>
         <Field label="When (optional)" htmlFor="targetTerm" hint="Leave blank if you're open to roles posted now.">
           <Input id="targetTerm" value={values.targetTerm} onChange={(e) => update("targetTerm", e.target.value)} placeholder="Now, summer 2027, after graduation..." className="h-10" />

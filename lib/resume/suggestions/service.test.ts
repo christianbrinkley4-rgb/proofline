@@ -29,7 +29,7 @@ describe("bullet bank answers", () => {
     expect(fact).toMatchObject({ content: "Reconciled 27 vendor accounts each month", source: "user_stated" });
     expect(bullet).toMatchObject({ status: "active", factIds: [fact!.id] });
     expect(verifyBullet(bullet!.text, [fact!.content]).ok).toBe(true);
-    await expect(answerSuggestion(userId, item.id, { answer: "yes", slotValue: "27" })).rejects.toThrow(/no longer available/);
+    expect(await answerSuggestion(userId, item.id, { answer: "yes", slotValue: "27" })).toMatchObject({ status: "already_answered", bulletId: null });
     expect((await listFacts(userId, { experienceId, states: ["confirmed"] })).filter((row) => row.sourceDetail === `suggestion:${item.id}`)).toHaveLength(1);
   });
 
@@ -57,7 +57,7 @@ describe("bullet bank answers", () => {
     const factsBefore = (await listFacts(userId, { experienceId, states: ["confirmed"] })).length;
     const bulletsBefore = (await listBullets(userId, [experienceId])).length;
     await answerSuggestion(userId, item.id, { answer: "no", reason: "not_true" });
-    await expect(answerSuggestion(userId, item.id, { answer: "yes" })).rejects.toThrow(/no longer available/);
+    expect(await answerSuggestion(userId, item.id, { answer: "yes" })).toMatchObject({ status: "already_answered", bulletId: null });
     expect((await listFacts(userId, { experienceId, states: ["confirmed"] })).length).toBe(factsBefore);
     expect((await listBullets(userId, [experienceId])).length).toBe(bulletsBefore);
     const next = await nextSuggestions(userId, experienceId, 10);

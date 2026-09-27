@@ -19,9 +19,18 @@ export async function nextSuggestionsAction(experienceId: string, count = 5) {
 
 export async function answerSuggestionAction(id: string, input: z.infer<typeof AnswerSchema>) {
   const userId = (await requireSession()).user.id;
-  const result = await answerSuggestion(userId, z.uuid().parse(id), AnswerSchema.parse(input));
-  revalidatePath("/app", "layout");
-  return result;
+  const parsedId = z.uuid().safeParse(id);
+  const parsedInput = AnswerSchema.safeParse(input);
+  if (!parsedId.success || !parsedInput.success) return { ok: false as const, error: "That answer needs another look. Try again." };
+  try {
+    const result = await answerSuggestion(userId, parsedId.data, parsedInput.data);
+    revalidatePath("/app", "layout");
+    return { ok: true as const, ...result };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not save your answer.";
+    const expected = /number|Fill in|Finish the bullet|clear action|out of date|expired|verify the bullet/i.test(message);
+    return { ok: false as const, error: expected ? message : "Could not save your answer. Please try again." };
+  }
 }
 
 export async function bankStatsAction() {

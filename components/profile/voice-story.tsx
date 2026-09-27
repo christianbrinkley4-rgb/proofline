@@ -9,6 +9,7 @@ import { rewriteWithAnswersAction, speakExperienceAction, type ExperienceDrafts 
 import { cleanDictationAction } from "@/app/app/voice-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchableInput } from "@/components/shared/searchable-input";
 import { Textarea } from "@/components/ui/textarea";
 import { MicButton } from "@/components/voice/mic-button";
 import { useDictation } from "@/components/voice/use-dictation";
@@ -227,7 +228,7 @@ export function VoiceStory() {
           </label>
           <label className="space-y-1.5 text-[12.5px]">
             <span>Your role <span className="text-muted-foreground">(optional)</span></span>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} />
+            <SearchableInput id="voice-role" kind="roles" value={title} onChange={setTitle} maxLength={160} placeholder="Search jobs or type your role" />
           </label>
           <label className="space-y-1.5 text-[12.5px]">
             <span>Kind</span>

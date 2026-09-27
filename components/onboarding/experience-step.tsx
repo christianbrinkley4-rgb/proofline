@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { EvidenceTag } from "@/components/shared/evidence-tag";
+import { SearchableInput } from "@/components/shared/searchable-input";
 import { AgentSays, Field, PillChoice, StepHint } from "./parts";
 import type { ExperienceView, QuestionView } from "./types";
 
@@ -130,7 +131,7 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
           <Input id="org" value={values.org} onChange={set("org")} placeholder="Employer, household, group, or project" required className="h-10" />
         </Field>
         <Field label="Your role" htmlFor="title">
-          <Input id="title" value={values.title} onChange={set("title")} placeholder="Bookkeeping assistant" className="h-10" />
+          <SearchableInput id="title" kind="roles" value={values.title} onChange={(title) => setValues((v) => ({ ...v, title }))} placeholder="Search jobs or type your title" />
         </Field>
         <Field label="Started" htmlFor="startDate">
           <Input id="startDate" type="month" value={values.startDate} onChange={set("startDate")} className="h-10" />

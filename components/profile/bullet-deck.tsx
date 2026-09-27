@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
-import { toast } from "sonner";
 import { answerSuggestionAction, bankStatsAction, nextSuggestionsAction } from "@/app/app/profile/suggest-actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,25 +20,34 @@ export function BulletDeck({ experienceId }: { experienceId: string }) {
   const [editing, setEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [choosingReason, setChoosingReason] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const submitting = useRef(false);
   const [pending, startTransition] = useTransition();
   const card = cards[0];
 
   const load = () => startTransition(async () => {
     try {
+      setError(null);
       const [next, stats] = await Promise.all([nextSuggestionsAction(experienceId), bankStatsAction()]);
       setCards(next);
       setCount(stats.active);
-    } catch (error) {
-      toast(error instanceof Error ? error.message : "Could not load suggestions");
+    } catch {
+      setError("Could not load suggestions. Try again.");
     }
   });
 
   const show = () => { setOpen(true); load(); };
   const answer = (reply: "yes" | "no", reason?: Reason) => {
-    if (!card || pending) return;
+    if (!card || pending || submitting.current) return;
+    submitting.current = true;
     startTransition(async () => {
       try {
-        await answerSuggestionAction(card.id, { answer: reply, reason, slotValue, editedText: editing ? editedText : undefined });
+        setError(null);
+        const result = await answerSuggestionAction(card.id, { answer: reply, reason, slotValue, editedText: editing ? editedText : undefined });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         setSlotValue("");
         setEditedText("");
         setEditing(false);
@@ -48,8 +56,10 @@ export function BulletDeck({ experienceId }: { experienceId: string }) {
         setCards(next);
         setCount(stats.active);
         router.refresh();
-      } catch (error) {
-        toast(error instanceof Error ? error.message : "Could not save that answer");
+      } catch {
+        setError("Could not refresh your bank. Try again.");
+      } finally {
+        submitting.current = false;
       }
     });
   };
@@ -79,6 +89,12 @@ export function BulletDeck({ experienceId }: { experienceId: string }) {
             <DialogDescription>Is this something you did? Only your yes puts it in your bank.</DialogDescription>
           </DialogHeader>
           <p className="text-[13px] tabular-nums text-muted-foreground">{count} bullets in your bank</p>
+          {error && (
+            <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
+              <span>{error}</span>
+              <Button type="button" size="sm" variant="outline" onClick={load}>Refresh suggestions</Button>
+            </div>
+          )}
           {card ? (
             <div key={card.id} className="min-w-0 space-y-4 motion-safe:animate-view-in">
               <div className="rounded-lg border bg-muted p-4">

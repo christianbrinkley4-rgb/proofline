@@ -65,14 +65,17 @@ export async function nextSuggestions(userId: string, experienceId: string, coun
 
 export async function answerSuggestion(userId: string, id: string, input: AnswerInput) {
   const item = await db.query.bulletSuggestion.findFirst({ where: and(eq(schema.bulletSuggestion.id, id), eq(schema.bulletSuggestion.userId, userId)) });
-  if (!item || item.status !== "pending") throw new Error("Suggestion is no longer available");
+  if (!item) throw new Error("This suggestion expired. Reopen your bullet bank.");
+  // Two fast taps or another open tab may submit the same card twice. The first
+  // answer wins; a repeat must not create another fact or become a server error.
+  if (item.status !== "pending") return { status: "already_answered" as const, bulletId: null };
   if (input.answer === "no") {
     if (!input.reason) throw new Error("Choose why this one did not fit");
     await db.transaction(async (tx) => {
       const [updated] = await tx.update(schema.bulletSuggestion)
         .set({ status: "rejected", reason: input.reason, answeredAt: new Date() })
         .where(and(eq(schema.bulletSuggestion.id, id), eq(schema.bulletSuggestion.userId, userId), eq(schema.bulletSuggestion.status, "pending"))).returning();
-      if (!updated) throw new Error("Suggestion already answered");
+      if (!updated) return;
       await tx.insert(schema.agentEvent).values({ userId, type: "suggestion_answered", data: { suggestionId: id, experienceId: item.experienceId, answer: "no", reason: input.reason, taskId: item.taskId } });
     });
     return { status: "rejected" as const, bulletId: null };
@@ -105,7 +108,7 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
     const [claimed] = await tx.update(schema.bulletSuggestion)
       .set({ status: "accepted", answeredAt: new Date() })
       .where(and(eq(schema.bulletSuggestion.id, id), eq(schema.bulletSuggestion.userId, userId), eq(schema.bulletSuggestion.status, "pending"))).returning();
-    if (!claimed) throw new Error("Suggestion already answered");
+    if (!claimed) return { status: "already_answered" as const, bulletId: null };
     let factIds = reuseSources ? item.sourceFactIds : [];
     let addedFactId: string | null = null;
     if (!reuseSources) {

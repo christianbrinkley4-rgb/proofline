@@ -8,6 +8,7 @@ import { archiveExperienceAction, updateExperienceAction } from "@/app/app/profi
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SearchableInput } from "@/components/shared/searchable-input";
 import type { ExperienceDetails } from "@/lib/kb/experiences";
 
 const KINDS: Array<[ExperienceDetails["kind"], string]> = [
@@ -41,6 +42,7 @@ export function ExperienceEdit({ experience }: { experience: EditableExperience 
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [error, setError] = useState("");
   const [current, setCurrent] = useState(!experience.endDate);
+  const [title, setTitle] = useState(experience.title);
   const [pending, startTransition] = useTransition();
 
   const kinds = KINDS.some(([k]) => k === experience.kind) ? KINDS : [...KINDS, [experience.kind, experience.kind] as [ExperienceDetails["kind"], string]];
@@ -55,6 +57,7 @@ export function ExperienceEdit({ experience }: { experience: EditableExperience 
           setError("");
           setConfirmArchive(false);
           setCurrent(!experience.endDate);
+          setTitle(experience.title);
           setOpen(true);
         }}
       >
@@ -98,7 +101,7 @@ export function ExperienceEdit({ experience }: { experience: EditableExperience 
             </label>
             <label className={field}>
               <span>Your role</span>
-              <Input name="title" maxLength={160} defaultValue={experience.title} placeholder="Optional" />
+              <SearchableInput id={`title-${experience.id}`} name="title" kind="roles" value={title} onChange={setTitle} maxLength={160} placeholder="Search jobs or type your title" />
             </label>
             <label className={field}>
               <span>Kind</span>

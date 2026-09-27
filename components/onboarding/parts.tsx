@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { Plus, X } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
@@ -66,6 +66,7 @@ export function ChipInput({
   id,
   ariaLabel,
   visible = Infinity,
+  searchKind,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
@@ -76,18 +77,50 @@ export function ChipInput({
   ariaLabel?: string;
   /** How many suggestions to show before "More ideas", so a long list doesn't bury the rest of the form on a phone. */
   visible?: number;
+  searchKind?: "roles";
 }) {
   const [draft, setDraft] = useState("");
+  const [matches, setMatches] = useState<Array<{ value: string; label: string }>>([]);
+  const [activeMatch, setActiveMatch] = useState(-1);
+  const searchId = useId();
   const [showAll, setShowAll] = useState(false);
+  useEffect(() => {
+    if (!searchKind || draft.trim().length < 2) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ kind: searchKind, q: draft.trim() });
+        const response = await fetch(`/api/profile-options?${params}`, { signal: controller.signal });
+        if (!response.ok) return;
+        const data = await response.json() as { options: Array<{ value: string; label: string }> };
+        setMatches(data.options.filter((option) => !value.some((item) => item.toLowerCase() === option.value.toLowerCase())));
+        setActiveMatch(-1);
+      } catch {
+        if (!controller.signal.aborted) setMatches([]);
+      }
+    }, 160);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [draft, searchKind, value]);
   const add = (raw: string) => {
     const item = raw.trim().replace(/,$/, "");
     if (item && !value.some((v) => v.toLowerCase() === item.toLowerCase())) onChange([...value, item]);
     setDraft("");
+    setMatches([]);
+    setActiveMatch(-1);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
+    if (e.key === "ArrowDown" && matches.length) {
       e.preventDefault();
-      add(draft);
+      setActiveMatch((index) => (index + 1) % matches.length);
+    } else if (e.key === "ArrowUp" && matches.length) {
+      e.preventDefault();
+      setActiveMatch((index) => index <= 0 ? matches.length - 1 : index - 1);
+    } else if (e.key === "Escape") {
+      setMatches([]);
+      setActiveMatch(-1);
+    } else if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      add(e.key === "Enter" && activeMatch >= 0 && matches[activeMatch] ? matches[activeMatch].value : draft);
     } else if (e.key === "Backspace" && !draft && value.length) {
       onChange(value.slice(0, -1));
     }
@@ -113,14 +146,38 @@ export function ChipInput({
         <input
           id={id}
           aria-label={ariaLabel}
+          role={searchKind ? "combobox" : undefined}
+          aria-autocomplete={searchKind ? "list" : undefined}
+          aria-expanded={searchKind ? matches.length > 0 : undefined}
+          aria-controls={searchKind && matches.length ? searchId : undefined}
+          aria-activedescendant={activeMatch >= 0 ? `${searchId}-${activeMatch}` : undefined}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => { setDraft(e.target.value); setMatches([]); setActiveMatch(-1); }}
           onKeyDown={onKeyDown}
           onBlur={() => draft && add(draft)}
           placeholder={value.length ? "" : placeholder}
           className="min-w-32 flex-1 bg-transparent px-1 py-1 text-[14px] outline-none placeholder:text-subtle-foreground"
         />
       </div>
+      {searchKind && matches.length > 0 && (
+        <div id={searchId} role="listbox" className="mt-1 max-h-48 overflow-y-auto rounded-lg border bg-popover p-1 shadow-sm">
+          {matches.map((option, index) => (
+            <button
+              id={`${searchId}-${index}`}
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={activeMatch === index}
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={() => add(option.value)}
+              className={cn("block min-h-10 w-full rounded-md px-3 py-2 text-left text-[13px] hover:bg-muted", activeMatch === index && "bg-muted")}
+            >
+              {option.label}
+            </button>
+          ))}
+          <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">Occupation names adapted from <a href="https://www.onetcenter.org/database.html" target="_blank" rel="noreferrer" className="underline">O*NET 31.0</a>, CC BY 4.0.</p>
+        </div>
+      )}
       {remaining.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {(showAll ? remaining : remaining.slice(0, visible)).map((s) => (
