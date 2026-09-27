@@ -4,6 +4,9 @@ import { STAGE_LABEL, StageSchema, type Stage } from "./model";
 export const ReplySchema = z.object({
   kind: z.enum(["update", "assessment", "interview", "offer", "rejection"]),
   summary: z.string().trim().min(2, "Add a short note about the reply.").max(3000),
+  whatHelped: z.string().trim().max(800).optional(),
+  nextTime: z.string().trim().max(800).optional(),
+  consentToImprove: z.boolean().default(false),
 });
 export type ReplyKind = z.infer<typeof ReplySchema>["kind"];
 export const REPLY_LABEL: Record<ReplyKind, string> = {
@@ -27,6 +30,8 @@ export type ApplicationActivity = {
   type: "stage" | "resume" | "followup" | "reply";
   title: string;
   detail: string | null;
+  whatHelped?: string | null;
+  nextTime?: string | null;
   subject?: string;
   body?: string;
 };
@@ -55,7 +60,11 @@ export function parseApplicationActivity(events: EventRecord[]): ApplicationActi
     } else if (event.type === "application_reply_recorded") {
       const kind = ReplySchema.shape.kind.safeParse(data.kind);
       if (!kind.success || typeof data.summary !== "string") continue;
-      items.push({ ...base, type: "reply", title: REPLY_LABEL[kind.data] + " recorded", detail: data.summary });
+      items.push({
+        ...base, type: "reply", title: REPLY_LABEL[kind.data] + " recorded", detail: data.summary,
+        whatHelped: typeof data.whatHelped === "string" ? data.whatHelped : null,
+        nextTime: typeof data.nextTime === "string" ? data.nextTime : null,
+      });
     }
   }
   return items.sort((a, b) => b.at.localeCompare(a.at));

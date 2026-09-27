@@ -25,7 +25,7 @@ import { formatRange } from "@/lib/resume/parse/dates";
 import { saveTailoredResume, tailorResume } from "@/lib/resume/tailor";
 import { rolePromptIdeas } from "@/lib/resume/onet-prompts";
 import { followUpDraft, StageSchema, STAGE_LABEL } from "@/lib/tracker/model";
-import { getApplication, listApplications, moveApplication, trackJob } from "@/lib/tracker/service";
+import { getApplication, listApplicationOutcomes, listApplications, moveApplication, trackJob } from "@/lib/tracker/service";
 
 /**
  * The tools an AI can use on a person's behalf: Proofline's own agent, or the
@@ -146,6 +146,18 @@ export const TOOLS: AgentTool[] = [
       comment: event.data.comment,
       outcomeEvidence: false,
     })),
+  }),
+  tool({
+    name: "get_application_outcomes",
+    title: "Read recorded application outcomes",
+    description: "Read this person's own recorded employer replies and optional reflections to plan their next experiment. These are self-reported signals; never claim a resume or letter caused an invitation or rejection.",
+    input: {},
+    readOnly: true,
+    run: async (_args, ctx) => ({
+      outcomes: await listApplicationOutcomes(ctx.userId, 10),
+      interpretation: "Self-reported employer replies and personal reflections. One result cannot establish that a resume, cover letter, or Proofline caused it. Use a reflection as a hypothesis for the person's next application.",
+      trackerUrl: link("/app/tracker"),
+    }),
   }),
   tool({
     name: "list_facts",

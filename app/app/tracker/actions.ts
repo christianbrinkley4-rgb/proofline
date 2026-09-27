@@ -32,7 +32,7 @@ export async function addManualApplicationAction(input: z.infer<typeof ManualApp
   refresh();
   return { id: row.id };
 }
-export async function recordReplyAction(id: string, input: { kind: string; summary: string }) {
+export async function recordReplyAction(id: string, input: { kind: string; summary: string; whatHelped?: string; nextTime?: string; consentToImprove?: boolean }) {
   const session = await requireSession();
   await recordReply(session.user.id, Id.parse(id), ReplySchema.parse(input));
   refresh();

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { logEvent } from "@/lib/agent/events";
 import { db, schema, type Db } from "@/lib/db";
@@ -11,6 +11,43 @@ export async function listApplications(userId: string): Promise<Application[]> {
 }
 export async function getApplication(userId: string, id: string) {
   return db.query.application.findFirst({ where: and(eq(schema.application.id, id), eq(schema.application.userId, userId)) });
+}
+export type RecordedOutcome = {
+  applicationId: string;
+  company: string;
+  title: string;
+  kind: z.infer<typeof ReplySchema>["kind"];
+  summary: string;
+  whatHelped: string | null;
+  nextTime: string | null;
+  resumeId: string | null;
+  at: string;
+};
+
+/** A person's own recorded employer replies. These are self-reported signals, not causal proof. */
+export async function listApplicationOutcomes(userId: string, limit = 10): Promise<RecordedOutcome[]> {
+  const [apps, events] = await Promise.all([
+    listApplications(userId),
+    db.query.agentEvent.findMany({
+      where: and(eq(schema.agentEvent.userId, userId), eq(schema.agentEvent.type, "application_reply_recorded")),
+      orderBy: [desc(schema.agentEvent.createdAt)],
+      limit: Math.min(50, Math.max(1, limit * 3)),
+    }),
+  ]);
+  const byId = new Map(apps.map((app) => [app.id, app]));
+  return events.flatMap((event) => {
+    const app = typeof event.data.applicationId === "string" ? byId.get(event.data.applicationId) : null;
+    const kind = ReplySchema.shape.kind.safeParse(event.data.kind);
+    if (!app || !kind.success || typeof event.data.summary !== "string") return [];
+    return [{
+      applicationId: app.id, company: app.company, title: app.title, kind: kind.data,
+      summary: event.data.summary,
+      whatHelped: typeof event.data.whatHelped === "string" ? event.data.whatHelped : null,
+      nextTime: typeof event.data.nextTime === "string" ? event.data.nextTime : null,
+      resumeId: typeof event.data.resumeId === "string" ? event.data.resumeId : null,
+      at: event.createdAt.toISOString(),
+    }];
+  }).slice(0, limit);
 }
 async function checkResume(database: Db, userId: string, id: string, jobId: string | null) {
   z.uuid().parse(id);
@@ -96,7 +133,7 @@ export async function updateApplication(userId: string, id: string, patch: Parti
 }
 
 /** The user records an actual reply. A concrete outcome also advances the stage. */
-export async function recordReply(userId: string, id: string, input: { kind: string; summary: string }) {
+export async function recordReply(userId: string, id: string, input: { kind: string; summary: string; whatHelped?: string; nextTime?: string; consentToImprove?: boolean }) {
   z.uuid().parse(id);
   const reply = ReplySchema.parse(input);
   return db.transaction(async (tx) => {
@@ -105,7 +142,13 @@ export async function recordReply(userId: string, id: string, input: { kind: str
     const now = new Date();
     await tx.insert(schema.agentEvent).values({
       userId, type: "application_reply_recorded",
-      data: { applicationId: id, kind: reply.kind, summary: reply.summary },
+      data: {
+        applicationId: id, jobId: app.jobId, resumeId: app.resumeId,
+        kind: reply.kind, summary: reply.summary,
+        whatHelped: reply.whatHelped || null, nextTime: reply.nextTime || null,
+        consentToImprove: reply.consentToImprove,
+        reportedByUser: true, outcomeEvidence: Boolean(REPLY_STAGE[reply.kind]),
+      },
     });
     const stage = REPLY_STAGE[reply.kind];
     if (stage && stage !== app.stage) {

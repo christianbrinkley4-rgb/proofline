@@ -2,7 +2,8 @@ import { careerDashboard } from "@/lib/career/service";
 import { listMatches } from "@/lib/jobs/store";
 import { familiesFor } from "@/lib/jobs/roles";
 import { roleName } from "@/lib/jobs/text";
-import { listApplications } from "@/lib/tracker/service";
+import { listApplications, type RecordedOutcome } from "@/lib/tracker/service";
+import { REPLY_LABEL } from "@/lib/tracker/activity";
 import { loadJourney } from "./coach";
 import { nextMoves } from "./next-moves";
 import { TOOL_BY_NAME, runTool, type ToolContext } from "./tools";
@@ -24,6 +25,7 @@ const HELP = `Here's what I can do right now:
 - **Plan your day**: "what should I do next?"
 - **Explore your direction**: "I feel lost and do not know what career fits me"
 - **Check your applications**: "where do my applications stand?"
+- **Learn from replies**: "what have I learned from my applications?"
 - **Draft a cover letter**: "cover letter for Robinhood"
 - **Prep for an interview**: "help me prep for Deloitte"
 - **Draft a follow-up**: "follow up with Coinbase"
@@ -57,7 +59,7 @@ export function pickJob(message: string, jobs: JobRef[]): JobRef | null {
   return named.sort((a, b) => b.company.length - a.company.length || Number(Boolean(b.applicationId)) - Number(Boolean(a.applicationId)))[0];
 }
 
-export type Intent = "help" | "explore" | "next" | "search" | "watch" | "letter" | "prep" | "follow_up" | "status" | "story" | "unknown";
+export type Intent = "help" | "explore" | "next" | "search" | "watch" | "letter" | "prep" | "follow_up" | "status" | "outcomes" | "story" | "unknown";
 
 const WATCH = /\b(keep (an eye|watching)|watch for|watch|alert me|notify me|let me know (when|if)|tell me when)\b/;
 
@@ -78,6 +80,7 @@ export function classify(message: string): Intent {
   if (/cover letter/.test(m)) return "letter";
   if (/\b(lost|calling|purpose|career path|career goals?|what career|what to do with my life|don't know what (to do|i want)|dont know what (to do|i want)|figure out (my|what))\b/.test(m)) return "explore";
   if (WATCH.test(m) && /\b(jobs?|internships?|roles?|positions?|openings?|co-?ops?)\b/.test(m)) return "watch";
+  if (/\b(application outcomes?|learn(?:ed)? from (my )?applications?|what (worked|have i learned|should i change) (?:in|from|about) (my )?applications?|why (am i|aren't i|am i not) (?:not )?getting interviews?|why no interviews?)\b/.test(m)) return "outcomes";
   if (/\b(interview|prep(are)?|practice)\b/.test(m)) return "prep";
   if (/\bfollow[- ]?up\b/.test(m)) return "follow_up";
   if (/\b(what('s| is)? next|what should i do|to-?do|what'?s due|catch me up|next steps?|next moves?)\b/.test(m)) return "next";
@@ -203,6 +206,27 @@ export async function offlineReply(message: string, ctx: ToolContext, emit: Offl
       await call("watch_search", { query });
       return {
         text: `Watching "${query}". I'll rerun it about once a day and put anything new on your [Today](/app) page. Manage watched searches on [Jobs](/app/jobs).`,
+        tools,
+      };
+    }
+
+    case "outcomes": {
+      const { outcomes } = await call<{ outcomes: RecordedOutcome[] }>("get_application_outcomes", {});
+      if (!outcomes.length) return {
+        text: "I don't have any employer replies recorded yet. When you hear back, log the reply in [your tracker](/app/tracker). Add what you think helped and one thing to try next time; I'll use those notes to guide you, without treating one result as proof.",
+        tools,
+      };
+      const counts = (["assessment", "interview", "offer", "rejection"] as const)
+        .map((kind) => ({ kind, count: outcomes.filter((item) => item.kind === kind).length }))
+        .filter((item) => item.count > 0)
+        .map((item) => `${item.count} ${REPLY_LABEL[item.kind].toLowerCase()}${item.count === 1 ? "" : "s"}`);
+      const latest = outcomes[0];
+      const result = counts.length ? counts.join(", ") : "general updates";
+      const next = latest.nextTime
+        ? `Your own next experiment: ${latest.nextTime}`
+        : "A useful next experiment is to compare one application that got a reply with one that did not, then change one truthful detail in your next application.";
+      return {
+        text: `In your ${outcomes.length} most recent recorded ${outcomes.length === 1 ? "reply" : "replies"}, I see ${result}. The latest was ${REPLY_LABEL[latest.kind].toLowerCase()} for **${latest.title} at ${latest.company}**. ${next} These are your reports, not proof that a particular resume or letter caused an outcome. Review them in [your tracker](/app/tracker).`,
         tools,
       };
     }

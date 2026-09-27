@@ -53,7 +53,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
         {[
           ["Applications", stats.applications, "Roles you've applied to"],
           ["Replies logged", repliesLogged, "Only replies you record"],
-          ["Interviews & offers", stats.interviews, "Conversations moving forward"],
+          ["Active interviews & offers", stats.interviews, "Current tracker stage"],
           ["Follow-ups due", stats.dueFollowUps, "A good time to check in"],
         ].map(([label, value, detail]) => (
           <div key={label} className="rounded-xl border bg-background p-4">
@@ -165,6 +165,9 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
   const [body, setBody] = useState(initialDraft.body);
   const [replyKind, setReplyKind] = useState<ReplyKind>("update");
   const [replySummary, setReplySummary] = useState("");
+  const [whatHelped, setWhatHelped] = useState("");
+  const [nextTime, setNextTime] = useState("");
+  const [consentToImprove, setConsentToImprove] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
   const url = safeJobUrl(app.url);
@@ -222,16 +225,26 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
         <form className="space-y-3" onSubmit={(e) => {
           e.preventDefault();
           run(async () => {
-            await recordReplyAction(app.id, { kind: replyKind, summary: replySummary });
+            await recordReplyAction(app.id, { kind: replyKind, summary: replySummary, whatHelped, nextTime, consentToImprove });
             setReplySummary("");
+            setWhatHelped("");
+            setNextTime("");
+            setConsentToImprove(false);
           }, "Reply recorded.");
         }}>
           <label className="block space-y-1.5 text-xs"><span>What happened?</span><select className={selectClass} value={replyKind} onChange={(e) => setReplyKind(e.target.value as ReplyKind)}>{(Object.keys(REPLY_LABEL) as ReplyKind[]).map((kind) => <option key={kind} value={kind}>{REPLY_LABEL[kind]}</option>)}</select></label>
           <label className="block space-y-1.5 text-xs"><span>Your note</span><Textarea value={replySummary} onChange={(e) => setReplySummary(e.target.value)} required minLength={2} maxLength={3000} rows={3} placeholder="Who replied, what they said, and any next step..." /></label>
+          <p className="text-xs leading-5 text-muted-foreground">Optional reflection: these are your clues, not proof that a resume or letter caused the result.</p>
+          <label className="block space-y-1.5 text-xs"><span>What might have helped?</span><Textarea value={whatHelped} onChange={(e) => setWhatHelped(e.target.value)} maxLength={800} rows={2} placeholder="A relevant project, referral, interview answer..." /></label>
+          <label className="block space-y-1.5 text-xs"><span>What will you try next time?</span><Textarea value={nextTime} onChange={(e) => setNextTime(e.target.value)} maxLength={800} rows={2} placeholder="One change you can actually test..." /></label>
+          <label className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+            <input type="checkbox" checked={consentToImprove} onChange={(e) => setConsentToImprove(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-foreground" />
+            <span>Allow Proofline to consider this reply and reflection in future guidance improvements for others. Optional and off by default.</span>
+          </label>
           <Button size="sm" type="submit" disabled={pending || replySummary.trim().length < 2}>Record reply</Button>
         </form>
       </section>}
-      {logs.length > 0 && <section className="border-t pt-5"><h3 className="text-sm font-semibold">Activity</h3><ol className="mt-3 space-y-2">{logs.map((log) => <li key={log.id} className="rounded-lg border p-3"><p className="text-[11px] text-subtle-foreground">{date(log.at)}</p><p className="mt-0.5 text-[13px] font-medium">{log.title}</p>{log.detail && <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{log.detail}</p>}{log.subject && log.body && <details className="mt-2 text-xs"><summary className="cursor-pointer text-muted-foreground">View saved draft: {log.subject}</summary><p className="mt-2 whitespace-pre-wrap leading-5 text-muted-foreground">{log.body}</p></details>}</li>)}</ol></section>}
+      {logs.length > 0 && <section className="border-t pt-5"><h3 className="text-sm font-semibold">Activity</h3><ol className="mt-3 space-y-2">{logs.map((log) => <li key={log.id} className="rounded-lg border p-3"><p className="text-[11px] text-subtle-foreground">{date(log.at)}</p><p className="mt-0.5 text-[13px] font-medium">{log.title}</p>{log.detail && <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{log.detail}</p>}{log.whatHelped && <p className="mt-1 text-xs leading-5"><span className="font-medium">Possible help:</span> {log.whatHelped}</p>}{log.nextTime && <p className="mt-1 text-xs leading-5"><span className="font-medium">Next experiment:</span> {log.nextTime}</p>}{log.subject && log.body && <details className="mt-2 text-xs"><summary className="cursor-pointer text-muted-foreground">View saved draft: {log.subject}</summary><p className="mt-2 whitespace-pre-wrap leading-5 text-muted-foreground">{log.body}</p></details>}</li>)}</ol></section>}
       <div className="border-t pt-5">{confirmDelete ? <div className="space-y-2"><p className="text-xs text-destructive">Remove this application and its notes? Your resume files will remain.</p><div className="flex gap-2"><Button size="sm" variant="destructive" disabled={pending} onClick={() => run(async () => { await deleteApplicationAction(app.id); onClose(); }, "Application removed.")}>Remove application</Button><Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button></div></div> : <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}><X data-icon="inline-start" />Remove application</Button>}</div>
     </div>
   </>;
