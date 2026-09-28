@@ -8,39 +8,31 @@ The active checkout is `C:\Users\chris\proofline`. The `work/` folder in the One
 
 The unfinished education/contact changes are now complete and verified locally. Multiple degrees, per-degree honors and coursework, checked imported details, resume email, LinkedIn, and website survive onboarding and tailoring. My facts provides Add education and Edit contact details. An unchecked "CPA candidate" line creates no fact; an imported one-line Front Desk role saves without a fabricated second line. Revoking an honor invalidates a resume that cites it even when it shares a line with GPA.
 
-Checks passed: typecheck, lint without warnings, 705 tests in 80 files, production build, and the 200-profile/800-posting synthetic benchmark (zero failures). PDF and DOCX content checks and local phone/desktop browser checks passed. Migration `0016_contact_email.sql` is applied locally. These continuation changes have not been deployed.
+Checks passed: typecheck, lint without warnings, 705 tests in 80 files, production build, and the 200-profile/800-posting synthetic benchmark (zero failures). PDF and DOCX content checks and local phone/desktop browser checks passed. Migration `0016_contact_email.sql` is applied locally. Commits `8623e2d` and `d75791f` are deployed to the live beta as Ready deployment `dpl_4H2gu7aYhTCxv5meS7WdbEz7VXR3`.
 
-The production review key remains an owner task as described below. Do not enter credentials or bypass the review gate. Once the owner repairs the key and this version is deployed, re-import or correct the education/contact facts, fix old pasted job metadata, rebuild the resume, and rerun the review. Compare the result with the owner's original PDF; the synthetic test is not that comparison.
+The owner reported replacing the review API key with Cursor. Vercel confirms the production key is configured; no recent review-failure logs were found. A fresh model-backed review is still needed to verify the replacement. Do not enter credentials or bypass the review gate. On the live version, re-import or correct the education/contact facts, fix old pasted job metadata, rebuild the resume, and rerun the review. Compare the result with the owner's original PDF; the synthetic test is not that comparison.
 
 ## State right now
 
-- **Live beta:** https://proofline-beta.vercel.app (Vercel project `proofline-beta`, Neon Postgres). Deploy with `npx vercel --prod --yes` from this folder; migrations run on the first request (latest is `drizzle/0015_resume_share.sql`, already applied).
+- **Live beta:** https://proofline-beta.vercel.app (Vercel project `proofline-beta`, Neon Postgres). Deploy with `npx vercel --prod --yes` from this folder; migrations run on the first request (latest is `drizzle/0016_contact_email.sql`).
 - **Sign-up is open to any email** (`BETA_EMAILS=*` in Vercel production; see `lib/beta-access.ts`). The owner wants a few more people trying it.
-- **Everything is committed on `main`** (no Git remote). The last deploy includes every commit up to "Load the resume fonts wherever the preview renders, and log review failures".
+- **Everything is committed on `main`** (no Git remote). The last app deploy includes commits `8623e2d` and `d75791f` for pasted job corrections and education/contact preservation.
 - Checks: `npm run typecheck`, `npm run lint`, `npm test` (681 tests passing at handoff), `npm run build`.
 - The owner (Christian) tested with his real resume and a real posting. His account is on production; the job is `/app/jobs/6eafe6cc-e1bc-4a6f-8429-40c22443000a`. His verdict: the generated resume "is way off and just does not look correct". The fixes below come from that test.
 
 ## Fix next, in this order
 
-### 1. The AI review key is invalid (owner action, blocks every download)
+### 1. Review key replaced; fresh review pending
 
-Production logs show: `[review.gate] failed: Review model gemini-3.5-flash-lite returned 401 ... UNAUTHENTICATED ... Expected OAuth 2 access token`. The saved `PROOFLINE_REVIEW_KEY` is not a working Gemini API key. Until it is, no resume passes review, so nothing can be downloaded, and the cover letter link and proof links never appear.
+Earlier production logs showed a 401 authentication failure from the review model. The owner has since reported replacing `PROOFLINE_REVIEW_KEY` with Cursor. The Vercel CLI confirms the production secret is configured, and the latest app deployment is Ready. No recent `review.gate` logs were found; that does not prove a successful model call.
 
-The owner must create a key at https://aistudio.google.com/app/apikey (new keys start with `AQ.`), then replace it himself. Agents must not enter API keys:
-
-```bash
-npx vercel env rm PROOFLINE_REVIEW_KEY production --yes
-npx vercel env add PROOFLINE_REVIEW_KEY production
-npx vercel --prod --yes
-```
-
-Then press Re-run review on his job and read `npx vercel logs <deployment-url> --since 10m | grep review.gate` if it still fails. The default model is `gemini-3.5-flash-lite` (`PROOFLINE_REVIEW_MODEL` overrides it).
+On the owner's saved job, correct or re-import the facts and posting details, rebuild the resume, then press Re-run review. If it fails, read the bounded logs with `npx vercel logs <deployment-url> --query review.gate --since 10m --limit 10 --no-follow`. The default model is `gemini-3.5-flash-lite` (`PROOFLINE_REVIEW_MODEL` overrides it). Agents must not enter API keys or create production test accounts.
 
 ### 2. Pasted-job details are wrong (done September 28)
 
 His pasted posting became company "Pw" (the avatar initials of "Posted" and "weeks") and the line under the title read "Posted 3 weeks ago∙Apply by October 2, 2026 at 11:59 PM · Onsite, based in Alexandria, VA"; the browser tab title reads "… at Posted 3 weeks ago…". The production database URL is a Vercel secret, so the stored paste could not be read. The guesser was fixed against that header: `lib/jobs/guess-posting.ts` ignores "Posted … ago", "Apply by …", and similar board lines; rejects company guesses of one or two characters (a logo's "Pw"); and reduces "Onsite, based in Alexandria, VA" to Alexandria, VA (work mode still comes from the posting text). A pasted job's page has "Fix title, company, or place" (`updateJobDetails`). His existing job still has the bad values until he corrects them there or pastes again.
 
-### 3. Multiple education entries and contact details (done locally September 28)
+### 3. Multiple education entries and contact details (deployed September 28)
 
 His resume lists a Master's (UNC Greensboro, Jan to Jun 2027) and a Bachelor's (Expected Dec 2026, 3.69 GPA, Dean's List, coursework including "Federal Tax Concepts (prepared tax returns, Grade A)"). Onboarding keeps only the first entry, so the tailored resume lost the Bachelor's, the GPA, Dean's List, and the coursework, which matter most for a tax internship. The fact base models education as single fields (`lib/facts/base.ts`, `saveEducation`, profile columns). Needed:
 
@@ -49,7 +41,7 @@ His resume lists a Master's (UNC Greensboro, Jan to Jun 2027) and a Bachelor's (
 - The contact email comes from the account email. His resume uses `christianbrinkley4@gmail.com`, but the generated one shows `christianbrinkley04@gmail.com`. Check whether that's the address he signed up with, and let the resume email be edited.
 - The parser drops an education line it can't classify ("CPA candidate"). Keep such lines as an education detail so the person can confirm or delete them.
 
-### 4. Tense within one entry (done locally September 28)
+### 4. Tense within one entry (deployed September 28)
 
 Projects without dates came out as "Architect…/Track…" next to "Drove…/Booked…/Built…". Tense should be consistent within an entry: present for a current role or ongoing project, past otherwise. See `lib/resume/polish.ts` (`toPastTense`, `roleEnded`) and where tailoring applies it.
 
