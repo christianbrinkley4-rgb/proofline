@@ -213,4 +213,6 @@ Still the owner's call: post-beta pricing, a paid job-search provider, and publi
 
 - **Proof links** (`lib/proof/share.ts`, `/proof/[slug]`, migration 0015): once a resume passes review, the person can share a noindex page that shows each line, how it was worded, and the confirmed fact behind it, without contact details. It vouches only for what's true (nothing invented or inflated by software; Proofline doesn't contact employers), stops vouching if the facts change, and Stop sharing ends it at once. Verified end to end against a local stand-in for the review model (`PROOFLINE_REVIEW_BASE_URL`), not the real model.
 
+- **Guides** (`/guides`, `lib/guides/content.ts`): three sourced guides (putting a defensible number on a bullet, ATS myths, what makes writing read as AI), each ending at the free check. A sitemap and robots rules list the public pages and keep `/app`, `/api`, and `/proof` out of search.
+
 Remaining Phase 3 items need the owner or real data: a career-center pilot (who to approach, what a counselor may see), a paid job-search provider, and publishing outcomes once enough consented tracker history exists.
