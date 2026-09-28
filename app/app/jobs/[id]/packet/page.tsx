@@ -1,4 +1,3 @@
-import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,6 +11,7 @@ import { CoverLetterEditor, type SourceView } from "@/components/packet/cover-le
 import { InterviewPrep } from "@/components/packet/interview-prep";
 import { Button } from "@/components/ui/button";
 import { packetStep } from "@/lib/agent/coach";
+import { PRIVATE_BETA } from "@/lib/beta";
 import { requireSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { loadCandidate } from "@/lib/fit/candidate";
@@ -34,7 +34,6 @@ export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]/pac
 const ORDER = ["resume", "letter", "track"] as const;
 
 export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/packet">) {
-  hiddenInBeta("/app/jobs");
   const session = await requireSession();
   const userId = session.user.id;
   const { id } = await params;
@@ -71,6 +70,9 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
     current === "done" || ORDER.indexOf(step) < ORDER.indexOf(current) ? "done" : step === current ? "current" : "upcoming";
   const variantLabel = attached ? VARIANT_LABEL[attached.variant as keyof typeof VARIANT_LABEL] ?? attached.variant : null;
   const applyUrl = /^https?:\/\//.test(job.url) ? job.url : null;
+  // The private beta has one resume per job, on the job's Resume tab; the compare and profile pages stay hidden.
+  const tailorHref = `/app/jobs/${id}?tab=tailor`;
+  const factsHref = (href: string) => (PRIVATE_BETA && href.startsWith("/app/profile") ? "/app/facts" : href);
 
   return (
     <PageBody className="max-w-4xl">
@@ -97,13 +99,15 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
         <StepSection
           id="resume"
           index={1}
-          title="Pick your resume"
+          title={PRIVATE_BETA ? "Your resume" : "Pick your resume"}
           state={stateOf("resume")}
           summary={
             attached
               ? `Attached: ${variantLabel}, version ${attached.version}`
               : resumes.length
-                ? `${resumes.length} ${resumes.length === 1 ? "version" : "versions"} built for this job`
+                ? PRIVATE_BETA
+                  ? "Resume ready for this job"
+                  : `${resumes.length} ${resumes.length === 1 ? "version" : "versions"} built for this job`
                 : "No tailored version yet"
           }
         >
@@ -113,7 +117,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
                 Start here. Build the one-page version from your confirmed facts and keep it if you can defend every line.
               </p>
               <Button size="lg" asChild>
-                <Link href={`/app/resumes/compare?job=${id}`}>Compare resumes</Link>
+                <Link href={PRIVATE_BETA ? tailorHref : `/app/resumes/compare?job=${id}`}>{PRIVATE_BETA ? "Build your resume" : "Compare resumes"}</Link>
               </Button>
             </div>
           ) : (
@@ -124,21 +128,36 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
                     Attached: <span className="font-medium">{variantLabel}</span>, version {attached.version}.
                   </>
                 ) : (
-                  <>
-                    {resumes.length} {resumes.length === 1 ? "version" : "versions"} built for this job.{" "}
-                    <span className="text-muted-foreground">Pick one to attach when you track it.</span>
-                  </>
+                  PRIVATE_BETA ? (
+                    <>
+                      Your resume for this job is ready.{" "}
+                      <span className="text-muted-foreground">Attach it with Track with this resume on its Resume tab.</span>
+                    </>
+                  ) : (
+                    <>
+                      {resumes.length} {resumes.length === 1 ? "version" : "versions"} built for this job.{" "}
+                      <span className="text-muted-foreground">Pick one to attach when you track it.</span>
+                    </>
+                  )
                 )}
               </p>
               <div className="flex gap-2">
                 {attached && (
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/app/resumes/${attached.id}`}>Review</Link>
+                    <Link href={PRIVATE_BETA ? tailorHref : `/app/resumes/${attached.id}`}>Review</Link>
                   </Button>
                 )}
-                <Button size="sm" variant={attached ? "ghost" : "default"} asChild>
-                  <Link href={`/app/resumes/compare?job=${id}`}>{attached ? "Compare versions" : "Choose a version"}</Link>
-                </Button>
+                {PRIVATE_BETA ? (
+                  !attached && (
+                    <Button size="sm" asChild>
+                      <Link href={tailorHref}>Open your resume</Link>
+                    </Button>
+                  )
+                ) : (
+                  <Button size="sm" variant={attached ? "ghost" : "default"} asChild>
+                    <Link href={`/app/resumes/compare?job=${id}`}>{attached ? "Compare versions" : "Choose a version"}</Link>
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -162,7 +181,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
               <p className="font-medium">Improve this letter for the posting</p>
               <ul className="mt-2 space-y-2 text-muted-foreground">
                 {letterCoaching.slice(0, 2).map((step) => (
-                  <li key={step.id}><Link href={step.href} className="font-medium text-foreground underline-offset-2 hover:underline">{step.title}</Link>. {step.detail}</li>
+                  <li key={step.id}><Link href={factsHref(step.href)} className="font-medium text-foreground underline-offset-2 hover:underline">{step.title}</Link>. {step.detail}</li>
                 ))}
               </ul>
             </div>

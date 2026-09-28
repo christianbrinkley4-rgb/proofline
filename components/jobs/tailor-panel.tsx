@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CircleAlert, Download, Info, LoaderCircle, Lock, Minus, Pencil, RefreshCw, Scissors, SquareKanban } from "lucide-react";
+import { ArrowRight, Check, CircleAlert, Download, Info, LoaderCircle, Lock, Minus, Pencil, RefreshCw, Scissors, SquareKanban } from "lucide-react";
 import { toast } from "sonner";
 import { editLineAction, rerunReviewAction, tailorJobAction } from "@/app/app/jobs/[id]/tailor-actions";
 import { trackJobAction } from "@/app/app/tracker/actions";
@@ -226,6 +226,19 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
           Track with this resume
         </Button>
       </div>
+      {resume.canExport && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/30 bg-brand-soft/40 px-4 py-3 text-[13.5px] leading-5">
+          <span>
+            <span className="font-medium">Resume ready.</span> <span className="text-muted-foreground">Next, a cover letter and interview prep built from the same facts.</span>
+          </span>
+          <Button size="sm" variant="outline" className="bg-background" asChild>
+            <Link href={`/app/jobs/${jobId}/packet`}>
+              Cover letter and prep
+              <ArrowRight data-icon="inline-end" />
+            </Link>
+          </Button>
+        </div>
+      )}
       {!resume.canExport && resume.reason && (
         <p id="export-lock" className="mt-2 flex items-start gap-1.5 text-[13px] text-pending-ink">
           <Lock className="mt-0.5 size-3.5 shrink-0" />

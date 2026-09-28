@@ -1,6 +1,6 @@
 # Private beta runbook (2 to 5 testers)
 
-What testers get: sign up (allowlist only), a three-step onboarding, knockouts and a fit score for any pasted job, one tailored resume behind a review gate, PDF/DOCX download, and a tracker. Everything else in the codebase (agent chat, MCP connector, career plans, cover-letter packets, live search, the old profile tools) is hidden by `PRIVATE_BETA` in `lib/beta.ts`.
+What testers get: sign up (allowlist only), a three-step onboarding, knockouts and a fit score for any pasted job, one tailored resume behind a review gate (editable line by line), PDF/DOCX download, a cover letter and interview prep for each job (linked once the resume passes review), and a tracker. Everything else in the codebase (agent chat, MCP connector, career plans, live search, the old profile tools) is hidden by `PRIVATE_BETA` in `lib/beta.ts`.
 
 ## Before you invite anyone
 
