@@ -6,7 +6,8 @@ import { listFacts } from "@/lib/kb/facts";
 import { listBullets } from "@/lib/resume/bullets/service";
 import { onetTasksForTitle, recallCatalogSize } from "@/lib/resume/onet-tasks";
 import catalog from "@/lib/resume/onet-catalog.json";
-import { answerSuggestion, nextSuggestions } from "./service";
+import { composeRecallXyz } from "@/lib/resume/recall-xyz";
+import { answerSuggestion, nextSuggestions, type AnswerInput } from "./service";
 import { tailorResume } from "@/lib/resume/tailor";
 import { parseRequirements } from "@/lib/fit/requirements";
 
@@ -18,6 +19,10 @@ async function student() {
 }
 async function role(userId: string, bullets: string[] = []) {
   return saveRole(userId, { kind: "work", org: "City Clinic", title: "Front Desk", startDate: "2024-01", endDate: "2024-06", bullets });
+}
+
+async function reviewedAnswer(userId: string, id: string, input: AnswerInput) {
+  return answerSuggestion(userId, id, { ...input, reviewedText: input.xyz && input.editedText ? composeRecallXyz(input.editedText, input.xyz) : undefined });
 }
 
 describe("common-duty recall", () => {
@@ -101,13 +106,14 @@ describe("common-duty recall", () => {
     const [first] = await nextSuggestions(userId, exp.id, 1, "recall");
     const action = "Scheduled patient appointments";
     const xyz = { measure: "25 appointments each week", method: "using the clinic calendar" };
-    const line = `${action} (${xyz.measure}) ${xyz.method}`;
-    const result = await answerSuggestion(userId, first.id, { answer: "yes", confirmed: true, editedText: action, xyz });
+    const line = "Scheduled 25 patient appointments each week using the clinic calendar";
+    const result = await reviewedAnswer(userId, first.id, { answer: "yes", confirmed: true, editedText: action, xyz });
     const base = await loadFactBase(userId);
     expect(base.roles[0].bullets.map((fact) => fact.text)).toContain(line);
     expect((await listBullets(userId, [exp.id])).find((bullet) => bullet.id === result.bulletId)?.text).toBe(line);
     const [followup] = await nextSuggestions(userId, exp.id, 1, "recall");
     expect(followup.text).toContain(line);
+    expect(followup.xyzDefaults).toEqual({ action, ...xyz, result: "" });
     expect(followup.slot).toMatch(/what changed|tool or method/);
     await answerSuggestion(userId, followup.id, { answer: "no", reason: "not_true" });
     expect((await nextSuggestions(userId, exp.id, 1, "recall"))[0].id).not.toBe(followup.id);
@@ -122,10 +128,37 @@ describe("common-duty recall", () => {
     expect(followup.text).toContain("3 dentists");
     expect(followup.text).toMatch(/\[what changed\?\]|\[which tool or method\?\]/);
     const filled = followup.slot === "what changed?" ? "fewer scheduling errors" : "the clinic calendar";
-    await answerSuggestion(userId, followup.id, { answer: "yes", confirmed: true, editedText: "Scheduled appointments for 3 dentists", xyz: { measure: "weekly", method: "using the clinic calendar", result: followup.slot === "what changed?" ? filled : "" } });
+    await reviewedAnswer(userId, followup.id, { answer: "yes", confirmed: true, editedText: "Scheduled appointments for 3 dentists", xyz: { measure: "weekly", method: "using the clinic calendar", result: followup.slot === "what changed?" ? filled : "" } });
     const lines = (await loadFactBase(userId)).roles[0].bullets.map((fact) => fact.text);
     expect(lines.some((text) => text.includes(filled) && text.includes("3 dentists"))).toBe(true);
     expect(lines.some((text) => /\[[^\]]+\]/.test(text))).toBe(false);
+  });
+
+  it("stores the fluent preview with raw parts and does not ask again for a supplied result", async () => {
+    const userId = await student();
+    const exp = await role(userId);
+    const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
+    const raw = { action: "I reconcile accounts", measure: "daily", method: "Excel", result: "it saved about 3 hours each week" };
+    const accepted = await reviewedAnswer(userId, card.id, { answer: "yes", confirmed: true, editedText: raw.action, xyz: raw });
+    const text = "Saved about 3 hours each week by reconciling accounts daily using Excel";
+    const bullet = (await listBullets(userId, [exp.id])).find((item) => item.id === accepted.bulletId)!;
+    expect(bullet.text).toBe(text);
+    const fact = (await listFacts(userId)).find((item) => bullet.factIds.includes(item.id))!;
+    expect(fact.content).toBe(text);
+    expect(fact.data?.recallXyz).toEqual(raw);
+    const next = await nextSuggestions(userId, exp.id, 10, "recall");
+    expect(next.some((item) => item.taskId === `fact:${fact.id}:result`)).toBe(false);
+  });
+
+  it("rejects a stale or mismatched preview before creating a confirmed fact", async () => {
+    const userId = await student();
+    const exp = await role(userId);
+    const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
+    const before = (await listFacts(userId)).length;
+    const input = { answer: "yes" as const, confirmed: true, editedText: "Scheduled appointments", xyz: { measure: "25 each week", method: "the calendar" } };
+    for (const reviewedText of [undefined, "Scheduled 50 appointments each week using the calendar"]) await expect(answerSuggestion(userId, card.id, { ...input, reviewedText })).rejects.toThrow(/preview changed/);
+    expect((await listFacts(userId)).length).toBe(before);
+    expect((await nextSuggestions(userId, exp.id, 1, "recall"))[0].id).toBe(card.id);
   });
 
   it("keeps a bank over 100 lines and selects a late-added relevant line for the job", async () => {

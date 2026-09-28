@@ -87,7 +87,7 @@ const DOUBLED = new Set(["logged", "mapped", "planned", "programmed"]);
 const SILENT_E = new Set([
   "accelerated", "achieved", "accrued", "advised", "allocated", "analyzed", "arranged", "automated", "balanced",
   "calculated", "closed", "coded", "compared", "compiled", "completed", "configured", "consolidated", "coordinated",
-  "created", "delegated", "diagnosed", "disbursed", "doubled", "eliminated", "estimated", "evaluated", "examined",
+  "created", "contributed", "delegated", "diagnosed", "disbursed", "doubled", "eliminated", "estimated", "evaluated", "examined",
   "facilitated", "filed", "guided", "handled", "improved", "increased", "introduced", "investigated", "invoiced",
   "managed", "measured", "mobilized", "moderated", "modernized", "negotiated", "organized", "persuaded", "placed",
   "prepared", "priced", "prioritized", "produced", "prototyped", "provided", "raised", "reconciled", "reduced",

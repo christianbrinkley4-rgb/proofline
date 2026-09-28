@@ -2,6 +2,15 @@
 
 Claude Code worked on Proofline through September 28 and is handing off here. Start with this file, then `docs/PLAN.md` (roadmap and what shipped), `docs/COMPETE-PLAN.md` (the approved competitive plan), and `docs/research/COMPETITORS.md` (the brief behind it).
 
+
+## September 28 fluent XYZ bullets
+
+The owner asked that filled X/Y/Z answers read as one polished bullet on every card. The shared composer now integrates quantities with the correct noun, uses real frequencies without parentheses, turns first-person/present-tense notes into past-tense actions, distinguishes tools from action methods, fixes parallel method tense, and leads with supplied outcomes when clear. Estimates, ranges, money, percentages, and original denominator values remain unchanged. An unexplained percentage or an uncountable task with a bare count asks for clarification; nothing is inferred. Supporting work stays supporting work.
+
+The live preview and server use the same composer. Every save must contain the exact finished text the person reviewed, so a stale client or changed preview cannot silently confirm different wording. Editing clears the checkbox and inputs pause during a save. Raw structured answers stay alongside the confirmed fluent line for follow-ups; supplied results are not asked again. Existing confirmed lines are not bulk rewritten.
+
+The full-bank regression audit covers 6,000 distinct usable templates and 24,000 compositions with method/result variants. Additional cases cover named units, passive-vs-active experience, singular counts, shorthand frequencies, percentage results, participation, preserved numbers, saved raw parts, and stale-preview rejection. Final checks passed: 741 tests in 82 files, typecheck, lint, and build. Local browser checks verified live wording, number changes clearing confirmation, exact preview/save text, next-card advancement, no console errors, and no phone overflow at 375px. Production credentials and accounts were not entered.
+
 ## Continuing fact cards (September 28)
 
 The owner clarified that Proofline should help people recall work, build a large bullet bank, and select from it for each application. My facts now exposes Add some facts, with a role picker and continuing Yes/No cards; each role also has Suggest more facts. Onboarding shows the same questions immediately after a role is saved, even when no initial task lines were entered. This supersedes the old two-line minimum described below.

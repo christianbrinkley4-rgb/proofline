@@ -21,7 +21,7 @@ export const ACTION_VERBS = {
   ],
   building: [
     "Built", "Created", "Designed", "Developed", "Drafted", "Engineered", "Established", "Implemented", "Introduced",
-    "Programmed", "Wrote", "Produced", "Prototyped", "Configured", "Automated", "Deployed", "Coded", "Authored", "Architected", "Operated",
+    "Programmed", "Wrote", "Contributed", "Produced", "Prototyped", "Configured", "Automated", "Deployed", "Coded", "Authored", "Architected", "Operated",
   ],
   improvement: [
     "Cut", "Reduced", "Increased", "Improved", "Raised", "Grew", "Doubled", "Tripled", "Accelerated", "Expanded",

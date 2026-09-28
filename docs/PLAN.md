@@ -262,3 +262,12 @@ The existing catalog contains 18,838 tasks for 1,016 occupations, including 14,0
 Final local UI checks saved a synthetic XYZ line with a contribution count and 20% result, verified that the next card loaded and the bank count rose, skipped a payment duty without adding a fact, and verified the saved wording after reload. The 375px editor has no horizontal overflow and all confirmation controls are reachable. No production account or credential entry was used.
 
 Commit `3fb7590` is live on https://proofline-beta.vercel.app as Ready production deployment `dpl_EVtZiCoLmm1QDaXueHtzKjGKWUr6`. The cloud build passed; public pages return 200, My facts redirects signed-out visitors to login, and the development login remains unavailable on production. Signed-in feature checks used localhost and synthetic data.
+
+
+## September 28 fluent XYZ bullets
+
+The owner asked that filled X/Y/Z answers read as one polished bullet on every card. The shared composer now integrates quantities with the correct noun, uses real frequencies without parentheses, turns first-person/present-tense notes into past-tense actions, distinguishes tools from action methods, fixes parallel method tense, and leads with supplied outcomes when clear. Estimates, ranges, money, percentages, and original denominator values remain unchanged. An unexplained percentage or an uncountable task with a bare count asks for clarification; nothing is inferred. Supporting work stays supporting work.
+
+The live preview and server use the same composer. Every save must contain the exact finished text the person reviewed, so a stale client or changed preview cannot silently confirm different wording. Editing clears the checkbox and inputs pause during a save. Raw structured answers stay alongside the confirmed fluent line for follow-ups; supplied results are not asked again. Existing confirmed lines are not bulk rewritten.
+
+The full-bank regression audit covers 6,000 distinct usable templates and 24,000 compositions with method/result variants. Additional cases cover named units, passive-vs-active experience, singular counts, shorthand frequencies, percentage results, participation, preserved numbers, saved raw parts, and stale-preview rejection. Final checks passed: 741 tests in 82 files, typecheck, lint, and build. Local browser checks verified live wording, number changes clearing confirmation, exact preview/save text, next-card advancement, no console errors, and no phone overflow at 375px. Production credentials and accounts were not entered.

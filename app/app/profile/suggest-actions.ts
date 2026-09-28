@@ -12,6 +12,7 @@ const AnswerSchema = z.object({
   slotValue: z.string().max(40).optional(),
   editedText: z.string().max(300).optional(),
   confirmed: z.boolean().optional(),
+  reviewedText: z.string().max(300).optional(),
   xyz: z.object({ measure: z.string().max(80), method: z.string().max(120), result: z.string().max(100).optional() }).optional(),
 });
 
@@ -32,7 +33,7 @@ export async function answerSuggestionAction(id: string, input: z.infer<typeof A
     return { ok: true as const, ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not save your answer.";
-    const expected = /number|Fill in|Finish the bullet|clear action|Confirm that|out of date|expired|verify the bullet/i.test(message);
+    const expected = /number|Fill in|Finish the bullet|clear action|preview changed|Confirm that|out of date|expired|verify the bullet/i.test(message);
     return { ok: false as const, error: expected ? message : "Could not save your answer. Please try again." };
   }
 }

@@ -66,16 +66,26 @@ function pastTense(statement: string, simple = false): string | null {
 }
 
 /** Counts distinct usable common duties, rather than inflating the bank with variants. */
+function commonDuty(statement: string): string | null {
+  const text = recallWording(statement) ?? pastTense(statement, true);
+  if (!text || /\d/.test(text) || text.length > 220 || findVoiceIssues(text).length || findWeakOpener(text)) return null;
+  const verb = text.split(/\s+/)[0];
+  return isActionVerb(verb) && !OVERUSED_VERBS.has(verb.toLowerCase()) ? text : null;
+}
+
+/** The same common duties used by role matching, exposed for full-bank audits. */
+export function recallDutyTemplates(): string[] {
+  return [...new Set(catalog.occupations.flatMap((occupation) => occupation.tasks.filter((task) => task.core).map((task) => commonDuty(task.text)).filter((text): text is string => Boolean(text))))];
+}
+
 export function recallCatalogSize() {
   const duties = new Set<string>();
   let coreTasks = 0;
   for (const occupation of catalog.occupations) for (const task of occupation.tasks) {
     if (!task.core) continue;
     coreTasks++;
-    const text = recallWording(task.text) ?? pastTense(task.text, true);
-    if (!text || /\d/.test(text) || text.length > 220 || findVoiceIssues(text).length || findWeakOpener(text)) continue;
-    const verb = text.split(/\s+/)[0];
-    if (isActionVerb(verb) && !OVERUSED_VERBS.has(verb.toLowerCase())) duties.add(text.toLowerCase());
+    const text = commonDuty(task.text);
+    if (text) duties.add(text.toLowerCase());
   }
   return { occupations: catalog.occupations.length, tasks: catalog.occupations.reduce((sum, item) => sum + item.tasks.length, 0), coreTasks, distinctDuties: duties.size };
 }
@@ -134,7 +144,7 @@ export function onetTasksForTitle(title: string | null, limit = 80, commonOnly =
   for (const { occupation } of matches) {
     for (const item of [...occupation.tasks].sort((a, b) => Number(b.core) - Number(a.core))) {
       if (commonOnly && !item.core) continue;
-      const text = (commonOnly ? recallWording(item.text) : null) ?? pastTense(item.text, commonOnly);
+      const text = commonOnly ? commonDuty(item.text) : pastTense(item.text);
       if (!text || /\d/.test(text) || text.length > 220 || findVoiceIssues(text).length) continue;
       if (commonOnly && (!isActionVerb(text.split(/\s+/)[0]) || OVERUSED_VERBS.has(text.split(/\s+/)[0].toLowerCase()) || findWeakOpener(text))) continue;
       const id = `onet:${occupation.code}:${item.id}`;

@@ -11,11 +11,11 @@ import { candidates, nearDuplicate, rankSuggestions, type SuggestionCandidate } 
 import { verifyBullet } from "@/lib/resume/verify";
 import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
 
-export type BulletSuggestion = typeof schema.bulletSuggestion.$inferSelect;
+export type BulletSuggestion = typeof schema.bulletSuggestion.$inferSelect & { xyzDefaults?: RecallParts };
 import { isActionVerb, OVERUSED_VERBS } from "@/lib/resume/verbs";
-import { composeRecallXyz, type RecallXyz } from "@/lib/resume/recall-xyz";
+import { composeRecallXyz, type RecallXyz, type RecallParts } from "@/lib/resume/recall-xyz";
 
-export type AnswerInput = { confirmed?: boolean; xyz?: RecallXyz; answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
+export type AnswerInput = { reviewedText?: string; confirmed?: boolean; xyz?: RecallXyz; answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
 
 export async function nextSuggestions(userId: string, experienceId: string, count = 5, mode: "bank" | "recall" = "bank"): Promise<BulletSuggestion[]> {
   const experience = await getExperience(userId, experienceId);
@@ -43,7 +43,9 @@ export async function nextSuggestions(userId: string, experienceId: string, coun
     const followups: SuggestionCandidate[] = sourceCandidates.flatMap((item) => {
       if (item.text.length > 160) return [];
       const prompts: SuggestionCandidate[] = [];
-      if (!/\b(resulting in|which led to|so that)\b/i.test(item.text)) prompts.push({ ...item, taskId: `fact:${item.sourceFactIds[0]}:result`, text: `${item.text}, resulting in [what changed?]`, slot: "what changed?" });
+      const saved = facts.find((fact) => fact.id === item.sourceFactIds[0])?.data?.recallXyz;
+      const suppliedResult = saved && typeof saved === "object" && typeof (saved as Record<string, unknown>).result === "string" && Boolean(String((saved as Record<string, unknown>).result).trim());
+      if (!suppliedResult && !/\b(resulting in|which led to|so that)\b/i.test(item.text)) prompts.push({ ...item, taskId: `fact:${item.sourceFactIds[0]}:result`, text: `${item.text}, resulting in [what changed?]`, slot: "what changed?" });
       if (!/\b(using|through|with| by )\b/i.test(item.text)) prompts.push({ ...item, taskId: `fact:${item.sourceFactIds[0]}:method`, text: `${item.text} using [which tool or method?]`, slot: "which tool or method?" });
       return prompts;
     });
@@ -60,7 +62,13 @@ export async function nextSuggestions(userId: string, experienceId: string, coun
       const [created] = await db.insert(schema.bulletSuggestion).values({ userId, experienceId, text: item.text, taskId: item.taskId, kind: item.kind, skills: item.skills, sourceFactIds: item.sourceFactIds, slot: item.slot, batch, generator: item.taskId?.startsWith("onet:") ? "onet-31.0" : "offline", promptVersion: "role-recall.v2" }).returning();
       out.push(created);
     }
-    return out;
+    return out.map((card) => {
+      const saved = facts.find((fact) => card.sourceFactIds.includes(fact.id))?.data?.recallXyz;
+      if (!saved || typeof saved !== "object") return card;
+      const parts = saved as Record<string, unknown>;
+      if (![parts.action, parts.measure, parts.method].every((value) => typeof value === "string")) return card;
+      return { ...card, xyzDefaults: { action: parts.action as string, measure: parts.measure as string, method: parts.method as string, result: typeof parts.result === "string" ? parts.result : "" } };
+    });
   }
   const validTaskIds = new Set(tasks.map((task) => task.id));
   const confirmedFactIds = new Set(facts.map((fact) => fact.id));
@@ -125,6 +133,7 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
     ? composeRecallXyz(input.editedText ?? "", input.xyz!)
     : (input.editedText?.trim().replace(item.slot ? `[${item.slot}]` : "\u0000", slotValue) || suggested).replace(/[.\s]+$/, "");
   if (xyzRecall && item.slot === "what changed?" && !input.xyz?.result?.trim()) throw new Error("Fill in what changed, or skip this result question");
+  if (xyzRecall && input.reviewedText !== text) throw new Error("The bullet preview changed. Reload the questions and review the finished line before saving.");
   if (!text || text.length > 300 || /\[[^\]]+\]/.test(text)) throw new Error("Finish the bullet before saving it");
   if (findVoiceIssues(text).length || findWeakOpener(text)) throw new Error("Use a clear action verb and plain wording");
 
