@@ -12,6 +12,8 @@ All recall recommendations now start with a strong action verb and show fill-in 
 
 Checks: 726 tests in 82 files, typecheck, lint, build, local phone/desktop browser flow, and a 121-line bank selecting a relevant late-added line for a job while retaining all 121 saved bullets.
 
+Commit `3fb7590` is live on https://proofline-beta.vercel.app as Ready production deployment `dpl_EVtZiCoLmm1QDaXueHtzKjGKWUr6`. The cloud build passed; public pages return 200, My facts redirects signed-out visitors to login, and the development login remains unavailable on production. Signed-in feature checks used localhost and synthetic data.
+
 ## Codex continuation (September 28)
 
 The active checkout is `C:\Users\chris\proofline`. The `work/` folder in the OneDrive workspace is an older copy. The owner authorized taking over the active checkout after Claude and Cursor stopped editing it.
@@ -26,7 +28,7 @@ The owner reported replacing the review API key with Cursor. Vercel confirms the
 
 - **Live beta:** https://proofline-beta.vercel.app (Vercel project `proofline-beta`, Neon Postgres). Deploy with `npx vercel --prod --yes` from this folder; migrations run on the first request (latest is `drizzle/0016_contact_email.sql`).
 - **Sign-up is open to any email** (`BETA_EMAILS=*` in Vercel production; see `lib/beta-access.ts`). The owner wants a few more people trying it.
-- **Everything is committed on `main`** (no Git remote). The last app deploy includes commits `8623e2d` and `d75791f` for pasted job corrections and education/contact preservation.
+- **Everything is committed on `main`** (no Git remote). The last app deploy includes `3fb7590` for continuing XYZ recall cards, plus `8623e2d` and `d75791f` for pasted job corrections and education/contact preservation.
 - Checks: `npm run typecheck`, `npm run lint`, `npm test` (681 tests passing at handoff), `npm run build`.
 - The owner (Christian) tested with his real resume and a real posting. His account is on production; the job is `/app/jobs/6eafe6cc-e1bc-4a6f-8429-40c22443000a`. His verdict: the generated resume "is way off and just does not look correct". The fixes below come from that test.
 
