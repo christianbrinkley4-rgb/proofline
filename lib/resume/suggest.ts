@@ -44,7 +44,7 @@ export function validSuggestion(candidate: SuggestionCandidate): boolean {
   if (candidate.slot) {
     if (!candidate.text.includes(`[${candidate.slot}]`)) return false;
     const outside = candidate.text.replace(`[${candidate.slot}]`, "");
-    return !/\d/.test(outside);
+    return !/\d/.test(outside) || (candidate.kind === "reframe" && candidate.sourceFactIds.length > 0);
   }
   return !/\d/.test(candidate.text) || candidate.kind === "reframe";
 }
@@ -92,17 +92,23 @@ export function rankSuggestions(
   for (const id of [...untrue]) for (const relation of related.get(id) ?? []) untrue.add(relation);
   const accepted = new Set(history.filter((item) => item.status === "accepted").map((item) => item.taskId).filter((id): id is string => Boolean(id)));
   const weak = history.some((item) => item.status === "rejected" && item.reason === "true_but_weak");
-  const isBaseOfFollowup = (item: SuggestionCandidate, old: string) =>
-    Boolean(item.taskId?.startsWith("onet:") && /:(result|method)$/.test(item.taskId) && item.text.startsWith(old));
+  const isBaseOfFollowup = (item: SuggestionCandidate, old: string) => {
+    if (!item.taskId || !/:(result|method)$/.test(item.taskId) || item.text === old) return false;
+    if (!/\[[^\]]+\]/.test(old) && item.text.startsWith(old)) return true;
+    // Method and result questions about the same activity are useful separately.
+    const base = old.replace(/(?:, resulting in| using) \[[^\]]+\]$/, "");
+    const oldDimension = /, resulting in \[/.test(old) ? "result" : / using \[/.test(old) ? "method" : null;
+    return Boolean(oldDimension && !item.taskId.endsWith(`:${oldDimension}`) && item.text.startsWith(base));
+  };
   const scored = offered
-    .filter((item) => !item.taskId || !untrue.has(item.taskId))
+    .filter((item) => !item.taskId || (!untrue.has(item.taskId) && !history.some((old) => old.taskId === item.taskId)))
     .filter((item) => !item.skills.some((skill) => rejectedSpecificSkills.has(skill)))
     .filter((item) => !history.some((old) => !isBaseOfFollowup(item, old.text) && nearDuplicate(item.text, old.text)))
     .filter((item) => !existingBullets.some((old) => !isBaseOfFollowup(item, old) && nearDuplicate(item.text, old)))
     .map((item, index) => ({
       item,
       index,
-      score: successSignalScore(item) + (item.kind === "reframe" ? 2 : item.kind === "skill_angle" ? 1.5 : 1)
+      score: (item.taskId && /:(result|method)$/.test(item.taskId) ? 20 : 0) + successSignalScore(item) + (item.kind === "reframe" ? 2 : item.kind === "skill_angle" ? 1.5 : 1)
         + (item.taskId && [...accepted].some((id) => related.get(id)?.includes(item.taskId!)) ? 3 : 0)
         + (weak && (item.slot || /\b(sav(ed|ing)|reduc(ed|ing)|increas(ed|ing)|improv(ed|ing)|result(ed|ing))\b/i.test(item.text)) ? 2 : 0),
     }))

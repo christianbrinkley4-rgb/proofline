@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
+import { occupationLabelForTask } from "@/lib/resume/onet-tasks";
 import { answerSuggestion, bankStats, nextSuggestions } from "@/lib/resume/suggestions/service";
 
 const AnswerSchema = z.object({
@@ -10,11 +11,14 @@ const AnswerSchema = z.object({
   reason: z.enum(["not_true", "true_but_weak", "wording"]).optional(),
   slotValue: z.string().max(40).optional(),
   editedText: z.string().max(300).optional(),
+  confirmed: z.boolean().optional(),
+  xyz: z.object({ measure: z.string().max(80), method: z.string().max(120), result: z.string().max(100).optional() }).optional(),
 });
 
-export async function nextSuggestionsAction(experienceId: string, count = 5) {
+export async function nextSuggestionsAction(experienceId: string, count = 5, mode: "bank" | "recall" = "bank") {
   const userId = (await requireSession()).user.id;
-  return nextSuggestions(userId, z.uuid().parse(experienceId), count);
+  const cards = await nextSuggestions(userId, z.uuid().parse(experienceId), z.number().int().min(1).max(10).parse(count), z.enum(["bank", "recall"]).parse(mode));
+  return cards.map((card) => ({ ...card, occupation: occupationLabelForTask(card.taskId) }));
 }
 
 export async function answerSuggestionAction(id: string, input: z.infer<typeof AnswerSchema>) {
@@ -28,7 +32,7 @@ export async function answerSuggestionAction(id: string, input: z.infer<typeof A
     return { ok: true as const, ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not save your answer.";
-    const expected = /number|Fill in|Finish the bullet|clear action|out of date|expired|verify the bullet/i.test(message);
+    const expected = /number|Fill in|Finish the bullet|clear action|Confirm that|out of date|expired|verify the bullet/i.test(message);
     return { ok: false as const, error: expected ? message : "Could not save your answer. Please try again." };
   }
 }

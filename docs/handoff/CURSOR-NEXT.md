@@ -2,6 +2,16 @@
 
 Claude Code worked on Proofline through September 28 and is handing off here. Start with this file, then `docs/PLAN.md` (roadmap and what shipped), `docs/COMPETE-PLAN.md` (the approved competitive plan), and `docs/research/COMPETITORS.md` (the brief behind it).
 
+## Continuing fact cards (September 28)
+
+The owner clarified that Proofline should help people recall work, build a large bullet bank, and select from it for each application. My facts now exposes Add some facts, with a role picker and continuing Yes/No cards; each role also has Suggest more facts. Onboarding shows the same questions immediately after a role is saved, even when no initial task lines were entered. This supersedes the old two-line minimum described below.
+
+New occupational cards use O*NET core duties and stricter role/context matching. Core classification requires >=67% occupational relevance, which is a common-duty filter above the requested 50% threshold, not a personal likelihood estimate. Follow-ups ask about results and tools in the person's actual confirmed wording. Nothing becomes evidence until they edit/check the confirmation box and save. Rejections and unanswered cards persist; users can pause and return. No fabricated metrics or target bank size.
+
+All recall recommendations now start with a strong action verb and show fill-in X-Y-Z parts. Counts, frequencies, percentages, methods, and optional results come from the person; server validation requires the checked confirmation and complete XYZ details. The catalog has 18,838 tasks across 1,016 occupations and 5,997 distinct usable common-duty prompts after wording/grammar filtering, before personal follow-ups. Legacy bank cards remain compatible.
+
+Checks: 726 tests in 82 files, typecheck, lint, build, local phone/desktop browser flow, and a 121-line bank selecting a relevant late-added line for a job while retaining all 121 saved bullets.
+
 ## Codex continuation (September 28)
 
 The active checkout is `C:\Users\chris\proofline`. The `work/` folder in the OneDrive workspace is an older copy. The owner authorized taking over the active checkout after Claude and Cursor stopped editing it.

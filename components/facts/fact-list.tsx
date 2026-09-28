@@ -303,7 +303,7 @@ export function AddRole({ project }: { project?: boolean }) {
         </div>
       </div>
       <div className="space-y-2">
-        <p className="text-[12.5px] text-muted-foreground">What you did, one line each. A number helps.</p>
+        <p className="text-[12.5px] text-muted-foreground">What you remember doing (optional). Save the role, then use Suggest more facts to jog your memory.</p>
         {bullets.map((b, i) => (
           <Input
             key={i}

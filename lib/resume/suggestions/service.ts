@@ -7,14 +7,17 @@ import { scoreBullet } from "@/lib/resume/bullet-score";
 import { listBullets } from "@/lib/resume/bullets/service";
 import { onetFollowupsForAccepted, onetTasksForTitle } from "@/lib/resume/onet-tasks";
 import { ROLE_TASKS, tasksForExperience } from "@/lib/resume/role-tasks";
-import { candidates, nearDuplicate, rankSuggestions } from "@/lib/resume/suggest";
+import { candidates, nearDuplicate, rankSuggestions, type SuggestionCandidate } from "@/lib/resume/suggest";
 import { verifyBullet } from "@/lib/resume/verify";
 import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
 
 export type BulletSuggestion = typeof schema.bulletSuggestion.$inferSelect;
-export type AnswerInput = { answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
+import { isActionVerb, OVERUSED_VERBS } from "@/lib/resume/verbs";
+import { composeRecallXyz, type RecallXyz } from "@/lib/resume/recall-xyz";
 
-export async function nextSuggestions(userId: string, experienceId: string, count = 5): Promise<BulletSuggestion[]> {
+export type AnswerInput = { confirmed?: boolean; xyz?: RecallXyz; answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
+
+export async function nextSuggestions(userId: string, experienceId: string, count = 5, mode: "bank" | "recall" = "bank"): Promise<BulletSuggestion[]> {
   const experience = await getExperience(userId, experienceId);
   if (!experience) throw new Error("Experience not found");
   const safeCount = Math.max(1, Math.min(10, Math.floor(count)));
@@ -27,14 +30,43 @@ export async function nextSuggestions(userId: string, experienceId: string, coun
     getProfile(userId),
     listBullets(userId, [experienceId]),
   ]);
-  const baseOnet = onetTasksForTitle(experience.title, 180);
+  // Recall uses common occupational duties, not an invented personal likelihood.
+  // O*NET core tasks meet >=67% relevance and importance >=3.0. Unrated
+  // curated guesses remain in the older bank, outside this stricter flow.
+  const baseOnet = onetTasksForTitle(experience.title, 180, mode === "recall", [experience.org, ...facts.map((fact) => fact.content)].join(" "));
   const acceptedIds = new Set(allHistory.filter((item) => item.status === "accepted").map((item) => item.taskId).filter((id): id is string => Boolean(id)));
-  const tasks = [...tasksForExperience(experience), ...baseOnet, ...onetFollowupsForAccepted(baseOnet, acceptedIds)];
+  const tasks = [...(mode === "recall" ? [] : tasksForExperience(experience)), ...baseOnet, ...(mode === "recall" ? [] : onetFollowupsForAccepted(baseOnet, acceptedIds))];
+  if (mode === "recall") {
+    const roleFacts = facts.filter((fact) => ["experience", "project", "metric", "leadership"].includes(fact.category) &&
+      !["org", "title", "location", "dates"].includes(String(fact.data?.field ?? "")));
+    const sourceCandidates = candidates(experience, roleFacts, []).filter((item) => item.kind === "reframe" && isActionVerb(item.text.split(/\s+/)[0]) && !OVERUSED_VERBS.has(item.text.split(/\s+/)[0].toLowerCase()));
+    const followups: SuggestionCandidate[] = sourceCandidates.flatMap((item) => {
+      if (item.text.length > 160) return [];
+      const prompts: SuggestionCandidate[] = [];
+      if (!/\b(resulting in|which led to|so that)\b/i.test(item.text)) prompts.push({ ...item, taskId: `fact:${item.sourceFactIds[0]}:result`, text: `${item.text}, resulting in [what changed?]`, slot: "what changed?" });
+      if (!/\b(using|through|with| by )\b/i.test(item.text)) prompts.push({ ...item, taskId: `fact:${item.sourceFactIds[0]}:method`, text: `${item.text} using [which tool or method?]`, slot: "which tool or method?" });
+      return prompts;
+    });
+    const offered = [...candidates(experience, [], tasks), ...followups];
+    const known = [...bullets.filter((bullet) => bullet.status === "active").map((bullet) => bullet.text), ...sourceCandidates.map((item) => item.text)];
+    // Re-rank pending cards too, so a newly confirmed task gets its follow-up
+    // next rather than sitting behind a batch of unrelated old questions.
+    const ranked = rankSuggestions(offered, allHistory.filter((item) => item.status !== "pending"), tasks, known).slice(0, safeCount);
+    const batch = Math.max(0, ...allHistory.map((item) => item.batch)) + 1;
+    const out: BulletSuggestion[] = [];
+    for (const item of ranked) {
+      const pending = allHistory.find((old) => old.status === "pending" && old.promptVersion?.startsWith("role-recall.") && old.taskId === item.taskId && old.text === item.text);
+      if (pending) { out.push(pending); continue; }
+      const [created] = await db.insert(schema.bulletSuggestion).values({ userId, experienceId, text: item.text, taskId: item.taskId, kind: item.kind, skills: item.skills, sourceFactIds: item.sourceFactIds, slot: item.slot, batch, generator: item.taskId?.startsWith("onet:") ? "onet-31.0" : "offline", promptVersion: "role-recall.v2" }).returning();
+      out.push(created);
+    }
+    return out;
+  }
   const validTaskIds = new Set(tasks.map((task) => task.id));
   const confirmedFactIds = new Set(facts.map((fact) => fact.id));
   const excluded = new Set(allHistory.filter((item) => item.status === "rejected" && item.reason === "not_true").map((item) => item.taskId));
   for (const id of [...excluded]) for (const related of ROLE_TASKS.find((task) => task.id === id)?.related ?? []) excluded.add(related);
-  const pending = allHistory.filter((item) => item.status === "pending" &&
+  const pending = allHistory.filter((item) => item.status === "pending" && !item.promptVersion?.startsWith("role-recall.") &&
     (item.taskId ? validTaskIds.has(item.taskId) && !excluded.has(item.taskId) : item.sourceFactIds.every((id) => confirmedFactIds.has(id))))
     .filter((item) => !bullets.some((bullet) => bullet.status === "active" && nearDuplicate(bullet.text, item.text)))
     .sort((a, b) => a.batch - b.batch || a.createdAt.getTime() - b.createdAt.getTime())
@@ -82,11 +114,17 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
   }
 
   const slotValue = input.slotValue?.trim() ?? "";
-  if (item.slot && (!slotValue || slotValue.length > 40 || /[\[\]\n\r]/.test(slotValue) || (item.slot === "how many?" && !/\d/.test(slotValue)))) {
+  const xyzRecall = item.promptVersion?.startsWith("role-recall.");
+  if (xyzRecall && input.confirmed !== true) throw new Error("Confirm that this line is true and in your own words");
+  if (xyzRecall && !input.xyz) throw new Error("Fill in the accomplishment, measure, and method before saving");
+  if (!xyzRecall && item.slot && (!slotValue || slotValue.length > 40 || /[\[\]\n\r]/.test(slotValue) || (item.slot === "how many?" && !/\d/.test(slotValue)))) {
     throw new Error(item.slot === "how many?" ? "Enter a real number you can explain" : "Fill in what happened in your own words");
   }
   const suggested = item.slot ? item.text.replace(`[${item.slot}]`, slotValue) : item.text;
-  const text = (input.editedText?.trim().replace(item.slot ? `[${item.slot}]` : "\u0000", slotValue) || suggested).replace(/[.\s]+$/, "");
+  const text = xyzRecall
+    ? composeRecallXyz(input.editedText ?? "", input.xyz!)
+    : (input.editedText?.trim().replace(item.slot ? `[${item.slot}]` : "\u0000", slotValue) || suggested).replace(/[.\s]+$/, "");
+  if (xyzRecall && item.slot === "what changed?" && !input.xyz?.result?.trim()) throw new Error("Fill in what changed, or skip this result question");
   if (!text || text.length > 300 || /\[[^\]]+\]/.test(text)) throw new Error("Finish the bullet before saving it");
   if (findVoiceIssues(text).length || findWeakOpener(text)) throw new Error("Use a clear action verb and plain wording");
 
@@ -97,10 +135,10 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
     ? (await listFacts(userId, { experienceId: item.experienceId, states: ["confirmed"] }))
       .filter((fact) => item.sourceFactIds.includes(fact.id))
     : [];
-  if (item.kind === "reframe" && text === suggested && item.sourceFactIds.length !== sourceFacts.length) {
+  if (item.kind === "reframe" && item.sourceFactIds.length !== sourceFacts.length) {
     throw new Error("This suggestion is out of date. Reopen the bullet bank.");
   }
-  const reuseSources = item.kind === "reframe" && text === suggested && sourceFacts.length > 0;
+  const reuseSources = item.kind === "reframe" && !item.taskId && text === suggested && sourceFacts.length > 0;
   const check = verifyBullet(text, reuseSources ? sourceFacts.map((fact) => fact.content) : [text]);
   if (!check.ok) throw new Error("Could not verify the bullet");
   const { score, checks } = scoreBullet(text);
@@ -115,6 +153,7 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
       const [fact] = await tx.insert(schema.fact).values({
         userId, category: "experience", content: text, experienceId: item.experienceId,
         source: "user_stated", sourceDetail: `suggestion:${id}`,
+        data: xyzRecall ? { recallXyz: { action: input.editedText, ...input.xyz } } : undefined,
         verificationState: "confirmed", confirmedAt: new Date(),
       }).returning();
       factIds = [fact.id];

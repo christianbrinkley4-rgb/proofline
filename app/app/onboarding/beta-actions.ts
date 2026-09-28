@@ -85,16 +85,13 @@ const RoleSchema = z.object({
   importedOneLine: z.boolean().optional(),
 });
 
-/** One role or project. Typed roles need 2 to 4 lines. An imported role that already had one line can stay at one. */
+/** Save the confirmed role first; task recall can supply the initial lines afterward. */
 export async function saveRoleStepAction(input: z.input<typeof RoleSchema>) {
   return run(async (userId) => {
     const v = RoleSchema.parse(input);
     const bullets = countableRoleLines(v.bullets);
     const isProject = isProjectKind(v.kind);
     if (!isProject && !v.title) throw new Error("Add your title.");
-    if (!isProject && v.importedOneLine && bullets.length < 1) throw new Error("Add at least one line about what you did.");
-    if (!isProject && !v.importedOneLine && bullets.length < 2) throw new Error("Add at least two lines about what you did.");
-    if (isProject && bullets.length < 1) throw new Error("Add at least one line about what you built or did.");
     if (!isProject && !v.startDate) throw new Error("Add when you started.");
     if (v.startDate && v.endDate && v.startDate > v.endDate) throw new Error("The end date is before the start date.");
     await saveRole(userId, { ...v, bullets });

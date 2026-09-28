@@ -1,5 +1,5 @@
-const PROJECT_HINT = "Class projects, personal builds, research, or club work. One or two lines on what you made and what happened.";
-const TYPED_ROLE_HINT = "A job, internship, club, or volunteer role. Write 2 to 4 plain lines about what you did. Numbers help: how many, how much, how often.";
+const PROJECT_HINT = "Class projects, personal builds, research, or club work. Add what you remember. You can save first and answer questions about the work next.";
+const TYPED_ROLE_HINT = "A job, internship, club, or volunteer role. Add what you remember, or just save your title and dates. We will ask about possible tasks next.";
 const IMPORTED_ONE_LINE_HINT = "This role came from your resume with one line. You can save that line on its own.";
 
 export function isProjectKind(kind: string) {

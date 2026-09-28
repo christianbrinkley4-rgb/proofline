@@ -16,6 +16,7 @@ import {
 import { importedRoleHasOneLine, linesForRoleForm, roleStepHint } from "./role-step";
 import { ABOUT_SCREENS, PROGRESS_STEPS, type OnboardingStep } from "@/app/app/onboarding/steps";
 import { PasteJobBox } from "@/components/coach/paste-job-box";
+import { RoleRecall } from "@/components/profile/role-recall";
 import { ConfirmBox } from "@/components/facts/confirm-box";
 import { SearchableInput } from "@/components/shared/searchable-input";
 import { Button } from "@/components/ui/button";
@@ -435,12 +436,15 @@ function RoleScreen({
       {roles.length > 0 && (
         <ul className="mt-6 space-y-2">
           {roles.map((r) => (
-            <li key={r.id} className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-[14px]">
+            <li key={r.id} className="rounded-lg border bg-background p-3 text-[14px]">
+              <div className="flex items-center gap-2">
               <Check className="size-4 shrink-0 text-brand" strokeWidth={3} />
               <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
               <span className="shrink-0 text-[12.5px] text-muted-foreground">
                 {r.lines} {r.lines === 1 ? "line" : "lines"}
               </span>
+              </div>
+              <RoleRecall experienceId={r.id} name={r.name} />
             </li>
           ))}
         </ul>
@@ -494,7 +498,8 @@ function RoleScreen({
             </Field>
           </div>
           <div className="space-y-2">
-            <p className="text-[13px] font-medium">What you did, in your own words</p>
+            <p className="text-[13px] font-medium">What you remember doing (optional)</p>
+            <p className="text-[13px] leading-5 text-muted-foreground">Save the role even if you cannot think of a line yet. We will ask about possible tasks next.</p>
             {v.bullets.map((b, i) => (
               <Input
                 key={i}

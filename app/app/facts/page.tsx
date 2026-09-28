@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { AddFact, AddRole, DeleteEducationButton, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
+import { FactRecall } from "@/components/facts/fact-recall";
 import { Button } from "@/components/ui/button";
 import { AddEducation } from "@/components/facts/add-education";
 import { ContactDetails } from "@/components/facts/contact-details";
@@ -24,6 +25,8 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
   const experienceRoles = base.roles.filter((r) => r.group === "experience");
   const projectRoles = base.roles.filter((r) => r.group === "project");
   const roleOptions = (roles: typeof base.roles) => roles.map((r) => ({ id: r.experience.id, name: [r.experience.title, r.experience.org].filter(Boolean).join(", ") }));
+
+  const recallRoles = base.roles.map((role) => ({ id: role.experience.id, name: [role.experience.title, role.experience.org].filter(Boolean).join(", "), lines: role.bullets.length }));
 
   return (
     <PageBody className="max-w-3xl">
@@ -48,6 +51,12 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />
         {base.total} confirmed {base.total === 1 ? "fact" : "facts"}. Proofline never adds one for you: new facts come only from you, with the box ticked.
       </p>
+
+      <section className="mt-5 rounded-xl border bg-background p-4">
+        <h2 className="text-[16px] font-semibold">Build your bullet bank</h2>
+        <p className="mt-1 mb-3 text-[13px] leading-5 text-muted-foreground">You do not have to remember everything at once. Work through possible tasks from your past roles, add your own details, and save the ones you did. Your bank can grow across every experience; each resume uses the lines that fit that job.</p>
+        <FactRecall roles={recallRoles} />
+      </section>
 
       <section className="mt-8">
         <h2 className="border-b pb-2 text-[17px] font-semibold tracking-tight">Resume contact details</h2>
@@ -142,6 +151,7 @@ function RoleSection({ title, roles, project, roleOptions }: { title: string; ro
                 ))}
                 {role.bullets.length === 0 && <li className="px-3 py-1 text-[13px] text-muted-foreground">No lines yet.</li>}
               </ul>
+              <div className="mt-3 px-3 pb-1"><FactRecall roles={[{ id: role.experience.id, name, lines: role.bullets.length }]} label="Suggest more facts" /></div>
             </div>
           );
         })}

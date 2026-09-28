@@ -41,11 +41,11 @@ describe("saveRoleStepAction", () => {
     expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([LINE]);
   });
 
-  it("still asks for two lines when the role was typed from scratch", async () => {
+  it("lets a typed role start with one remembered line", async () => {
     const result = await saveRoleStepAction(oneLine);
 
-    expect(result).toEqual({ ok: false, error: "Add at least two lines about what you did." });
-    expect(saveRole).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true });
+    expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([LINE]);
   });
 
   it("saves a typed role once it has two lines", async () => {
@@ -56,9 +56,11 @@ describe("saveRoleStepAction", () => {
     expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([LINE, second]);
   });
 
-  it("does not save an imported role that has no real line, and does not confirm it", async () => {
+  it("allows a role without task lines but still requires explicit confirmation", async () => {
     const empty = await saveRoleStepAction({ ...oneLine, importedOneLine: true, bullets: ["", "ab"] });
-    expect(empty).toEqual({ ok: false, error: "Add at least one line about what you did." });
+    expect(empty).toEqual({ ok: true });
+    expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([]);
+    vi.mocked(saveRole).mockClear();
 
     const unticked = await saveRoleStepAction({ ...oneLine, importedOneLine: true, confirmed: false as unknown as true });
     expect(unticked.ok).toBe(false);
@@ -95,7 +97,7 @@ describe("imported one-line form", () => {
 
   it("tells an imported one-line role it can stay at one line", () => {
     expect(roleStepHint(false, true)).toBe("This role came from your resume with one line. You can save that line on its own.");
-    expect(roleStepHint(false, false)).toContain("2 to 4");
+    expect(roleStepHint(false, false)).toContain("possible tasks");
     expect(roleStepHint(false, true)).not.toContain("2 to 4");
   });
 });

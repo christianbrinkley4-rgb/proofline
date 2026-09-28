@@ -1,7 +1,8 @@
+import { recallWording } from "./recall-wording";
 import catalogData from "./onet-catalog.json";
 import { extractSkills } from "@/lib/fit/skills";
 import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
-import { isActionVerb } from "./verbs";
+import { isActionVerb, OVERUSED_VERBS } from "./verbs";
 import type { RoleTask } from "./role-tasks";
 
 type Occupation = { code: string; title: string; aliases: string[]; tasks: Array<{ id: number; text: string; core: boolean }> };
@@ -37,19 +38,46 @@ const irregular: Record<string, string> = {
   send: "Sent", set: "Set", teach: "Taught", write: "Wrote",
 };
 
-function pastTense(statement: string): string | null {
-  const clean = statement.trim().replace(/\.$/, "");
+function pastTense(statement: string, simple = false): string | null {
+  let clean = statement.trim().replace(/\.$/, "");
+  if (simple) {
+    // Ask about a short action from a compound duty, rather than keeping a
+    // sentence whose remaining imperative verbs would have the wrong tense.
+    const split = clean.search(/(?:,\s*|\s+(?:and|or)\s+)(?:advise|answer|balance|count|design|discuss|handle|inspect|issue|label|load|measure|open|operate|order|pack|read|receive|repair|select|serve|ship|sort|stock|store|supervise|test|unload|unpack|use|analyze|assess|check|collect|compare|coordinate|create|determine|develop|direct|distribute|document|escort|evaluate|file|identify|inspect|interpret|maintain|monitor|note|perform|prepare|process|provide|quote|recommend|reconcile|record|report|resolve|review|sell|train|update|verify|write)\b/i);
+    if (split > 0) {
+      const prefix = clean.slice(0, split).replace(/[,\s]+$/, "");
+      if (/\b(?:to|and|or|for|by|using|with|through|including|such as|to determine|to analyze|to record|to store)$/i.test(prefix)) return null;
+      if (prefix.split(/\s+/).length >= 2 && !/\b(by|using|such as)\b/i.test(prefix)) clean = prefix;
+      else if (/\b(by|using|such as)\b/i.test(prefix)) { /* A method list can contain nouns such as "check". */ }
+      else return null;
+    }
+  }
   // Many O*NET tasks begin with several parallel verbs. Converting only the
   // first creates fragments such as "Reconciled or note and report ...".
   // Omit these until we can rewrite every verb safely.
-  if (/\b(?:and|or)\s+(?:analyze|assess|check|collect|compare|coordinate|create|develop|document|evaluate|file|identify|inspect|interpret|maintain|monitor|note|perform|prepare|process|provide|quote|recommend|reconcile|record|report|resolve|review|sell|train|update|verify|write)\b/i.test(clean.slice(0, 75))) return null;
+  if (/\b(?:and|or)\s+(?:advise|answer|balance|count|design|discuss|handle|inspect|issue|label|load|measure|open|operate|order|pack|read|receive|repair|select|serve|ship|sort|stock|store|supervise|test|unload|unpack|use|analyze|assess|check|collect|compare|coordinate|create|develop|document|evaluate|file|identify|inspect|interpret|maintain|monitor|note|perform|prepare|process|provide|quote|recommend|reconcile|record|report|resolve|review|sell|train|update|verify|write)\b/i.test(clean.slice(0, 75))) return null;
   const first = clean.match(/^([A-Za-z]+)\b/);
   if (!first) return null;
   const root = first[1].toLowerCase();
   const past = irregular[root] ?? (root.endsWith("e") ? `${root}d` : /[^aeiou]y$/.test(root) ? `${root.slice(0, -1)}ied` : `${root}ed`);
   const verb = past[0].toUpperCase() + past.slice(1);
-  if (!isActionVerb(verb) || findWeakOpener(verb)) return null;
-  return verb + clean.slice(first[0].length);
+  if ((!isActionVerb(verb) && !(simple && /^(Operated|Received|Transmitted|Performed|Distributed|Escorted|Sorted|Filed)$/.test(verb))) || findWeakOpener(verb)) return null;
+  return (verb + clean.slice(first[0].length)).replace(/[,\s]+$/, "");
+}
+
+/** Counts distinct usable common duties, rather than inflating the bank with variants. */
+export function recallCatalogSize() {
+  const duties = new Set<string>();
+  let coreTasks = 0;
+  for (const occupation of catalog.occupations) for (const task of occupation.tasks) {
+    if (!task.core) continue;
+    coreTasks++;
+    const text = recallWording(task.text) ?? pastTense(task.text, true);
+    if (!text || /\d/.test(text) || text.length > 220 || findVoiceIssues(text).length || findWeakOpener(text)) continue;
+    const verb = text.split(/\s+/)[0];
+    if (isActionVerb(verb) && !OVERUSED_VERBS.has(verb.toLowerCase())) duties.add(text.toLowerCase());
+  }
+  return { occupations: catalog.occupations.length, tasks: catalog.occupations.reduce((sum, item) => sum + item.tasks.length, 0), coreTasks, distinctDuties: duties.size };
 }
 
 export function onetCatalogSize() {
@@ -81,30 +109,48 @@ export function onetFollowupsForAccepted(tasks: RoleTask[], acceptedIds: Set<str
 }
 
 /** Public occupational tasks become questions; no one has done them until they confirm. */
-export function onetTasksForTitle(title: string | null, limit = 80): RoleTask[] {
+export function onetTasksForTitle(title: string | null, limit = 80, commonOnly = false, context = ""): RoleTask[] {
   if (!title?.trim() || /\b(class|course|seminar|workshop)\b/i.test(title)) return [];
-  const key = title.trim().toLowerCase();
+  const key = `${commonOnly ? "common:" : "all:"}${title.trim().toLowerCase()}:${commonOnly ? context.toLowerCase() : ""}`;
   const cached = titleCache.get(key);
   if (cached) return cached.slice(0, limit);
   const scored = catalog.occupations
-    .map((occupation) => ({ occupation, score: occupationScore(title, occupation) }))
+    .map((occupation) => {
+      const score = occupationScore(title, occupation);
+      const occupationWords = new Set(tokens([occupation.title, ...occupation.aliases].join(" ")));
+      const titleWords = new Set(tokens(title));
+      const contextMatches = commonOnly && score >= 0.65 ? [...new Set(tokens(context))].filter((word) => !titleWords.has(word) && occupationWords.has(word)).length : 0;
+      const officialWords = new Set(tokens(occupation.title));
+      const officialMatch = commonOnly && score >= 0.65 && officialWords.size === titleWords.size && [...titleWords].every((word) => officialWords.has(word));
+      return { occupation, score: score + (officialMatch ? 0.2 : 0) + Math.min(contextMatches * 0.15, 0.3) };
+    })
     .sort((a, b) => b.score - a.score);
   // A loose alias match can connect "bookkeeping assistant" to a teaching
   // occupation whose alias is "bookkeeping instructor". Keep only matches
   // that are nearly as strong as the best occupation for this title.
   const best = scored[0]?.score ?? 0;
-  const matches = scored.filter(({ score }) => score >= 0.4 && score >= best - 0.15).slice(0, 2);
+  const matches = scored.filter(({ score }) => score >= (commonOnly ? 0.65 : 0.4) && score >= best - (commonOnly ? 0.1 : 0.15)).slice(0, 2);
   const out: RoleTask[] = [];
   for (const { occupation } of matches) {
     for (const item of [...occupation.tasks].sort((a, b) => Number(b.core) - Number(a.core))) {
-      const text = pastTense(item.text);
+      if (commonOnly && !item.core) continue;
+      const text = (commonOnly ? recallWording(item.text) : null) ?? pastTense(item.text, commonOnly);
       if (!text || /\d/.test(text) || text.length > 220 || findVoiceIssues(text).length) continue;
+      if (commonOnly && (!isActionVerb(text.split(/\s+/)[0]) || OVERUSED_VERBS.has(text.split(/\s+/)[0].toLowerCase()) || findWeakOpener(text))) continue;
       const id = `onet:${occupation.code}:${item.id}`;
-      out.push({ id, families: [], titleWords: [], template: text, skills: extractSkills(text), related: [`${id}:result`, `${id}:method`] });
+      out.push({ id, families: [], titleWords: [], template: text, skills: extractSkills(text), common: item.core, related: [`${id}:result`, `${id}:method`] });
       if (out.length >= Math.max(limit, 180)) break;
     }
   }
   if (titleCache.size >= 100) titleCache.clear();
   titleCache.set(key, out);
   return out.slice(0, limit);
+}
+
+
+/** A plain explanation of the occupation behind a common-task card. */
+export function occupationLabelForTask(taskId: string | null): string | null {
+  if (!taskId?.startsWith("onet:")) return null;
+  const code = taskId.split(":")[1];
+  return catalog.occupations.find((occupation) => occupation.code === code)?.title ?? null;
 }

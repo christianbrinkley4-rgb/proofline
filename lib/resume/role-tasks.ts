@@ -9,6 +9,8 @@ export type RoleTask = {
   skills: string[];
   slot?: string;
   related: string[];
+  /** O*NET core classification, not an individual probability. */
+  common?: boolean;
 };
 
 const task = (
