@@ -208,3 +208,9 @@ All four Phase 2 items from `COMPETE-PLAN.md` are built, each checked in the bro
 - **Browser extension** (`extension/`, `/app/extension`, `app/api/extension/*`): save the posting on the page, fill empty basic fields from the profile with every field outlined, and mark Applied. It never submits and skips sensitive questions. It connects through a scoped token handed over on the Connect page. Testers install it unpacked from `public/proofline-extension.zip` (`npm run extension:build`). See `extension/README.md`.
 
 Still the owner's call: post-beta pricing, a paid job-search provider, and publishing the extension to the Chrome Web Store.
+
+## September 28 competitive plan, Phase 3 (started)
+
+- **Proof links** (`lib/proof/share.ts`, `/proof/[slug]`, migration 0015): once a resume passes review, the person can share a noindex page that shows each line, how it was worded, and the confirmed fact behind it, without contact details. It vouches only for what's true (nothing invented or inflated by software; Proofline doesn't contact employers), stops vouching if the facts change, and Stop sharing ends it at once. Verified end to end against a local stand-in for the review model (`PROOFLINE_REVIEW_BASE_URL`), not the real model.
+
+Remaining Phase 3 items need the owner or real data: a career-center pilot (who to approach, what a counselor may see), a paid job-search provider, and publishing outcomes once enough consented tracker history exists.
