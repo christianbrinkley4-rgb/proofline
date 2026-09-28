@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CircleSlash, LoaderCircle, Undo2 } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CircleSlash, Clock, LoaderCircle, Undo2 } from "lucide-react";
 import { declineGapAction, reopenGapAction } from "@/app/app/jobs/[id]/gap-actions";
 import { answerGapQuestionAction } from "@/app/app/jobs/[id]/tailor-actions";
 import { ConfirmBox } from "@/components/facts/confirm-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { earnPath, type EarnPath } from "@/lib/fit/earn";
 import { inSentence, skillFromAnswer } from "@/lib/fit/gaps";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ export function GapQuestions({ jobId, gaps, declined, places }: { jobId: string;
         <GapCard key={gap.id} jobId={jobId} gap={gap} places={places} defaultOpen={i === 0} />
       ))}
       {declined.length > 0 && <Declined jobId={jobId} skills={declined} />}
+      <EarnPaths jobId={jobId} skills={declined} />
     </div>
   );
 }
@@ -198,5 +200,75 @@ function Declined({ jobId, skills }: { jobId: string; skills: string[] }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/**
+ * For each "Not yet" that a small project can honestly earn: what to build, how
+ * long it takes, and a free resource. Doing it and answering the question is how
+ * it reaches the resume; nothing here is claimed for the person.
+ */
+function EarnPaths({ jobId, skills }: { jobId: string; skills: string[] }) {
+  // One card per skill: "Excel" and "Excel (pivot tables)" declined separately share a path.
+  const bySkill = new Map<string, { declined: string; path: EarnPath }>();
+  for (const declined of skills) {
+    const path = earnPath(declined);
+    if (path && !bySkill.has(path.skill)) bySkill.set(path.skill, { declined, path });
+  }
+  const paths = [...bySkill.values()];
+  if (!paths.length) return null;
+  return (
+    <section className="rounded-xl border bg-muted/30 p-4">
+      <h3 className="text-[14px] font-semibold">Ways to earn what&apos;s missing</h3>
+      <p className="mt-0.5 text-[12.5px] leading-5 text-muted-foreground">
+        Each one ends in something real you can describe. When you&apos;ve done it, tell me about it and it can go on your resume.
+      </p>
+      <ul className="mt-3 space-y-2.5">
+        {paths.map(({ declined, path }) => (
+          <EarnCard key={path.skill} jobId={jobId} declined={declined} path={path} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function EarnCard({ jobId, declined, path }: { jobId: string; declined: string; path: EarnPath }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <li className="rounded-lg border bg-background p-3.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-[13.5px] font-medium">{path.skill}</p>
+        <span className="inline-flex items-center gap-1 text-[12px] text-subtle-foreground">
+          <Clock className="size-3" aria-hidden="true" />
+          {path.time}
+        </span>
+      </div>
+      <p className="mt-1 text-[13px] leading-5">{path.project}</p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
+        {path.resource && (
+          <a href={path.resource.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12.5px] font-medium underline-offset-2 hover:underline">
+            Free: {path.resource.name}
+            <ArrowUpRight className="size-3" aria-hidden="true" />
+          </a>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="ml-auto"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              await reopenGapAction({ jobId, skill: declined });
+              router.refresh();
+            })
+          }
+        >
+          {pending ? <LoaderCircle className="animate-spin" /> : null}
+          I did it, ask me again
+        </Button>
+      </div>
+    </li>
   );
 }
