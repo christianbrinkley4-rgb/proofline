@@ -186,3 +186,14 @@ Next: let a student edit a tailored bullet inline and have the checks rerun live
 Profile now offers an answerable bullet deck for each experience. It draws from confirmed facts, curated tasks, and the O*NET occupation catalog; the person can confirm, edit, or reject each card. A confirmed card becomes a sourced fact and active bullet atomically. Rejections are remembered, including related tasks that were marked untrue. The deck shows a running active-bullet count and source credit for O*NET wording. Tailoring removes near-duplicate bullets when selecting from a large bank. The occupational catalog remains a question source, not a set of claims about an individual or proof of hiring outcomes.
 
 Job gap questions now look across the person's past role titles and the occupation catalog for plausible tasks related to missing posting requirements. The UI names the prior experience, asks whether the task happened, and requires the person's own description before saving anything. Tasks previously rejected as untrue are excluded.
+
+## September 28 competitive plan, Phase 1
+
+A new competitive brief (`research/COMPETITORS.md`) found that the market is racing toward volume (auto-apply, autofill, AI-written resumes) while hiring teams struggle to verify anything. Nobody owns truth. The plan to win on it is `COMPETE-PLAN.md`. Phase 1 is done:
+
+- **Landing** leads with "The resume you can defend in the interview." A new "Why it's different" section compares typical AI resume and auto-apply behavior with Proofline's, and the FAQ answers how it differs from other builders and ChatGPT. It makes no pricing promise beyond the beta; pricing is still an open owner decision.
+- **Inline editing** on the tailored resume: select any bullet (or Edit this line / Edit here in the review), confirm it's true, save. A line that is one of the person's bullet facts re-confirms that fact (`editFact`); any other line becomes a new confirmed fact via `editBullet`. The resume rebuilds and the gate reruns (`editLineAction` in `app/app/jobs/[id]/tailor-actions.ts`).
+- **Packet unhidden for testers.** Cover letter, application answers, and interview prep ship in the beta. The Resume tab links to them once the review passes; beta links point to the job's Resume tab and My facts instead of hidden pages.
+- **LinkedIn profile kit** (`/app/facts/linkedin`, `lib/linkedin/profile-kit.ts`): headline, About, role descriptions, skills, and certifications from confirmed facts only, with copy buttons and LinkedIn's limits. The goal line stays a prompt for the person to write.
+
+Next (Phase 2 in `COMPETE-PLAN.md`): the free public "Can you defend every line?" check, a review-first browser extension, spoken mock interviews grounded in the person's stories, and gap-to-project suggestions. Owner decisions still open: post-beta pricing, a paid job-search provider, and publishing an extension.
