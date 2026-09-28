@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockingFailures, enforceQuotes, lintResume, type LintCheck } from "./linter";
+import { blockingFailures, claimNumbers, enforceQuotes, lintResume, type LintCheck } from "./linter";
 
 const FACTS = [
   "Jordan Reyes",
@@ -144,5 +144,11 @@ describe("present-tense openers", () => {
     ].join("\n");
     const check = lintResume({ resumeText, jobDescription: "", userFacts: [] }).find((c) => c.id === "bullets_start_with_verb")!;
     expect(check.failures).toEqual(["Responsible for various"]);
+  });
+});
+
+describe("numbers that are names", () => {
+  it("doesn't treat a plan or form name as a claim", () => {
+    expect(claimNumbers("Explained 401(k) rollovers and Form 1040 filing to 50+ clients").map((n) => n.token)).toEqual(["50+"]);
   });
 });

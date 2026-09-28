@@ -168,7 +168,8 @@ function factNumbers(facts: string[]): Set<string> {
 
 /** Numbers that are claims: skips years, dates, and a GPA scale like "/4.0". */
 export function claimNumbers(line: string): Array<{ token: string; value: string }> {
-  const text = line.replace(/\/\s*4(?:\.0+)?\b/g, "");
+  // Plan and form names ("401(k)", "403(b)", "Form 1040") are names, not claims.
+  const text = line.replace(/\/\s*4(?:\.0+)?\b/g, "").replace(/\b(?:401|403|457)\s*\(\s*[a-z]\s*\)/gi, "").replace(/\bform\s+\d{3,4}[a-z-]*\b/gi, "");
   const out: Array<{ token: string; value: string }> = [];
   for (const m of text.matchAll(/\$?\d[\d,]*(?:\.\d+)?\s?(?:%|k|m|x|\+)?/gi)) {
     const token = m[0].trim();
