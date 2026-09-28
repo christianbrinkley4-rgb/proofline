@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { AddFact, AddRole, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
+import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth";
 import { ensureFactBase, GROUP_LABEL, loadFactBase, type FactRow as Row } from "@/lib/facts/base";
 
@@ -32,6 +33,13 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
         className={backHref ? "mt-3" : undefined}
         title="My facts"
         description="Everything a resume is allowed to say about you, in your exact words. Edit a fact and it's re-confirmed; delete it and it comes off every resume."
+        actions={
+          base.total > 0 && (
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/app/facts/linkedin">LinkedIn profile</Link>
+            </Button>
+          )
+        }
       />
       <p className="mt-4 flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] leading-5 text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />
