@@ -70,7 +70,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         <span className="grid size-10 place-items-center rounded-xl bg-muted">
           <LockKeyhole className="size-5 text-muted-foreground" />
         </span>
-        <h1 className="mt-5 text-[28px] font-semibold tracking-[-0.03em]">Proofline is in private beta</h1>
+        <h1 className="mt-5 text-[28px] font-semibold tracking-[-0.03em]">Sign-up is limited right now</h1>
         <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
           Sign-up is open to invited testers only, and that email isn&apos;t on the list. If you were invited, use the exact address the
           invite went to.
@@ -94,7 +94,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </h1>
       <p className="mt-2 text-[15px] text-muted-foreground">
         {mode === "signup"
-          ? "Free during the private beta. For invited testers; use the email your invite went to."
+          ? "Free during the beta. Any email works."
           : "Sign in to pick up where you left off."}
       </p>
 

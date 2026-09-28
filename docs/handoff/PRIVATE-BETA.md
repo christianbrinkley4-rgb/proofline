@@ -8,7 +8,7 @@ Set these in Vercel (Production), then redeploy. Migrations 0013 and 0014 run on
 
 | Variable | Needed? | What it does |
 |---|---|---|
-| `BETA_EMAILS` | Yes | Comma-separated tester emails. Only these can create accounts. Unset means nobody can sign up. |
+| `BETA_EMAILS` | Yes | `*` lets anyone sign up with any email (the setting since September 28). Or a comma-separated list of tester emails to limit sign-up to them. Unset means nobody can sign up. |
 | `PROOFLINE_REVIEW_KEY` | Yes | A Gemini API key (Google AI Studio). The only model key. Without it, AI review says "temporarily unavailable" and new resumes can't pass the gate, so they can't be downloaded. |
 | `PROOFLINE_REVIEW_MODEL` | No | Defaults to `gemini-3.5-flash-lite`. Change it if Google retires that model. |
 | `RESEND_API_KEY`, `EMAIL_FROM` | No | Emails password-reset links. Without them, links land in the database for you to forward (see below) and last 3 days. |

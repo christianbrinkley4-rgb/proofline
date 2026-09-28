@@ -257,13 +257,7 @@ function Results({ report }: { report: DefendReport }) {
               <ArrowRight data-icon="inline-end" />
             </Link>
           </Button>
-          <p className="text-[13px] text-ink-muted">
-            Invited testers only for now.{" "}
-            <Link href="/contact" className="underline underline-offset-2 hover:text-ink-foreground">
-              Ask for an invite
-            </Link>
-            .
-          </p>
+          <p className="text-[13px] text-ink-muted">Free during the beta. Any email works.</p>
         </div>
       </section>
     </div>

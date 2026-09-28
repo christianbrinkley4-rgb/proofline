@@ -28,11 +28,11 @@ const FAQS = [
   },
   {
     q: "Who is it for right now?",
-    a: "A small private beta of invited testers. It's built first for students and recent grads, but paid work, projects, volunteering, and training all count.",
+    a: "Anyone who wants to try the beta. It's built first for students and recent grads, but paid work, projects, volunteering, and training all count.",
   },
   {
     q: "What does it cost?",
-    a: "Nothing. It's free during the private beta.",
+    a: "Nothing. It's free during the beta.",
   },
   {
     q: "What happens to my data?",

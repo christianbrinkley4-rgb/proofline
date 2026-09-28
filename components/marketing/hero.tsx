@@ -13,7 +13,7 @@ export function Hero() {
           <span className="grid size-4 place-items-center rounded-full bg-brand text-background">
             <Check className="size-2.5" strokeWidth={3.5} />
           </span>
-          Free during the private beta. Built first for students.
+          Free during the beta. Built first for students.
         </p>
 
         <h1 className="mx-auto mt-7 max-w-[15ch] font-display text-[46px] leading-[0.98] font-semibold text-balance motion-safe:animate-rise motion-safe:[animation-delay:80ms] sm:text-[68px] lg:text-[84px]">
@@ -36,7 +36,7 @@ export function Hero() {
             <a href="#how">See how it works</a>
           </Button>
         </div>
-        <p className="mt-4 text-[13px] text-subtle-foreground motion-safe:animate-rise motion-safe:[animation-delay:240ms]">Invited testers only for now. Your data stays yours.</p>
+        <p className="mt-4 text-[13px] text-subtle-foreground motion-safe:animate-rise motion-safe:[animation-delay:240ms]">Any email works. Your data stays yours.</p>
       </div>
 
       {/* The product is the hero's visual: full width, on the same light. */}

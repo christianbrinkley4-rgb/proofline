@@ -24,7 +24,7 @@ const ROWS: { question: string; typical: string; proofline: string }[] = [
   {
     question: "What it costs",
     typical: "$29 to $50 a month, often billed weekly.",
-    proofline: "Free during the private beta.",
+    proofline: "Free during the beta.",
   },
 ];
 

@@ -73,7 +73,7 @@ export function ConnectExtension({ connected }: { connected: number }) {
       ) : (
         <>
           <p className="text-[15px] font-medium">Install the extension in Chrome or Edge</p>
-          <p className="mt-1 text-[13.5px] leading-6 text-muted-foreground">During the private beta it isn&apos;t in the Chrome Web Store yet, so it&apos;s installed by hand. It takes about a minute.</p>
+          <p className="mt-1 text-[13.5px] leading-6 text-muted-foreground">During the beta it isn&apos;t in the Chrome Web Store yet, so it&apos;s installed by hand. It takes about a minute.</p>
           <ol className="mt-4 space-y-2 text-[13.5px] leading-6">
             {[
               <>

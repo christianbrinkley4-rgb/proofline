@@ -18,7 +18,7 @@ In development, `/api/dev/login` signs in a test student and `/api/dev/seed` giv
 
 ## Private beta
 
-Sign-up is limited to the addresses in `BETA_EMAILS`. The private beta ships one loop: tell us about yourself, paste a job, knockouts and a fit score, one tailored resume behind a review gate, download, a cover letter and interview prep, track. Other surfaces are hidden by `PRIVATE_BETA` in `lib/beta.ts`. Testers send feedback with the always-visible button; it lands in the `inbox_message` table. See the [private beta runbook](docs/handoff/PRIVATE-BETA.md) for env vars and the SQL to read feedback and the event funnel.
+Who can sign up is set by `BETA_EMAILS`: `*` for anyone, or a list of addresses. The private beta ships one loop: tell us about yourself, paste a job, knockouts and a fit score, one tailored resume behind a review gate, download, a cover letter and interview prep, track. Other surfaces are hidden by `PRIVATE_BETA` in `lib/beta.ts`. Testers send feedback with the always-visible button; it lands in the `inbox_message` table. See the [private beta runbook](docs/handoff/PRIVATE-BETA.md) for env vars and the SQL to read feedback and the event funnel.
 
 Before sharing a hosted link, configure a persistent Postgres `DATABASE_URL`, a unique `BETTER_AUTH_SECRET`, and both `BETTER_AUTH_URL` and `NEXT_PUBLIC_SITE_URL` set to the final HTTPS origin. Set `ANTHROPIC_API_KEY` only if the hosted beta should use paid AI drafting; rules-based features work without it. Vercel deployments fail fast if the database URL or authentication secret is missing. Keep `.env.local` and hosted secrets out of Git. See [beta sharing handoff](docs/handoff/BETA-SHARING.md).
 

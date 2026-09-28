@@ -52,6 +52,13 @@ describe("private beta allowlist", () => {
     expect(canSignUp(" SAM@proofline.test ", env)).toBe(true);
     expect(canSignUp("stranger@proofline.test", env)).toBe(false);
   });
+  it("opens sign-up to any real email with *", () => {
+    const open = { BETA_EMAILS: "*", NODE_ENV: "production" };
+    expect(canSignUp("stranger@proofline.test", open)).toBe(true);
+    expect(canSignUp("Someone@School.EDU", { BETA_EMAILS: "ana@school.edu, *", NODE_ENV: "production" })).toBe(true);
+    expect(canSignUp("not-an-email", open)).toBe(false);
+    expect(canSignUp("a@b", open)).toBe(false);
+  });
   it("closes sign-up when the list is empty", () => {
     expect(canSignUp("ana@school.edu", { BETA_EMAILS: "", NODE_ENV: "production" })).toBe(false);
   });

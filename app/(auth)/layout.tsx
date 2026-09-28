@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       <aside aria-hidden="true" className="relative hidden overflow-hidden bg-zinc-950 text-zinc-100 lg:block">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(255_255_255/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.04)_1px,transparent_1px)] bg-[size:48px_48px]" />
         <div className="relative flex h-full flex-col justify-center px-14">
-          <p className="font-mono text-[12px] text-zinc-500">Private beta</p>
+          <p className="font-mono text-[12px] text-zinc-500">Beta</p>
           <h2 className="mt-3 max-w-md text-[34px] leading-[1.1] font-semibold tracking-[-0.03em]">
             Every line on your resume traces back to something you confirmed.
           </h2>

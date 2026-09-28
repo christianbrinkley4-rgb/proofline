@@ -6,7 +6,7 @@ export const PRIVACY_POINTS = [
   },
   {
     title: "Who sees it",
-    text: "You, and the small team running the private beta when we need to fix something or read feedback you send. We don't sell it or share it with employers.",
+    text: "You, and the small team running the beta when we need to fix something or read feedback you send. We don't sell it or share it with employers.",
   },
   {
     title: "AI review",
