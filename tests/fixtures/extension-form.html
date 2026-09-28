@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Staff Accountant Intern at Acme Health</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "Organization", "name": "Acme Health" },
+          {
+            "@type": "JobPosting",
+            "title": "Staff Accountant Intern",
+            "hiringOrganization": { "@type": "Organization", "name": "Acme Health" },
+            "jobLocation": { "@type": "Place", "address": { "addressLocality": "Raleigh", "addressRegion": "NC" } },
+            "description": "<p>You will reconcile vendor accounts, record journal entries, and prepare month-end close schedules in QuickBooks and Excel.</p><ul><li>Currently pursuing a degree in accounting</li><li>Experience with Excel</li><li>Strong attention to detail</li></ul><p>This is a paid summer internship with mentorship from our controller's team.</p>"
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Staff Accountant Intern</h1>
+    <form>
+      <label for="first_name">First Name</label><input id="first_name" name="first_name" />
+      <label for="last_name">Last Name</label><input id="last_name" name="last_name" />
+      <label for="email">Email</label><input id="email" type="email" />
+      <label for="phone">Phone</label><input id="phone" type="tel" />
+      <label>LinkedIn Profile <input name="urls[LinkedIn]" /></label>
+      <label for="school">School</label><input id="school" />
+      <label for="gpa">GPA</label><input id="gpa" />
+      <label for="company">Company name</label><input id="company" />
+      <label for="last_employer">Last employer</label><input id="last_employer" />
+      <label for="github">GitHub URL</label><input id="github" />
+      <label for="sponsor">Will you now or in the future require visa sponsorship?</label><input id="sponsor" />
+      <label for="gender">Gender</label><input id="gender" />
+      <label for="prefilled">City</label><input id="prefilled" value="Durham" />
+      <label for="hidden">Email</label><input id="hidden" type="email" style="display:none" />
+      <button type="submit">Submit application</button>
+    </form>
+  </body>
+</html>

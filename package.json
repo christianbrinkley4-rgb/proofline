@@ -10,7 +10,8 @@
     "test": "vitest run",
     "eval:stress": "tsx scripts/mock-stress.mts",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "extension:build": "node scripts/build-extension.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

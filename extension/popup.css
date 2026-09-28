@@ -1,0 +1,163 @@
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.2 0.014 170);
+  --muted: oklch(0.973 0.006 160);
+  --muted-foreground: oklch(0.44 0.018 168);
+  --subtle-foreground: oklch(0.56 0.016 168);
+  --border: oklch(0.918 0.008 160);
+  --border-strong: oklch(0.868 0.011 160);
+  --primary: oklch(0.255 0.035 166);
+  --primary-foreground: oklch(0.985 0.004 160);
+  --brand: oklch(0.56 0.13 158);
+  --brand-ink: oklch(0.44 0.1 160);
+  --brand-soft: oklch(0.962 0.034 158);
+  --pending-ink: oklch(0.5 0.11 60);
+  --pending-soft: oklch(0.975 0.035 85);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+main {
+  padding: 16px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+p {
+  margin: 0 0 12px;
+  color: var(--muted-foreground);
+}
+
+.page {
+  overflow: hidden;
+  color: var(--foreground);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+}
+
+button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--muted);
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+button.primary {
+  border-color: transparent;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+button.primary:hover {
+  background: oklch(0.3 0.04 166);
+}
+
+button.link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+#status {
+  margin: 12px 0 0;
+  padding: 0;
+  color: var(--foreground);
+}
+
+#status:not(:empty) {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--brand-soft);
+}
+
+#status.error {
+  background: var(--pending-soft);
+  color: var(--pending-ink);
+}
+
+#status a {
+  color: var(--brand-ink);
+  font-weight: 500;
+}
+
+.fine {
+  margin: 12px 0 0;
+  color: var(--subtle-foreground);
+  font-size: 12px;
+}
+
+.local {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--subtle-foreground);
+  font-size: 12px;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+footer a {
+  color: var(--brand-ink);
+  font-weight: 500;
+  text-decoration: none;
+}

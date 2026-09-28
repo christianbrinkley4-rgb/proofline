@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Proofline",
+  "short_name": "Proofline",
+  "version": "0.1.0",
+  "description": "Save job postings to Proofline and fill application forms from your confirmed profile. You review every field; it never submits for you.",
+  "action": {
+    "default_title": "Proofline",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://proofline-beta.vercel.app/*", "http://localhost:3000/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://proofline-beta.vercel.app/app/extension*", "http://localhost:3000/app/extension*"],
+      "js": ["connect.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

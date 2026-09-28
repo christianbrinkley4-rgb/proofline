@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Database, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Database, Puzzle, ShieldCheck, UserRound } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { YourData } from "@/components/settings/your-data";
 import { requireSession } from "@/lib/auth";
@@ -51,6 +51,19 @@ export default async function SettingsPage() {
         </dl>
         <Link href="/app/onboarding?step=logistics&back=/app/settings" className="mt-5 inline-flex min-h-10 items-center gap-1 text-[13px] font-medium hover:underline">
           Edit these <ArrowRight className="size-3.5" />
+        </Link>
+      </section>
+
+      <section id="extension" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <Puzzle className="size-4 text-brand" />
+          <h2 className="text-[16px] font-semibold">Browser extension</h2>
+        </div>
+        <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-muted-foreground">
+          Save a posting in one click, fill your basics into application forms for you to check, and mark jobs Applied. It never submits for you.
+        </p>
+        <Link href="/app/extension" className="mt-3 inline-flex min-h-10 items-center gap-1 text-[13px] font-medium hover:underline">
+          Set it up <ArrowRight className="size-3.5" />
         </Link>
       </section>
 

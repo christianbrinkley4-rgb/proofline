@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Proofline</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icons/32.png" alt="" width="20" height="20" />
+      <span>Proofline</span>
+    </header>
+
+    <main id="disconnected" hidden>
+      <h1>Connect to Proofline</h1>
+      <p>Sign in to Proofline in this browser, then connect. The extension only reads the basics a form asks for.</p>
+      <button id="connect" class="primary">Connect</button>
+      <label class="local"><input type="checkbox" id="use-local" /> Use a local dev server</label>
+    </main>
+
+    <main id="connected" hidden>
+      <p class="page" id="page">This page</p>
+      <div class="actions">
+        <button id="save" class="primary">Save this job</button>
+        <button id="fill">Fill this application</button>
+        <button id="applied">I submitted it</button>
+      </div>
+      <p id="status" role="status" aria-live="polite"></p>
+      <p class="fine">Proofline fills only what you've told it and outlines every field it touched. It never submits for you.</p>
+      <footer>
+        <a id="open" href="#">Open Proofline</a>
+        <button id="disconnect" class="link">Disconnect</button>
+      </footer>
+    </main>
+
+    <script src="page-scripts.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
