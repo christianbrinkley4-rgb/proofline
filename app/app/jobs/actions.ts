@@ -12,7 +12,7 @@ import { ingestPastedJob } from "@/lib/jobs/ingest";
 import { PastedJobSchema, type PastedJob } from "@/lib/jobs/sources/pasted";
 import { acceptSuggestion, declineSuggestion } from "@/lib/agent/preferences";
 import { markViewed, refreshSearch, unwatchSearch, watchSearch } from "@/lib/jobs/saved";
-import { keywordsOf, requirementsOf, saveMatches, setMatchStatus, upsertJobs } from "@/lib/jobs/store";
+import { keywordsOf, requirementsOf, saveMatches, setMatchStatus, updateJobDetails, upsertJobs } from "@/lib/jobs/store";
 
 async function userId() {
   return (await requireSession()).user.id;
@@ -62,6 +62,28 @@ export async function importLinkAction(url: string): Promise<{ ok: true; jobId: 
  * A job the student pasted by hand. It gets the same fit score, resumes, and packet as
  * any other, and a tracker entry they added manually for it is linked up.
  */
+const JobDetailsSchema = z.object({
+  jobId: z.string().uuid(),
+  company: z.string().trim().min(1, "Add the company.").max(160),
+  title: z.string().trim().min(2, "Add the job title.").max(200),
+  location: z.string().trim().max(160),
+});
+
+/** Fixes a bad guess on a posting this account pasted. Shared listings are left alone. */
+export async function updateJobDetailsAction(input: z.infer<typeof JobDetailsSchema>): Promise<{ ok: true } | { ok: false; error: string }> {
+  const id = await userId();
+  const parsed = JobDetailsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the details." };
+  try {
+    await updateJobDetails(id, parsed.data.jobId, parsed.data);
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Couldn't save those details." };
+  }
+  revalidatePath(`/app/jobs/${parsed.data.jobId}`);
+  revalidatePath("/app/jobs");
+  return { ok: true };
+}
+
 export async function importPastedJobAction(input: PastedJob): Promise<{ ok: true; jobId: string } | { ok: false; error: string }> {
   const id = await userId();
   const parsed = PastedJobSchema.safeParse(input);

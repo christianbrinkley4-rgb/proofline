@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Lightbulb, Lock, Minus, Spa
 import { PageBody } from "@/components/app/page-header";
 import { GapQuestions, type GapQuestion } from "@/components/jobs/gap-questions";
 import { JobActions } from "@/components/jobs/job-actions";
+import { JobDetailsEditor } from "@/components/jobs/job-details-editor";
 import { KnockoutPanel } from "@/components/jobs/knockout-panel";
 import { ScoreBreakdown } from "@/components/jobs/score-breakdown";
 import { TailorPanel, type TailorResumeView } from "@/components/jobs/tailor-panel";
@@ -146,6 +147,9 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
             <p className="mt-1 text-[14.5px] text-muted-foreground">
               {[job.company, job.location, modeLabel && !job.location?.toLowerCase().includes(job.mode) ? modeLabel : null, pay].filter(Boolean).join(" · ")}
             </p>
+            {job.sourceId.startsWith("pasted:") && (
+              <JobDetailsEditor key={`${job.title}|${job.company}|${job.location ?? ""}`} jobId={job.id} title={job.title} company={job.company} location={job.location ?? ""} />
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1">

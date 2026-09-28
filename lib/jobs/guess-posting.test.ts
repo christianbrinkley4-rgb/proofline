@@ -49,6 +49,53 @@ describe("guessPosting", () => {
   it("leaves blanks rather than guessing wildly", () => {
     expect(guessPosting("We make great software.\nJoin us.")).toEqual({ title: "", company: "", location: "" });
   });
+
+  it("reads a Handshake header instead of the posted-ago line", () => {
+    const text = [
+      "PwC",
+      "Tax Intern",
+      "Posted 3 weeks ago∙Apply by October 2, 2026 at 11:59 PM · Onsite, based in Alexandria, VA",
+      "About the job",
+      "Prepare returns, reconcile workpapers, and answer client questions during busy season.",
+    ].join("\n");
+    expect(guessPosting(text)).toEqual({
+      title: "Tax Intern",
+      company: "PwC",
+      location: "Alexandria, VA",
+    });
+  });
+
+  it("rejects a one- or two-letter logo as the company", () => {
+    const text = [
+      "Pw",
+      "Tax Intern",
+      "Posted 3 weeks ago · Onsite, based in Alexandria, VA",
+      "About the job",
+      "Prepare returns and support the tax team with workpapers.",
+    ].join("\n");
+    expect(guessPosting(text)).toEqual({
+      title: "Tax Intern",
+      company: "",
+      location: "Alexandria, VA",
+    });
+  });
+
+  it("ignores a posted-ago line sitting under the title", () => {
+    const text = [
+      "Tax Intern",
+      "Posted 3 weeks ago",
+      "Apply by October 2, 2026 at 11:59 PM",
+      "PwC",
+      "Onsite, based in Alexandria, VA",
+      "About the job",
+      "Prepare returns and support the tax team with workpapers and client questions.",
+    ].join("\n");
+    expect(guessPosting(text)).toEqual({
+      title: "Tax Intern",
+      company: "PwC",
+      location: "Alexandria, VA",
+    });
+  });
 });
 
 describe("isLink", () => {

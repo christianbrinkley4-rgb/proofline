@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { db, dbReady, schema } from "@/lib/db";
-import { getJobForUser, saveMatches, setMatchStatus, upsertJobs } from "./store";
+import { getJobForUser, saveMatches, setMatchStatus, updateJobDetails, upsertJobs } from "./store";
 import type { NormalizedJob } from "./types";
 import type { FitReport } from "@/lib/fit/engine";
 
@@ -75,6 +75,30 @@ describe("batch upsertJobs / saveMatches", () => {
     expect(await getJobForUser("test-user-private-posting", privateJob.id)).toBeNull();
     const publicJob = (await upsertJobs([baseJob(98)])).get("greenhouse|batch-test:98")!;
     expect((await getJobForUser("test-user-private-posting", publicJob.id))?.job.id).toBe(publicJob.id);
+  });
+
+  it("corrects title, company, and place on a pasted job only", async () => {
+    const rows = await upsertJobs([{
+      ...baseJob(97),
+      source: "link",
+      sourceId: "pasted:correct-97",
+      company: "Posted 3 weeks ago",
+      title: "Tax Intern",
+      location: "Onsite, based in Alexandria, VA",
+      mode: "unknown",
+      description: "Onsite, based in Alexandria, VA. Prepare tax returns and support the team with workpapers.",
+    }]);
+    const job = rows.get("link|pasted:correct-97")!;
+    await saveMatches(userId, [{ job, fit: fit(10) }]);
+    const updated = await updateJobDetails(userId, job.id, { company: "PwC", title: "Tax Intern", location: "Alexandria, VA" });
+    expect(updated.company).toBe("PwC");
+    expect(updated.companySlug).toBe("pwc");
+    expect(updated.location).toBe("Alexandria, VA");
+    expect(updated.mode).toBe("onsite");
+    expect((await db.query.job.findFirst({ where: eq(schema.job.id, job.id) }))?.company).toBe("PwC");
+    await expect(updateJobDetails("test-user-private-posting", job.id, { company: "Nope", title: "Tax Intern", location: "" })).rejects.toThrow(/not available/);
+    const shared = (await upsertJobs([baseJob(96)])).get("greenhouse|batch-test:96")!;
+    await expect(updateJobDetails(userId, shared.id, { company: "Hijack", title: "Role 96", location: "Raleigh, NC" })).rejects.toThrow(/pasted/);
   });
 
   it("saves match rows in chunks for the same user", async () => {

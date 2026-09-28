@@ -3,7 +3,7 @@ import { db, schema } from "@/lib/db";
 import type { FitReport } from "@/lib/fit/engine";
 import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
 import { extractKeywords } from "./keywords";
-import { dedupeKey, slugify } from "./text";
+import { dedupeKey, detectLevel, detectMode, slugify } from "./text";
 import type { NormalizedJob } from "./types";
 
 export type JobRow = typeof schema.job.$inferSelect;
@@ -130,6 +130,40 @@ export async function getJobForUser(userId: string, jobId: string) {
   // source ID is user-keyed, and only the account with a match may read them.
   if (job.sourceId.startsWith("pasted:") && !match) return null;
   return { job, match: match ?? null };
+}
+
+/**
+ * Corrects the title, company, and place on a posting this account pasted.
+ * Shared listings stay as fetched so one correction can't rename a job for everyone.
+ */
+export async function updateJobDetails(
+  userId: string,
+  jobId: string,
+  input: { company: string; title: string; location: string },
+): Promise<JobRow> {
+  const access = await getJobForUser(userId, jobId);
+  if (!access) throw new Error("This job is not available to your account.");
+  if (!access.job.sourceId.startsWith("pasted:")) throw new Error("Only a posting you pasted can be corrected here.");
+  const company = input.company.trim();
+  const title = input.title.trim();
+  const location = input.location.trim();
+  if (!company || company.length > 160) throw new Error("Add the company.");
+  if (title.length < 2 || title.length > 200) throw new Error("Add the job title.");
+  if (location.length > 160) throw new Error("Shorten the location.");
+  const [row] = await db
+    .update(schema.job)
+    .set({
+      company,
+      companySlug: slugify(company),
+      title,
+      location: location || null,
+      mode: detectMode(location, title, access.job.description?.slice(0, 2000)),
+      level: detectLevel(title, access.job.description?.slice(0, 600)),
+      dedupeKey: dedupeKey(company, title, location || null),
+    })
+    .where(eq(schema.job.id, jobId))
+    .returning();
+  return row;
 }
 
 export async function listMatches(userId: string, status: Array<MatchRow["status"]> = ["new", "saved"], limit = 100) {
