@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/kb/profile";
 import { checkCoverLetter } from "@/lib/packet/cover-letter";
 import { renderLetterDocx, renderLetterPdf } from "@/lib/packet/render-letter";
 import { getPacket, loadPacketContext, readLetter } from "@/lib/packet/service";
+import { resumeContactItems } from "@/lib/resume/header-contact";
 import { TEMPLATES } from "@/lib/resume/templates";
 
 const clean = (s: string) => s.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -37,7 +38,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/packet/[job
   const name = profile?.fullName || session.user.name;
   const header = {
     name,
-    contact: [[profile?.city, profile?.region].filter(Boolean).join(", "), session.user.email, profile?.phone ?? "", profile?.linkedinUrl ?? ""].filter(Boolean),
+    contact: resumeContactItems(profile),
     date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
     recipient: [letter.greeting.startsWith("Dear Hiring Team") ? "Hiring Team" : letter.greeting.replace(/^Dear\s+|,$/g, ""), context.job.company],
   };

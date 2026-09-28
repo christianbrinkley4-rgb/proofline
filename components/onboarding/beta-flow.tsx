@@ -13,6 +13,7 @@ import {
   saveRoleStepAction,
   type StepResult,
 } from "@/app/app/onboarding/beta-actions";
+import { importedRoleHasOneLine, linesForRoleForm, roleStepHint } from "./role-step";
 import { ABOUT_SCREENS, PROGRESS_STEPS, type OnboardingStep } from "@/app/app/onboarding/steps";
 import { PasteJobBox } from "@/components/coach/paste-job-box";
 import { ConfirmBox } from "@/components/facts/confirm-box";
@@ -22,13 +23,14 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { DraftResponse } from "@/app/api/onboarding/resume-draft/route";
 import { Textarea } from "@/components/ui/textarea";
-import type { ResumeDraft, RoleDraft } from "@/lib/onboarding/draft";
+import { confirmedEducationDetails, type ResumeDraft, type RoleDraft } from "@/lib/onboarding/draft";
 import { ChipInput, Field, PillChoice } from "./parts";
 
 export type BetaOnboardingData = {
   step: OnboardingStep;
   firstName: string;
-  basics: { fullName: string; phone: string; city: string; region: string; school: string; degree: string; major: string; gradDate: string; gpa: string };
+  basics: { fullName: string; phone: string; city: string; region: string; contactEmail: string; linkedinUrl: string; portfolioUrl: string; school: string; degree: string; major: string; gradDate: string; gpa: string };
+  education: Array<{ entryId: string; school: string; degree: string; major: string; gradDate: string; gpa: string; honors: string; coursework: string }>;
   roles: Array<{ id: string; kind: string; name: string; lines: number }>;
   skills: string[];
   licenses: string[];
@@ -208,18 +210,35 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
   const [v, setV] = useState(() =>
     draft ? (Object.fromEntries(Object.entries(data.basics).map(([k, value]) => [k, value || draft.basics[k as keyof typeof data.basics]])) as typeof data.basics) : data.basics,
   );
+  const [entries, setEntries] = useState(() => initialSchools(data, draft));
   const [confirmed, setConfirmed] = useState(false);
   const { pending, error, save } = useSave();
   const set = (key: keyof typeof v) => (value: string) => setV((x) => ({ ...x, [key]: value }));
+  const setEntry = (index: number, key: keyof EduForm, value: string) => setEntries((list) => list.map((entry, i) => (i === index ? { ...entry, [key]: value } : entry)));
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        save(() => saveEducationStepAction({ ...v, confirmed: confirmed as true }), onDone);
+        const filled = entries.filter((entry) => entry.school.trim());
+        save(
+          () =>
+            saveEducationStepAction({
+              fullName: v.fullName,
+              phone: v.phone,
+              city: v.city,
+              region: v.region,
+              contactEmail: v.contactEmail,
+              linkedinUrl: v.linkedinUrl,
+              portfolioUrl: v.portfolioUrl,
+              entries: filled.map((entry) => ({ ...entry, entryId: entry.entryId || undefined, details: confirmedEducationDetails(entry.details) })),
+              confirmed: confirmed as true,
+            }),
+          onDone,
+        );
       }}
     >
-      <Heading title={`Hi ${data.firstName}. Tell us about yourself.`} hint="Start with school. Everything you type here is saved as a fact in your own words, and only your facts ever reach a resume." />
+      <Heading title={`Hi ${data.firstName}. Tell us about yourself.`} hint="Add each school you want on your resume. Honors and coursework are optional. Only what you type here is saved." />
       {!data.hasEducation && data.roles.length === 0 && <ResumeImport draft={draft} onDraft={onDraft} />}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Name on your resume" htmlFor="fullName">
@@ -228,6 +247,17 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
         <Field label="Phone" hint="Optional, but recruiters look for it." htmlFor="phone">
           <Input id="phone" type="tel" value={v.phone} onChange={(e) => set("phone")(e.target.value)} maxLength={40} className="h-10" />
         </Field>
+        <div className="sm:col-span-2">
+          <Field label="Email on your resume" hint="Optional. This is the address on the resume. Your sign-in email stays separate. Leave it blank and the resume shows no email." htmlFor="contactEmail">
+            <Input id="contactEmail" type="email" autoComplete="email" value={v.contactEmail} onChange={(e) => set("contactEmail")(e.target.value)} maxLength={254} className="h-10" />
+          </Field>
+        </div>
+        <Field label="LinkedIn" hint="Optional." htmlFor="linkedinUrl">
+          <Input id="linkedinUrl" value={v.linkedinUrl} onChange={(e) => set("linkedinUrl")(e.target.value)} maxLength={300} className="h-10" />
+        </Field>
+        <Field label="Website" hint="Optional. A personal site or GitHub." htmlFor="portfolioUrl">
+          <Input id="portfolioUrl" value={v.portfolioUrl} onChange={(e) => set("portfolioUrl")(e.target.value)} maxLength={300} className="h-10" />
+        </Field>
         <Field label="City" htmlFor="city">
           <Input id="city" value={v.city} onChange={(e) => set("city")(e.target.value)} maxLength={80} className="h-10" />
         </Field>
@@ -235,24 +265,61 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
           <Input id="region" value={v.region} onChange={(e) => set("region")(e.target.value)} maxLength={80} className="h-10" />
         </Field>
       </div>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <Field label="School" htmlFor="school">
-            <SearchableInput id="school" kind="schools" value={v.school} onChange={set("school")} required maxLength={200} />
-          </Field>
-        </div>
-        <Field label="Degree" hint="For example B.S. or Associate's" htmlFor="degree">
-          <SearchableInput id="degree" kind="degrees" value={v.degree} onChange={set("degree")} maxLength={120} />
-        </Field>
-        <Field label="Major" htmlFor="major">
-          <SearchableInput id="major" kind="fields" value={v.major} onChange={set("major")} maxLength={160} />
-        </Field>
-        <Field label="Graduation (expected is fine)" htmlFor="gradDate">
-          <Input id="gradDate" type="month" value={v.gradDate} onChange={(e) => set("gradDate")(e.target.value)} required className="h-10" />
-        </Field>
-        <Field label="GPA" hint="Optional. Leave it off if it's under 3.0." htmlFor="gpa">
-          <Input id="gpa" inputMode="decimal" value={v.gpa} onChange={(e) => set("gpa")(e.target.value)} maxLength={4} placeholder="3.6" className="h-10" />
-        </Field>
+      <div className="mt-6 space-y-4">
+        {entries.map((entry, index) => (
+          <div key={entry.entryId || `new-${index}`} className="rounded-xl border bg-background p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[14px] font-medium">{entries.length > 1 ? `School ${index + 1}` : "School"}</p>
+              {entries.length > 1 && (
+                <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setEntries((list) => list.filter((_, i) => i !== index))}>
+                  Remove
+                </Button>
+              )}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Field label="School" htmlFor={`school-${index}`}>
+                  <SearchableInput id={`school-${index}`} kind="schools" value={entry.school} onChange={(value) => setEntry(index, "school", value)} required maxLength={200} />
+                </Field>
+              </div>
+              <Field label="Degree" hint="For example B.S. or Associate's" htmlFor={`degree-${index}`}>
+                <SearchableInput id={`degree-${index}`} kind="degrees" value={entry.degree} onChange={(value) => setEntry(index, "degree", value)} maxLength={120} />
+              </Field>
+              <Field label="Major" htmlFor={`major-${index}`}>
+                <SearchableInput id={`major-${index}`} kind="fields" value={entry.major} onChange={(value) => setEntry(index, "major", value)} maxLength={160} />
+              </Field>
+              <Field label="Graduation (expected is fine)" htmlFor={`gradDate-${index}`}>
+                <Input id={`gradDate-${index}`} type="month" value={entry.gradDate} onChange={(e) => setEntry(index, "gradDate", e.target.value)} required className="h-10" />
+              </Field>
+              <Field label="GPA" hint="Optional. Leave it off if it's under 3.0." htmlFor={`gpa-${index}`}>
+                <Input id={`gpa-${index}`} inputMode="decimal" value={entry.gpa} onChange={(e) => setEntry(index, "gpa", e.target.value)} maxLength={4} placeholder="3.6" className="h-10" />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Honors" hint="Optional. Dean's List, or leave it blank." htmlFor={`honors-${index}`}>
+                  <Input id={`honors-${index}`} value={entry.honors} onChange={(e) => setEntry(index, "honors", e.target.value)} maxLength={300} className="h-10" />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Coursework" hint="Optional. The classes you want listed." htmlFor={`coursework-${index}`}>
+                  <Textarea id={`coursework-${index}`} value={entry.coursework} onChange={(e) => setEntry(index, "coursework", e.target.value)} maxLength={600} rows={2} className="text-[14px] leading-6" />
+                </Field>
+              </div>
+              {entry.details.length > 0 && <div className="space-y-3 sm:col-span-2">
+                <p className="text-[13px] text-muted-foreground">Other lines from this education entry. Check each one before it is saved.</p>
+                {entry.details.map((detail, detailIndex) => <div key={detailIndex} className="rounded-lg border p-3">
+                  <Input aria-label={`Education detail ${index + 1}, line ${detailIndex + 1}`} value={detail.text} maxLength={200} onChange={(e) => setEntries((all) => all.map((school, i) => i === index ? { ...school, details: school.details.map((line, j) => j === detailIndex ? { text: e.target.value, confirmed: false } : line) } : school))} />
+                  <ConfirmBox checked={detail.confirmed} onChange={(checked) => setEntries((all) => all.map((school, i) => i === index ? { ...school, details: school.details.map((line, j) => j === detailIndex ? { ...line, confirmed: checked } : line) } : school))} className="mt-2" />
+                </div>)}
+              </div>}
+            </div>
+          </div>
+        ))}
+        {entries.length < 6 && (
+          <Button type="button" size="sm" variant="outline" onClick={() => setEntries((list) => [...list, blankEdu()])}>
+            <Plus data-icon="inline-start" />
+            Add another school
+          </Button>
+        )}
       </div>
       <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-6" />
       <ErrorLine error={error} />
@@ -266,6 +333,31 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
       <p className="mt-3 text-[12.5px] text-subtle-foreground">Education and one experience are the minimum to score a job. Everything after that can be skipped.</p>
     </form>
   );
+}
+
+type EduForm = { entryId: string; school: string; degree: string; major: string; gradDate: string; gpa: string; honors: string; coursework: string; details: Array<{ text: string; confirmed: boolean }> };
+
+function blankEdu(): EduForm {
+  return { entryId: "", school: "", degree: "", major: "", gradDate: "", gpa: "", honors: "", coursework: "", details: [] };
+}
+
+function initialSchools(data: BetaOnboardingData, draft: ResumeDraft | null): EduForm[] {
+  if (data.education.length) return data.education.map((entry) => ({ ...entry, details: [] }));
+  const imported = (draft?.education ?? []).filter((entry) => entry.school.trim());
+  if (imported.length) return imported.map((entry) => ({ entryId: "", ...entry, details: entry.details.map((text) => ({ text, confirmed: false })) }));
+  const school = data.basics.school || draft?.basics.school || "";
+  if (!school) return [blankEdu()];
+  return [{
+    entryId: "",
+    school,
+    degree: data.basics.degree || draft?.basics.degree || "",
+    major: data.basics.major || draft?.basics.major || "",
+    gradDate: data.basics.gradDate || draft?.basics.gradDate || "",
+    gpa: data.basics.gpa || draft?.basics.gpa || "",
+    honors: "",
+    coursework: "",
+    details: [],
+  }];
 }
 
 const ROLE_KINDS = [
@@ -299,8 +391,11 @@ function RoleScreen({
   onSkip?: () => void;
 }) {
   const router = useRouter();
-  const blank = { kind: project ? "project" : "work", org: "", title: "", startDate: "", endDate: "", bullets: ["", ""] };
-  const fromDraft = (d: RoleDraft) => ({ kind: d.kind, org: d.org, title: d.title, startDate: d.startDate, endDate: d.endDate, bullets: [...d.bullets, "", ""].slice(0, Math.max(d.bullets.length, project ? 1 : 2)) });
+  const blank = { kind: project ? "project" : "work", org: "", title: "", startDate: "", endDate: "", bullets: ["", ""], importedOneLine: false };
+  const fromDraft = (d: RoleDraft) => {
+    const importedOneLine = !project && importedRoleHasOneLine(d.kind, d.bullets);
+    return { kind: d.kind, org: d.org, title: d.title, startDate: d.startDate, endDate: d.endDate, importedOneLine, bullets: linesForRoleForm(d.bullets, project, importedOneLine) };
+  };
   const [editing, setEditing] = useState<RoleDraft | null>(roles.length === 0 ? drafts[0] ?? null : null);
   const [v, setV] = useState(() => (editing ? fromDraft(editing) : blank));
   const [open, setOpen] = useState(roles.length === 0);
@@ -335,11 +430,7 @@ function RoleScreen({
     <div>
       <Heading
         title={project ? "Any projects?" : "Where have you worked?"}
-        hint={
-          project
-            ? "Class projects, personal builds, research, or club work. One or two lines on what you made and what happened."
-            : "A job, internship, club, or volunteer role. Write 2 to 4 plain lines about what you did. Numbers help: how many, how much, how often."
-        }
+        hint={roleStepHint(project, v.importedOneLine)}
       />
       {roles.length > 0 && (
         <ul className="mt-6 space-y-2">
@@ -639,7 +730,6 @@ function ResumeImport({ draft, onDraft }: { draft: ResumeDraft | null; onDraft: 
         </p>
         <p className="text-muted-foreground">
           We filled in what we found. Check each screen and fix anything that&apos;s off; nothing is saved until you confirm it.
-          {draft.otherEducation.length > 0 && ` Your resume also lists ${draft.otherEducation.join("; ")}. Add it on My facts after this.`}
         </p>
       </div>
     );

@@ -70,6 +70,15 @@ export async function importParsedResume(userId: string, parsed: ParsedResume, f
         sourceDetail: fileName,
       });
     }
+    for (const detail of edu.details ?? []) {
+      propose({
+        category: "education",
+        content: detail,
+        data: { field: "detail" },
+        source: "resume_parsed",
+        sourceDetail: fileName,
+      });
+    }
   }
 
   for (const skill of parsed.skills) {

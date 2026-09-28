@@ -62,34 +62,85 @@ function pastForms(base: string): string[] {
   return forms;
 }
 
+function matchCase(base: string, word: string): string {
+  return word[0] === word[0].toUpperCase() ? base[0].toUpperCase() + base.slice(1) : base;
+}
+
 /** "Manage", "Manages", or "Managing" to "Managed", when the word is a known action verb. Null otherwise. */
 export function toPastTense(word: string): string | null {
   const lower = word.toLowerCase();
-  if (/ed$/.test(lower) || Object.values(IRREGULAR_PAST).includes(lower)) return null;
+  // "Exceeded" is already past. "Exceed" only looks past because the base ends in "ed".
+  if ((/ed$/.test(lower) && isActionVerb(lower)) || Object.values(IRREGULAR_PAST).includes(lower)) return null;
   for (const base of bases(lower)) {
     const past = pastForms(base).find((p) => p !== lower && isActionVerb(p));
-    if (past) return word[0] === word[0].toUpperCase() ? past[0].toUpperCase() + past.slice(1) : past;
+    if (past) return matchCase(past, word);
   }
   return null;
 }
 
-/** A role that has ended, judged from its date line ("May 2024 – Aug 2024", not "– Present"). */
+const IRREGULAR_PRESENT: Record<string, string> = Object.fromEntries(Object.entries(IRREGULAR_PAST).map(([base, past]) => [past, base]));
+
+/** Past forms that doubled a final consonant ("Plan" to "Planned"), not roots that already end in a double ("Bill" to "Billed"). */
+const DOUBLED = new Set(["logged", "mapped", "planned", "programmed"]);
+
+/** Past forms that dropped a silent e ("Manage" to "Managed"). Every other action verb just loses "ed". */
+const SILENT_E = new Set([
+  "accelerated", "achieved", "accrued", "advised", "allocated", "analyzed", "arranged", "automated", "balanced",
+  "calculated", "closed", "coded", "compared", "compiled", "completed", "configured", "consolidated", "coordinated",
+  "created", "delegated", "diagnosed", "disbursed", "doubled", "eliminated", "estimated", "evaluated", "examined",
+  "facilitated", "filed", "guided", "handled", "improved", "increased", "introduced", "investigated", "invoiced",
+  "managed", "measured", "mobilized", "moderated", "modernized", "negotiated", "organized", "persuaded", "placed",
+  "prepared", "priced", "prioritized", "produced", "prototyped", "provided", "raised", "reconciled", "reduced",
+  "resolved", "restructured", "saved", "scheduled", "secured", "served", "standardized", "streamlined", "supervised",
+  "systematized", "translated", "tripled", "updated", "upgraded", "validated", "valued", "welcomed",
+]);
+
+/**
+ * "Managed", "Drove", or "Built" to "Manage", "Drive", or "Build", when the word is a known action verb.
+ * Null when it is already present, or when changing it would guess at a different verb.
+ */
+export function toPresentTense(word: string): string | null {
+  if (toPastTense(word)) return null;
+  const lower = word.toLowerCase();
+  const irregular = IRREGULAR_PRESENT[lower];
+  if (irregular) return irregular.toLowerCase() === lower ? null : matchCase(irregular, word);
+  if (!isActionVerb(lower)) return null;
+  const base = lower.endsWith("ied")
+    ? `${lower.slice(0, -3)}y`
+    : DOUBLED.has(lower)
+      ? lower.slice(0, -3)
+      : SILENT_E.has(lower)
+        ? lower.slice(0, -1)
+        : lower.endsWith("ed")
+          ? lower.slice(0, -2)
+          : null;
+  if (!base || !pastForms(base).some((form) => form === lower && isActionVerb(form))) return null;
+  return matchCase(base, word);
+}
+
+/**
+ * Past tense when the date line shows an end, or when it is blank.
+ * A blank line is not a current role. Present tense is for a line that says
+ * the role or project is still going ("May 2025 – Present").
+ */
 export function roleEnded(dates: string): boolean {
-  return Boolean(dates.trim()) && !/present|current|now/i.test(dates);
+  const line = dates.trim();
+  if (!line) return true;
+  return !/present|current|now/i.test(line);
 }
 
 /**
  * The same bullet, tidied: one space between words, no space before punctuation,
- * a capital first letter, no trailing period, and past tense when the role is over.
+ * a capital first letter, no trailing period. The opening verb matches the entry:
+ * present when the role or project is current, past when it ended or has no dates.
+ * Only that first word changes, so a number or a later claim stays as confirmed.
  */
 export function polishBullet(text: string, opts: { ended: boolean }): string {
   let out = text.replace(/\s+/g, " ").replace(/\s+([,.;:)])/g, "$1").replace(/\(\s+/g, "(").trim().replace(/\.+$/, "");
   if (out) out = out[0].toUpperCase() + out.slice(1);
-  if (opts.ended) {
-    const first = out.match(/^[A-Za-z]+/)?.[0];
-    const past = first ? toPastTense(first) : null;
-    if (first && past) out = past + out.slice(first.length);
-  }
+  const first = out.match(/^[A-Za-z]+/)?.[0];
+  const replacement = first ? (opts.ended ? toPastTense(first) : toPresentTense(first)) : null;
+  if (first && replacement) out = replacement + out.slice(first.length);
   return out;
 }
 

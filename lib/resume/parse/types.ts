@@ -22,6 +22,8 @@ export const ParsedEducationSchema = z.object({
   gpa: z.number().nullable(),
   honors: z.array(z.string()),
   coursework: z.array(z.string()),
+  /** Lines under Education that are not a school, degree, date, GPA, honor, or course. The person confirms or deletes each one. */
+  details: z.array(z.string()).default([]),
 });
 
 export const ParsedResumeSchema = z.object({

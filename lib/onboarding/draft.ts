@@ -11,14 +11,63 @@ export type RoleKind = "work" | "internship" | "leadership" | "volunteer" | "pro
 
 export type RoleDraft = { key: string; kind: RoleKind; org: string; title: string; startDate: string; endDate: string; bullets: string[]; extraLines: number };
 
+export type EducationDraft = {
+  school: string;
+  degree: string;
+  major: string;
+  gradDate: string;
+  gpa: string;
+  honors: string;
+  coursework: string;
+  details: string[];
+};
+
 export type ResumeDraft = {
-  basics: { fullName: string; phone: string; city: string; region: string; school: string; degree: string; major: string; gradDate: string; gpa: string };
-  /** Other schools or degrees on the resume, which the one-school form can't hold. */
+  basics: {
+    fullName: string;
+    phone: string;
+    city: string;
+    region: string;
+    /** From the resume header. Blank when the resume has no email. Never invented, and never the account email. */
+    contactEmail: string;
+    linkedinUrl: string;
+    portfolioUrl: string;
+    school: string;
+    degree: string;
+    major: string;
+    gradDate: string;
+    gpa: string;
+  };
+  /** Every school on the resume, with honors and coursework, for the person to confirm. */
+  education: EducationDraft[];
+  /** Labels for schools after the first. The form edits `education`. */
   otherEducation: string[];
+  /** Education lines that are not a school, degree, date, GPA, honor, or course. Unticked until the person confirms each one. */
+  educationDetails: string[];
   roles: RoleDraft[];
   skills: string[];
   licenses: string[];
 };
+
+/** LinkedIn on linkedinUrl, and the first other link on portfolioUrl. */
+export function profileLinks(links: string[]): { linkedinUrl: string; portfolioUrl: string } {
+  const cleaned = [...new Set(links.map((link) => link.trim()).filter(Boolean))];
+  return {
+    linkedinUrl: cleaned.find((link) => /linkedin\.com/i.test(link)) ?? "",
+    portfolioUrl: cleaned.find((link) => !/linkedin\.com/i.test(link)) ?? "",
+  };
+}
+
+/** Only lines the person ticked. An unticked line is not saved. */
+export function confirmedEducationDetails(items: Array<{ text: string; confirmed: boolean }>): string[] {
+  const kept: string[] = [];
+  for (const item of items) {
+    const text = item.text.replace(/\s+/g, " ").trim();
+    if (!item.confirmed || text.length < 2) continue;
+    if (!kept.some((line) => line.toLowerCase() === text.toLowerCase())) kept.push(text);
+  }
+  return kept;
+}
 
 /** Most lines the onboarding form holds for one role. */
 export const MAX_LINES = 4;
@@ -41,6 +90,8 @@ export function draftFromResume(parsed: ParsedResume): ResumeDraft {
       phone: parsed.phone?.trim() ?? "",
       city: city.trim(),
       region: region.trim(),
+      contactEmail: parsed.email?.trim() ?? "",
+      ...profileLinks(parsed.links),
       school: education?.school ?? "",
       degree: education?.degree ?? "",
       major: education?.major ?? "",
@@ -48,6 +99,17 @@ export function draftFromResume(parsed: ParsedResume): ResumeDraft {
       gpa: education?.gpa != null ? String(education.gpa) : "",
     },
     otherEducation: moreEducation.map((e) => [e.degree && e.major ? `${e.degree} in ${e.major}` : e.degree ?? e.major, e.school].filter(Boolean).join(", ")),
+    education: parsed.education.filter((entry) => entry.school.trim()).map((entry) => ({
+      school: entry.school.trim(),
+      degree: entry.degree ?? "",
+      major: entry.major ?? "",
+      gradDate: month(entry.gradDate),
+      gpa: entry.gpa != null ? String(entry.gpa) : "",
+      honors: entry.honors.join("; "),
+      coursework: entry.coursework.join(", "),
+      details: entry.details ?? [],
+    })),
+    educationDetails: [...new Set(parsed.education.flatMap((entry) => (entry.details ?? []).map((line) => line.trim()).filter((line) => line.length > 1)))].slice(0, 12),
     roles: parsed.entries
       .filter((e) => e.org.trim() && e.bullets.length)
       .map((e, i) => ({

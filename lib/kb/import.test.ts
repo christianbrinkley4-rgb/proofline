@@ -22,6 +22,7 @@ const sample: ParsedResume = {
       gpa: 3.6,
       honors: ["Dean's List"],
       coursework: ["Audit", "Tax"],
+      details: [],
     },
   ],
   entries: [

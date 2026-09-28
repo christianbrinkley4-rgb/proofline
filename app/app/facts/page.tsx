@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
-import { AddFact, AddRole, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
+import { AddFact, AddRole, DeleteEducationButton, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
 import { Button } from "@/components/ui/button";
+import { AddEducation } from "@/components/facts/add-education";
+import { ContactDetails } from "@/components/facts/contact-details";
+import { getProfile } from "@/lib/kb/profile";
 import { requireSession } from "@/lib/auth";
 import { ensureFactBase, GROUP_LABEL, loadFactBase, type FactRow as Row } from "@/lib/facts/base";
 
@@ -15,7 +18,7 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
   const session = await requireSession();
   const userId = session.user.id;
   await ensureFactBase(userId);
-  const base = await loadFactBase(userId);
+  const [base, profile] = await Promise.all([loadFactBase(userId), getProfile(userId)]);
   const back = (await searchParams).back;
   const backHref = typeof back === "string" && back.startsWith("/app/") ? back : null;
   const experienceRoles = base.roles.filter((r) => r.group === "experience");
@@ -46,10 +49,26 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
         {base.total} confirmed {base.total === 1 ? "fact" : "facts"}. Proofline never adds one for you: new facts come only from you, with the box ticked.
       </p>
 
-      <Section title={GROUP_LABEL.education} empty="No education yet." count={base.education.length}>
-        <ul className="space-y-0.5">{base.education.map((f) => <FactRow key={f.id} fact={view(f)} />)}</ul>
-        <div className="mt-2">
-          <AddFact group="education" label="Add an education detail" />
+      <section className="mt-8">
+        <h2 className="border-b pb-2 text-[17px] font-semibold tracking-tight">Resume contact details</h2>
+        <ContactDetails initial={{ fullName: profile?.fullName ?? "", contactEmail: profile?.contactEmail ?? "", phone: profile?.phone ?? "", city: profile?.city ?? "", region: profile?.region ?? "", linkedinUrl: profile?.linkedinUrl ?? "", portfolioUrl: profile?.portfolioUrl ?? "" }} />
+      </section>
+
+      <Section title={GROUP_LABEL.education} empty="No education yet." count={(base.educationEntries ?? []).length}>
+        <div className="space-y-4">
+          {(base.educationEntries ?? []).map((entry) => (
+            <div key={entry.id} className="rounded-xl border bg-background p-2 sm:p-3">
+              <div className="flex items-start justify-between gap-2 px-1">
+                <h3 className="min-w-0 pt-1 text-[14.5px] font-semibold">{entry.school || "Other education detail"}</h3>
+                <DeleteEducationButton entryId={entry.id} name={entry.school || "this detail"} />
+              </div>
+              <ul className="mt-1 space-y-0.5">{entry.facts.map((f) => <FactRow key={f.id} fact={view(f)} canDelete={f.field !== "school"} />)}</ul>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            <AddEducation />
+            <AddFact group="education" schools={(base.educationEntries ?? []).filter((entry) => entry.school).map((entry) => ({ id: entry.id, name: entry.school }))} label="Add honors or coursework" />
+          </div>
         </div>
       </Section>
 

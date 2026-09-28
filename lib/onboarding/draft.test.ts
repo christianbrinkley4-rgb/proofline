@@ -33,6 +33,7 @@ describe("resume into the onboarding form", () => {
 
   it("fills the basics from the first school listed and notes the others", () => {
     expect(draft.basics).toEqual({
+      contactEmail: "casey@example.com", linkedinUrl: "", portfolioUrl: "",
       fullName: "Casey Morgan", phone: "919.555.0101", city: "Durham", region: "NC",
       school: "UNC Greensboro", degree: "Master of Science", major: "Accounting", gradDate: "2027-06", gpa: "",
     });

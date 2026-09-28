@@ -211,6 +211,10 @@ All four Phase 2 items from `COMPETE-PLAN.md` are built, each checked in the bro
 
 Still the owner's call: post-beta pricing, a paid job-search provider, and publishing the extension to the Chrome Web Store.
 
+## September 28 pasted job details
+
+A Handshake-style header was being read as the company. "Posted 3 weeks ago" produced the avatar initials "Pw", and "Onsite, based in Alexandria, VA" was kept whole. `lib/jobs/guess-posting.ts` now skips posted-ago and apply-by lines, rejects one- or two-character company guesses, and keeps the city. On a pasted job, "Fix title, company, or place" updates the title, company, and location the resume and score use (`updateJobDetails`). Shared listings are not renamed.
+
 ## September 28 competitive plan, Phase 3 (started)
 
 - **Proof links** (`lib/proof/share.ts`, `/proof/[slug]`, migration 0015): once a resume passes review, the person can share a noindex page that shows each line, how it was worded, and the confirmed fact behind it, without contact details. It vouches only for what's true (nothing invented or inflated by software; Proofline doesn't contact employers), stops vouching if the facts change, and Stop sharing ends it at once. Verified end to end against a local stand-in for the review model (`PROOFLINE_REVIEW_BASE_URL`), not the real model.
@@ -218,3 +222,22 @@ Still the owner's call: post-beta pricing, a paid job-search provider, and publi
 - **Guides** (`/guides`, `lib/guides/content.ts`): three sourced guides (putting a defensible number on a bullet, ATS myths, what makes writing read as AI), each ending at the free check. A sitemap and robots rules list the public pages and keep `/app`, `/api`, and `/proof` out of search.
 
 Remaining Phase 3 items need the owner or real data: a career-center pilot (who to approach, what a counselor may see), a paid job-search provider, and publishing outcomes once enough consented tracker history exists.
+
+## September 28 one imported role line
+
+An imported job, internship, club, or volunteer role that already has one line can be saved with that line (`saveRoleStepAction` in `app/app/onboarding/beta-actions.ts`). A role typed from scratch still needs two lines. The form keeps the imported line, does not write a second one, and still waits for the person to confirm it.
+
+## September 28 tense within one entry
+
+Tailoring keeps one tense inside a role or project. A current role or ongoing project (the date line says Present) uses present tense. A role that ended, and an entry with no dates, uses past tense. Only the opening verb changes. Numbers and the rest of the line stay as confirmed.
+
+
+## September 28 education and contact continuation
+
+- Onboarding keeps up to six education entries, including more than one degree at the same school. Each degree owns its GPA, honors, coursework, and any extra imported lines. Extra lines such as "CPA candidate" start unchecked and are saved only when the person checks that line. Leaving a line unchecked creates no fact.
+- My facts groups education by degree and supports adding or removing an entry, adding its honors or coursework, and editing individual facts. Adding a school preserves earlier schools and their details. Legacy education remains editable; cleared GPA facts are not regenerated from mirrored profile fields.
+- Imported LinkedIn, website, and resume email fields now reach the save action. My facts has a contact editor. Resume and cover-letter headers use the saved resume email instead of substituting the sign-in address; leaving it blank keeps it off the page. Existing resume snapshots need a rebuild after a contact edit. Migration 0016 adds `profile.contact_email`.
+- Tailoring renders both degrees, with sourced details on the correct entry. GPA and honors sharing a line both contribute source ids, so removing an honor blocks export of a version that still cites it. Account isolation and duplicate-entry validation happen before education is changed.
+- Validation: 705 tests across 80 files, typecheck, lint without warnings, production build, and the 200-profile/800-posting synthetic benchmark passed. PDF and DOCX text checks preserve both degrees, GPA, honors, coursework, and contact links. The local browser check covered pasted import, an unchecked candidate credential, a one-line imported role, contact editing, and phone/desktop layouts. No model-backed review or production deployment was performed in this continuation.
+
+Next: the handoff's production review-key issue still needs the owner's credential update, followed by a fresh deployment and a review of the real posting. Existing pasted job metadata and already-confirmed education need the person's corrections or re-import; this change does not reconstruct facts lost by an older import.

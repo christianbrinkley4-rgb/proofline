@@ -98,6 +98,8 @@ export const profile = pgTable("profile", {
   region: text("region"),
   linkedinUrl: text("linkedin_url"),
   portfolioUrl: text("portfolio_url"),
+  /** Address printed on the resume. Null until the person sets one. The account email is not a substitute. */
+  contactEmail: text("contact_email"),
   school: text("school"),
   degree: text("degree"),
   major: text("major"),

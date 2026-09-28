@@ -1,3 +1,5 @@
+import { formatMonth } from "./parse/dates";
+
 /**
  * A resume as data. Tailoring produces one, the layout engine measures it,
  * and the PDF and DOCX renderers draw it. Stored with every resume version so a
@@ -26,6 +28,86 @@ export type EducationEntry = {
   gradLine: string;
   details: string[];
 };
+
+export type EducationSource = {
+  school: string;
+  degree: string;
+  major: string;
+  minor?: string;
+  /** YYYY-MM when known. */
+  gradMonth: string | null;
+  /** Stored graduation text, used when gradMonth is missing. */
+  gradDate?: string;
+  gpa: string;
+  honors: string;
+  coursework: string;
+  extras?: string[];
+};
+
+function gpaLine(gpa: string): string | null {
+  const match = gpa.match(/[0-4](?:\.\d{1,2})?/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  if (!Number.isFinite(value) || value < 3) return null;
+  const digits = Math.round(value * 100) % 10 === 0 ? 1 : 2;
+  return `GPA: ${value.toFixed(digits)}/4.0`;
+}
+
+function degreeLine(entry: EducationSource): string {
+  const degree = entry.degree.trim();
+  const major = entry.major.trim();
+  const minor = entry.minor?.trim() ?? "";
+  let line = degree;
+  if (major && !degree.toLowerCase().includes(major.toLowerCase())) line = degree ? `${degree} in ${major}` : major;
+  else if (!degree) line = major;
+  if (minor) line = line ? `${line}, Minor in ${minor}` : `Minor in ${minor}`;
+  return line;
+}
+
+function gradLine(entry: EducationSource, today: Date): string {
+  if (entry.gradMonth) {
+    const iso = entry.gradMonth.length === 4 ? `${entry.gradMonth}-05` : entry.gradMonth;
+    const future = new Date(`${iso}-01`).getTime() > today.getTime();
+    const label = formatMonth(entry.gradMonth);
+    return label ? `${future ? "Expected " : ""}${label}` : "";
+  }
+  return entry.gradDate?.trim() ?? "";
+}
+
+function courseworkLine(text: string): string {
+  const body = text.replace(/^(relevant\s+)?coursework\s*:\s*/i, "").trim();
+  return body ? `Relevant coursework: ${body}` : "";
+}
+
+/** One resume block per school. GPA under 3.0 is left off. Honors and coursework stay in the person's words. */
+export function buildEducationSection(
+  entries: EducationSource[],
+  opts?: { showCoursework?: (coursework: string) => boolean; today?: Date },
+): EducationEntry[] {
+  const today = opts?.today ?? new Date();
+  const showCoursework = opts?.showCoursework ?? (() => true);
+  return entries
+    .filter((entry) => entry.school.trim())
+    .map((entry) => {
+      const gpa = gpaLine(entry.gpa);
+      const honors = entry.honors.trim();
+      const honorLine = honors ? (/^honors\b/i.test(honors) ? honors : `Honors: ${honors}`) : null;
+      const details = [[gpa, honorLine].filter(Boolean).join("  |  ")].filter(Boolean);
+      const coursework = courseworkLine(entry.coursework);
+      if (coursework && showCoursework(entry.coursework)) details.push(coursework);
+      for (const extra of entry.extras ?? []) {
+        const line = extra.trim();
+        if (line) details.push(line);
+      }
+      return {
+        school: entry.school.trim(),
+        location: null,
+        degreeLine: degreeLine(entry),
+        gradLine: gradLine(entry, today),
+        details,
+      };
+    });
+}
 
 export type ResumeSection =
   | { kind: "education"; title: string; entries: EducationEntry[] }

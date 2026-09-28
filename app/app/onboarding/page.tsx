@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BetaOnboarding, type BetaOnboardingData } from "@/components/onboarding/beta-flow";
 import { requireSession } from "@/lib/auth";
-import { loadFactBase, scoringReady } from "@/lib/facts/base";
+import { ensureFactBase, loadFactBase, scoringReady } from "@/lib/facts/base";
 import { ensureProfile } from "@/lib/kb/profile";
 import { ONBOARDING_STEPS, type OnboardingStep } from "./steps";
 
@@ -12,6 +12,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
   const session = await requireSession();
   const userId = session.user.id;
   const profile = await ensureProfile(userId, session.user.name);
+  await ensureFactBase(userId);
   const [base, readiness] = await Promise.all([loadFactBase(userId), scoringReady(userId)]);
 
   const isStep = (value: unknown): value is OnboardingStep => typeof value === "string" && (ONBOARDING_STEPS as readonly string[]).includes(value);
@@ -26,12 +27,25 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
       phone: profile.phone ?? "",
       city: profile.city ?? "",
       region: profile.region ?? "",
+      contactEmail: profile.contactEmail ?? "",
+      linkedinUrl: profile.linkedinUrl ?? "",
+      portfolioUrl: profile.portfolioUrl ?? "",
       school: profile.school ?? "",
       degree: profile.degree ?? "",
       major: profile.major ?? "",
       gradDate: profile.gradDate && /^\d{4}-\d{2}$/.test(profile.gradDate) ? profile.gradDate : "",
       gpa: profile.gpa != null ? String(profile.gpa) : "",
     },
+    education: (base.educationEntries ?? []).filter((entry) => entry.school).map((entry) => ({
+      entryId: entry.id,
+      school: entry.school,
+      degree: entry.degree,
+      major: entry.major,
+      gradDate: entry.gradMonth && /^\d{4}-\d{2}$/.test(entry.gradMonth) ? entry.gradMonth : "",
+      gpa: entry.gpa,
+      honors: entry.honors,
+      coursework: entry.coursework,
+    })),
     roles: base.roles.map((r) => ({
       id: r.experience.id,
       kind: r.experience.kind,

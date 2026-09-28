@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dedupeSkills, hasNumber, polishBullet, presentTenseOpener, proofread, repeatedSkills, roleEnded, toPastTense } from "./polish";
+import { dedupeSkills, hasNumber, polishBullet, presentTenseOpener, proofread, repeatedSkills, roleEnded, toPastTense, toPresentTense } from "./polish";
+import { ACTION_VERBS } from "./verbs";
 
 describe("toPastTense", () => {
   it.each([
@@ -16,6 +17,7 @@ describe("toPastTense", () => {
     ["Planning", "Planned"],
     ["Quickly", null],
     ["Identify", "Identified"],
+    ["Exceed", "Exceeded"],
   ])("%s -> %s", (word, past) => {
     expect(toPastTense(word)).toBe(past);
   });
@@ -24,6 +26,31 @@ describe("toPastTense", () => {
     expect(toPastTense("Reconciled")).toBeNull();
     expect(toPastTense("Led")).toBeNull();
     expect(toPastTense("Quarterly")).toBeNull();
+    expect(toPastTense("Found")).toBeNull();
+  });
+});
+
+describe("toPresentTense", () => {
+  it("maps every action verb onto one present form", () => {
+    const seen = new Set<string>();
+    for (const verb of Object.values(ACTION_VERBS).flat()) {
+      if (seen.has(verb)) continue;
+      seen.add(verb);
+      const present = toPresentTense(verb);
+      if (present === null) {
+        expect(["Read", "Cut", "Set", "Put"]).toContain(verb);
+        continue;
+      }
+      if (verb === "Founded") expect(present).toBe("Found");
+      else expect(toPastTense(present), verb).toBe(verb);
+    }
+  });
+
+  it("leaves a present opener and a non-verb alone", () => {
+    expect(toPresentTense("Manage")).toBeNull();
+    expect(toPresentTense("Architect")).toBeNull();
+    expect(toPresentTense("Quarterly")).toBeNull();
+    expect(toPresentTense("Drove")).toBe("Drive");
   });
 });
 
@@ -37,13 +64,39 @@ describe("polishBullet", () => {
     expect(polishBullet(text, { ended: false })).toBe(text);
     expect(polishBullet(text, { ended: true })).toBe("Managed $3,200 in monthly vendor payments");
   });
+
+  it("uses one tense for every line in an entry", () => {
+    const lines = [
+      "Architect the billing flow for 12 clients",
+      "Track vendor payments each week",
+      "Drove 40 demo bookings",
+      "Booked 15 client meetings",
+      "Built the tracker in Sheets",
+    ];
+    expect(lines.map((line) => polishBullet(line, { ended: true }))).toEqual([
+      "Architected the billing flow for 12 clients",
+      "Tracked vendor payments each week",
+      "Drove 40 demo bookings",
+      "Booked 15 client meetings",
+      "Built the tracker in Sheets",
+    ]);
+    expect(lines.map((line) => polishBullet(line, { ended: false }))).toEqual([
+      "Architect the billing flow for 12 clients",
+      "Track vendor payments each week",
+      "Drive 40 demo bookings",
+      "Book 15 client meetings",
+      "Build the tracker in Sheets",
+    ]);
+  });
 });
 
 describe("checks", () => {
   it("reads role dates", () => {
     expect(roleEnded("May 2024 – Aug 2024")).toBe(true);
     expect(roleEnded("May 2025 – Present")).toBe(false);
-    expect(roleEnded("")).toBe(false);
+    expect(roleEnded("Current")).toBe(false);
+    expect(roleEnded("")).toBe(true);
+    expect(roleEnded("   ")).toBe(true);
   });
 
   it("finds measures", () => {

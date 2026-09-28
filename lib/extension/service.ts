@@ -52,7 +52,7 @@ export async function autofillProfile(userId: string, email: string): Promise<Au
     fullName,
     firstName: parts[0] ?? "",
     lastName: parts.length > 1 ? parts[parts.length - 1] : "",
-    email,
+    email: p?.contactEmail?.trim() || email,
     phone: p?.phone ?? "",
     city: p?.city ?? "",
     region: p?.region ?? "",

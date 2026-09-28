@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { addFactAction, addRoleAction, deleteFactAction, deleteRoleAction, editFactAction, type FactActionResult } from "@/app/app/facts/actions";
+import { addFactAction, addRoleAction, deleteEducationAction, deleteFactAction, deleteRoleAction, editFactAction, type FactActionResult } from "@/app/app/facts/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -119,6 +119,24 @@ export function DeleteRoleButton({ experienceId, name }: { experienceId: string;
   );
 }
 
+export function DeleteEducationButton({ entryId, name }: { entryId: string; name: string }) {
+  const { pending, run } = useAction();
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="text-muted-foreground"
+      disabled={pending}
+      onClick={() => {
+        if (window.confirm(`Delete ${name} and every fact under it?`)) run(() => deleteEducationAction(entryId), undefined, `Deleted ${name}.`);
+      }}
+    >
+      <Trash2 data-icon="inline-start" />
+      Delete
+    </Button>
+  );
+}
+
 const PLACEHOLDER: Record<FactGroup, string> = {
   education: "Dean's List, fall 2025",
   experience: "Reconciled 40+ vendor accounts each month in QuickBooks",
@@ -129,13 +147,17 @@ const PLACEHOLDER: Record<FactGroup, string> = {
 };
 
 /** Manual add, with the confirm box. For roles and projects, it attaches to one of them. */
-export function AddFact({ group, roles, label }: { group: FactGroup; roles?: Array<{ id: string; name: string }>; label: string }) {
+export function AddFact({ group, roles, schools, label }: { group: FactGroup; roles?: Array<{ id: string; name: string }>; schools?: Array<{ id: string; name: string }>; label: string }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [experienceId, setExperienceId] = useState(roles?.[0]?.id ?? "");
+  const [entryId, setEntryId] = useState(schools?.[0]?.id ?? "");
+  const [eduField, setEduField] = useState<"honors" | "coursework" | "detail">("honors");
   const [confirmed, setConfirmed] = useState(false);
   const { pending, run } = useAction();
   const needsRole = group === "experience" || group === "project";
+  const isEducation = group === "education";
+  const placeholder = isEducation ? (eduField === "coursework" ? "Federal Tax Concepts, Auditing" : eduField === "detail" ? "A line from your education section" : "Dean's List, fall 2025") : PLACEHOLDER[group];
 
   if (!open) {
     return (
@@ -159,14 +181,38 @@ export function AddFact({ group, roles, label }: { group: FactGroup; roles?: Arr
           </select>
         </label>
       )}
+      {isEducation && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {schools && schools.length > 0 && (
+            <label className="block text-[12.5px]">
+              <span className="text-muted-foreground">School</span>
+              <select value={entryId} onChange={(e) => setEntryId(e.target.value)} className="mt-1 h-10 w-full rounded-md border bg-background px-2 text-[14px]">
+                {schools.map((school) => (
+                  <option key={school.id} value={school.id}>
+                    {school.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="block text-[12.5px]">
+            <span className="text-muted-foreground">What it is</span>
+            <select value={eduField} onChange={(e) => setEduField(e.target.value as typeof eduField)} className="mt-1 h-10 w-full rounded-md border bg-background px-2 text-[14px]">
+              <option value="honors">Honors</option>
+              <option value="coursework">Coursework</option>
+              <option value="detail">Other detail</option>
+            </select>
+          </label>
+        </div>
+      )}
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        rows={needsRole ? 2 : 1}
+        rows={needsRole || eduField === "coursework" ? 2 : 1}
         maxLength={600}
-        placeholder={PLACEHOLDER[group]}
+        placeholder={placeholder}
         aria-label={label}
-        className={cn("text-[14px] leading-6", needsRole && "mt-2")}
+        className={cn("text-[14px] leading-6", (needsRole || isEducation) && "mt-2")}
       />
       <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-2" />
       <div className="mt-1 flex gap-2">
@@ -175,7 +221,7 @@ export function AddFact({ group, roles, label }: { group: FactGroup; roles?: Arr
           disabled={pending || !confirmed || text.trim().length < 2}
           onClick={() =>
             run(
-              () => addFactAction({ group, text, experienceId: needsRole ? experienceId : null, confirmed: true }),
+              () => addFactAction({ group, text, experienceId: needsRole ? experienceId : null, entryId: isEducation ? entryId || undefined : undefined, eduField: isEducation ? eduField : undefined, confirmed: true }),
               () => {
                 setText("");
                 setConfirmed(false);

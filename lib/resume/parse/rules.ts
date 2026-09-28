@@ -162,14 +162,66 @@ function parseEntry(section: ParsedEntry["section"], header: string[], bullets: 
   };
 }
 
+/** A column that is already a school, degree, date, GPA, honor, course, or place. */
+function classifiedEducationPart(part: string): boolean {
+  const text = part.trim();
+  if (!text) return true;
+  if (SCHOOL.test(text) || DEGREE.test(text)) return true;
+  if (/(honors|dean's list|cum laude|scholar)/i.test(text)) return true;
+  if (/^(relevant\s+)?coursework\b/i.test(text)) return true;
+  if (/^minor\b/i.test(text)) return true;
+  if (GPA.test(text)) return true;
+  const dated = findDateRange(text);
+  if (dated && !stripDates(text).replace(/^expected\b/i, "").trim()) return true;
+  if (placeWithStateName(text)) return true;
+  const place = trailingPlace(text);
+  if (place && !place.rest) return true;
+  return false;
+}
+
+/** Education text that isn't a school, degree, date, GPA, honor, or course. "CPA candidate" stays. */
+function educationDetailLines(text: string): string[] {
+  const parts = splitParts(text);
+  const source = parts.length > 1 ? parts : [text];
+  const details: string[] = [];
+  for (const raw of source) {
+    const cleaned = stripDates(raw)
+      .replace(/\bgpa[:\s]*[0-4]\.\d{1,2}(?:\s*\/\s*4(?:\.0+)?)?|[0-4]\.\d{1,2}\s*\/\s*4(?:\.0+)?|\b[0-4]\.\d{1,2}\s+(?:cumulative\s+)?gpa\b/gi, "")
+      .replace(/[,|;\s]+$/g, "")
+      .trim();
+    if (cleaned.length < 2 || classifiedEducationPart(cleaned) || classifiedEducationPart(raw)) continue;
+    if (!details.some((line) => line.toLowerCase() === cleaned.toLowerCase())) details.push(cleaned);
+  }
+  return details;
+}
+
 function parseEducation(lines: string[]): ParsedEducation[] {
   const results: ParsedEducation[] = [];
   let current: ParsedEducation | null = null;
   let inCoursework = false;
+  const pending: string[] = [];
+  const pushDetail = (entry: ParsedEducation, line: string) => {
+    if (!entry.details.some((d) => d.toLowerCase() === line.toLowerCase())) entry.details.push(line);
+  };
+  const startEntry = (entry: Omit<ParsedEducation, "details">, fromLine: string): ParsedEducation => {
+    const details = pending.splice(0, pending.length);
+    for (const line of educationDetailLines(fromLine)) {
+      if (!details.some((d) => d.toLowerCase() === line.toLowerCase())) details.push(line);
+    }
+    return { ...entry, details };
+  };
   for (const line of lines) {
     const text = line.replace(BULLET, "").trim();
     // Coursework that wraps: "…, Cost" then "Accounting, Corporate Finance".
+    // A line of its own, such as "CPA candidate", is not more coursework.
     if (inCoursework && current && !SCHOOL.test(text) && !DEGREE.test(text) && !/:/.test(text) && !/(honors|dean's list|cum laude|scholar|gpa)/i.test(text)) {
+      const notes = educationDetailLines(text);
+      const continuesList = /^[a-z(]/.test(text) || /[,;]/.test(text);
+      if (!continuesList && notes.length) {
+        inCoursework = false;
+        for (const note of notes) pushDetail(current, note);
+        continue;
+      }
       const [first = "", ...more] = splitList(text).map((s) => s.trim()).filter(Boolean);
       const last = current.coursework.length - 1;
       if (last >= 0) current.coursework[last] = `${current.coursework[last]} ${first}`.trim();
@@ -188,7 +240,7 @@ function parseEducation(lines: string[]): ParsedEducation[] {
     if (afterDegree && !isPlace && (SCHOOL.test(afterDegree) || /^[A-Z]{2,}\b/.test(afterDegree)) && !/^(minor|major|concentration|with|gpa)\b/i.test(afterDegree)) {
       if (current) results.push(current);
       const range = findDateRange(text);
-      current = {
+      current = startEntry({
         school: stripDates(afterDegree).replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
         degree: null,
         major: null,
@@ -197,7 +249,7 @@ function parseEducation(lines: string[]): ParsedEducation[] {
         gpa: null,
         honors: splitParts(text).filter((p) => /(honors|dean's list|cum laude|scholar)/i.test(p)),
         coursework: [],
-      };
+      }, text);
       const gpa = text.match(GPA);
       if (gpa) current.gpa = Number(gpa[1] ?? gpa[2] ?? gpa[3]);
       const [degreePart, ...majorParts] = lead.split(/\s+in\s+/i);
@@ -223,7 +275,7 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       const hasInlineDegree = Boolean(inline);
       const schoolLine = hasInlineDegree ? text.slice(0, degreeBreak!.index) : text;
       const range = findDateRange(text);
-      current = {
+      current = startEntry({
         school: (hasInlineDegree ? schoolLine : clean).replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
         degree: null,
         major: null,
@@ -232,12 +284,15 @@ function parseEducation(lines: string[]): ParsedEducation[] {
         gpa: null,
         honors: [],
         coursework: [],
-      };
+      }, text);
       if (!hasInlineDegree) continue;
       detailText = inline;
       detailClean = stripDates(inline).trim();
     }
-    if (!current) continue;
+    if (!current) {
+      pending.push(...educationDetailLines(text));
+      continue;
+    }
     const gpa = detailText.match(GPA);
     if (gpa) current.gpa = Number(gpa[1] ?? gpa[2] ?? gpa[3]);
     const range = findDateRange(detailText);
@@ -257,9 +312,16 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       inCoursework = true;
     } else if (/(honors|dean's list|cum laude|scholar)/i.test(text)) {
       current.honors.push(text.replace(/^honors\s*:?\s*/i, ""));
+    } else {
+      for (const note of educationDetailLines(detailText)) pushDetail(current, note);
     }
   }
-  if (current) results.push(current);
+  if (current) {
+    for (const note of pending.splice(0)) pushDetail(current, note);
+    results.push(current);
+  } else if (results.length) {
+    for (const note of pending) pushDetail(results[results.length - 1], note);
+  }
   return results;
 }
 

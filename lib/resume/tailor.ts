@@ -8,13 +8,15 @@ import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/de
 import { postingOverlap } from "@/lib/jobs/relevance";
 import { getJobForUser } from "@/lib/jobs/store";
 import { listExperiences, type Experience } from "@/lib/kb/experiences";
-import { listFacts } from "@/lib/kb/facts";
+import { applyLooseHonors, readEducationRecords, type EducationRecord } from "@/lib/facts/base";
+import { listFacts, type Fact } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { listBullets, type Bullet } from "./bullets/service";
 import { nearDuplicate } from "./suggest";
 import { educationAfterExperience } from "./section-order";
-import type { EducationEntry, ResumeDocument, ResumeEntry, ResumeSection, TemplateId, VariantId } from "./document";
+import { buildEducationSection, type EducationSource, type ResumeDocument, type ResumeEntry, type ResumeSection, type TemplateId, type VariantId } from "./document";
 import { layoutResume, type LayoutResult } from "./layout";
+import { resumeContactItems } from "./header-contact";
 import { formatMonth, formatRange } from "./parse/dates";
 import { dedupeSkills, polishBullet, roleEnded, skillName } from "./polish";
 import { runQualityGate, type QualityCheck } from "./quality";
@@ -71,6 +73,63 @@ function requirementLabels(req: Requirements | null) {
   const preferred = new Set((req?.preferredGroups ?? []).flat());
   const mentioned = new Set(req?.mentioned ?? []);
   return { required, preferred, mentioned };
+}
+
+type ResumeEducation = EducationSource & { factIds: EducationRecord["factIds"] };
+
+/** Every confirmed school, with a profile-only school kept when no education facts exist yet. */
+function educationForResume(
+  facts: Array<Pick<Fact, "id" | "category" | "content" | "data">>,
+  profile: { school?: string | null; degree?: string | null; major?: string | null; minor?: string | null; gradDate?: string | null; gpa?: number | null } | null | undefined,
+): ResumeEducation[] {
+  const records = applyLooseHonors(
+    readEducationRecords(facts),
+    facts.filter((f) => f.category === "award").map((f) => ({ id: f.id, content: f.content })),
+  );
+  const schools = records.filter((record) => record.school.trim());
+  const loose = records.filter((record) => !record.school.trim());
+  if (profile?.school && !schools.length) {
+    schools.push({
+      id: "profile",
+      school: profile.school,
+      degree: profile.degree ?? "",
+      major: profile.major ?? "",
+      gradDate: profile.gradDate ? formatMonth(profile.gradDate) : "",
+      gradMonth: profile.gradDate ?? null,
+      gpa: profile.gpa != null ? String(profile.gpa) : "",
+      honors: "",
+      coursework: "",
+      extras: [],
+      factIds: { honors: [], extras: [] },
+    });
+  }
+  if (schools[0] && loose.length) {
+    const first = schools[0];
+    const extras = [...first.extras];
+    const extraIds = [...first.factIds.extras];
+    let { coursework, honors } = first;
+    let courseworkId = first.factIds.coursework;
+    let honorsIds = first.factIds.honors;
+    for (const extra of loose) {
+      if (!coursework && extra.coursework) {
+        coursework = extra.coursework;
+        courseworkId = extra.factIds.coursework;
+      }
+      if (!honors && extra.honors) {
+        honors = extra.honors;
+        honorsIds = extra.factIds.honors;
+      }
+      extras.push(...extra.extras);
+      extraIds.push(...extra.factIds.extras);
+    }
+    schools[0] = { ...first, coursework, honors, extras, factIds: { ...first.factIds, coursework: courseworkId, honors: honorsIds, extras: extraIds } };
+  }
+  let minorUsed = false;
+  return schools.map((record) => {
+    const takeMinor = !minorUsed && Boolean(profile?.minor) && record.school === profile?.school;
+    if (takeMinor) minorUsed = true;
+    return { ...record, minor: takeMinor ? (profile?.minor ?? "") : "" };
+  });
 }
 
 export async function tailorResume(
@@ -179,36 +238,33 @@ export async function tailorResume(
   const adjustments: string[] = [];
   const confirmedSkills = facts.filter((f) => f.category === "skill" || f.category === "tool").map((f) => f.content);
   const certs = facts.filter((f) => f.category === "certification").map((f) => f.content);
-  const honors = facts.filter((f) => f.category === "award").map((f) => f.content);
-  const coursework = facts.find((f) => f.category === "education" && /^coursework/i.test(f.content))?.content.replace(/^coursework:\s*/i, "");
+  const educationRecords = educationForResume(facts, profile);
+  const roleCount = experiences.filter((e) => e.kind !== "education").length;
+  const showCoursework = (text: string) => roleCount < 3 || Boolean(req && extractSkills(text).some((s) => labels.mentioned.has(s))) || Boolean(req?.degreeFields.length);
 
   const build = (): ResumeDocument => {
     const sections: ResumeSection[] = [];
     const sourceFactIds = new Set<string>();
     // Education first for students and recent grads (see RESUME-STANDARDS.md).
-    if (profile?.school) {
-      const gradFuture = profile.gradDate ? new Date(`${profile.gradDate.length === 4 ? `${profile.gradDate}-05` : profile.gradDate}-01`) > new Date() : false;
-      const details: string[] = [];
-      const gpaLine = profile.gpa != null && profile.gpa >= 3 ? `GPA: ${profile.gpa.toFixed(profile.gpa * 100 % 10 === 0 ? 1 : 2)}/4.0` : null;
-      const honorLine = honors.length ? `Honors: ${honors.join("; ")}` : null;
-      const first = [gpaLine, honorLine].filter(Boolean).join("  |  ");
-      if (first) details.push(first);
-      if (honorLine) facts.filter((f) => f.category === "award").forEach((f) => sourceFactIds.add(f.id));
-      if (coursework && (experiences.length < 3 || (req && extractSkills(coursework).some((s) => labels.mentioned.has(s))) || req?.degreeFields.length)) {
-        details.push(`Relevant coursework: ${coursework}`);
-      }
-      if (details.some((d) => d.startsWith("Relevant coursework:"))) {
-        const source = facts.find((f) => f.category === "education" && /^coursework/i.test(f.content));
-        if (source) sourceFactIds.add(source.id);
-      }
-      const edu: EducationEntry = {
-        school: profile.school,
-        location: null,
-        degreeLine: [profile.degree, profile.major ? `in ${profile.major}` : null].filter(Boolean).join(" ") + (profile.minor ? `, Minor in ${profile.minor}` : ""),
-        gradLine: profile.gradDate ? `${gradFuture ? "Expected " : ""}${formatMonth(profile.gradDate)}` : "",
-        details,
-      };
-      sections.push({ kind: "education", title: "Education", entries: [edu] });
+    const educationEntries = buildEducationSection(educationRecords, { showCoursework });
+    if (educationEntries.length) {
+      sections.push({ kind: "education", title: "Education", entries: educationEntries });
+      educationRecords.forEach((record, index) => {
+        const entry = educationEntries[index];
+        if (!entry) return;
+        if (record.factIds.school) sourceFactIds.add(record.factIds.school);
+        if (entry.degreeLine) {
+          if (record.factIds.degree) sourceFactIds.add(record.factIds.degree);
+          if (record.factIds.major) sourceFactIds.add(record.factIds.major);
+        }
+        if (entry.gradLine && record.factIds.grad) sourceFactIds.add(record.factIds.grad);
+        for (const line of entry.details) {
+          if (line.startsWith("GPA") && record.factIds.gpa) sourceFactIds.add(record.factIds.gpa);
+          if (record.honors && line.includes(record.honors)) record.factIds.honors.forEach((id) => sourceFactIds.add(id));
+          if (line.startsWith("Relevant coursework") && record.factIds.coursework) sourceFactIds.add(record.factIds.coursework);
+        }
+        record.factIds.extras.forEach((id) => sourceFactIds.add(id));
+      });
     }
 
     for (const title of ["Experience", "Leadership and Activities", "Projects"] as const) {
@@ -221,7 +277,7 @@ export async function tailorResume(
           location: e.location,
           dates: e.startDate || e.endDate ? formatRange(e.startDate, e.endDate) : "",
           // Form only: tense for past roles, spacing, capitals. Numbers and claims stay exactly as confirmed.
-          bullets: selected.get(e.id)!.map((s) => ({ id: s.bullet.id, text: polishBullet(s.bullet.text, { ended: roleEnded(formatRange(e.startDate, e.endDate)) }), factIds: s.bullet.factIds })),
+          bullets: selected.get(e.id)!.map((s) => ({ id: s.bullet.id, text: polishBullet(s.bullet.text, { ended: roleEnded(e.startDate || e.endDate ? formatRange(e.startDate, e.endDate) : "") }), factIds: s.bullet.factIds })),
         }));
       if (entries.length) sections.push({ kind: "entries", title, entries });
     }
@@ -247,8 +303,9 @@ export async function tailorResume(
       if (variant === "skills") sections.splice(sections[0]?.kind === "education" ? 1 : 0, 0, section);
       else sections.push(section);
     }
+    const latestGrad = educationRecords.map((record) => record.gradMonth).filter((month): month is string => Boolean(month)).sort().at(-1) ?? profile?.gradDate ?? null;
     if (sections[0]?.kind === "education" && educationAfterExperience(
-      profile?.gradDate ?? null,
+      latestGrad,
       experiences.filter((experience) => (selected.get(experience.id)?.length ?? 0) > 0),
     )) {
       const [education] = sections.splice(0, 1);
@@ -263,13 +320,7 @@ export async function tailorResume(
       sourceFactIds: [...sourceFactIds],
       header: {
         name: profile?.fullName ?? "",
-        contact: [
-          [profile?.city, profile?.region].filter(Boolean).join(", "),
-          opts.email,
-          profile?.phone ?? "",
-          profile?.linkedinUrl ?? "",
-          profile?.portfolioUrl ?? "",
-        ].filter(Boolean),
+        contact: resumeContactItems(profile),
       },
       sections,
     };

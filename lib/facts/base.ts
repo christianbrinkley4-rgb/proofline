@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { archiveExperience, createExperience, getExperience, listExperiences, updateExperience, type Experience, type ExperienceKind } from "@/lib/kb/experiences";
@@ -12,9 +13,10 @@ import { formatMonth } from "@/lib/resume/parse/dates";
  * stored in their exact words. Facts are never invented or inferred.
  *
  * Storage is the append-only `fact` table (view `facts` gives the spec's shape).
- * Education fields mirror onto `profile`, role fields onto `experience`, and each
- * bullet fact gets one active `bullet` that cites it, because the tailoring engine
- * reads those tables. This module keeps all of them in step.
+ * Each school is its own set of education facts (degree, honors, coursework).
+ * The profile columns mirror the latest degree so scoring still has one graduation
+ * date. Role fields mirror onto `experience`, and each bullet fact gets one active
+ * `bullet` that cites it, because the tailoring engine reads those tables.
  */
 
 export const FACT_GROUPS = ["education", "experience", "project", "skill", "license", "number"] as const;
@@ -29,7 +31,7 @@ export const GROUP_LABEL: Record<FactGroup, string> = {
   number: "Numbers and results",
 };
 
-export type EducationField = "school" | "degree" | "major" | "grad_date" | "gpa" | "detail";
+export type EducationField = "school" | "degree" | "major" | "grad_date" | "gpa" | "honors" | "coursework" | "detail";
 export type RoleField = "org" | "title" | "dates" | "location" | "bullet";
 export type FactField = EducationField | RoleField | "item";
 
@@ -39,6 +41,8 @@ export const FIELD_LABEL: Record<FactField, string> = {
   major: "Major",
   grad_date: "Graduation",
   gpa: "GPA",
+  honors: "Honors",
+  coursework: "Coursework",
   detail: "Detail",
   org: "Organization",
   title: "Title",
@@ -53,6 +57,15 @@ const PROJECT_KINDS: ExperienceKind[] = ["project", "research"];
 export function fieldOf(fact: Pick<Fact, "data">): FactField | null {
   const field = (fact.data as { field?: unknown } | null)?.field;
   return typeof field === "string" && field in FIELD_LABEL ? (field as FactField) : null;
+}
+
+/** Facts saved before entries were grouped share this id. */
+export const LEGACY_EDUCATION_ENTRY = "legacy";
+
+/** Which school a fact belongs to. Older rows with no entry id share one school. */
+export function entryIdOf(fact: Pick<Fact, "data">): string {
+  const entry = (fact.data as { entry?: unknown } | null)?.entry;
+  return typeof entry === "string" && entry ? entry : LEGACY_EDUCATION_ENTRY;
 }
 
 /** Which of the six groups a stored fact belongs to. */
@@ -119,36 +132,224 @@ async function setFieldFact(
   field: FactField,
   value: string,
   base: { category: FactCategory; experienceId?: string | null; sourceDetail: string },
+  entryId?: string,
 ) {
   const text = clean(value);
-  const current = existing.find((f) => fieldOf(f) === field && (base.experienceId ? f.experienceId === base.experienceId : true));
+  const current = existing.find((f) => {
+    if (fieldOf(f) !== field) return false;
+    if (base.experienceId && f.experienceId !== base.experienceId) return false;
+    if (entryId && entryIdOf(f) !== entryId) return false;
+    return true;
+  });
+  const data = entryId ? { field, entry: entryId } : { field };
   if (current && current.content === text) return current;
   if (current && !text) {
     await rejectFact(userId, current.id, "cleared by the user");
     return null;
   }
-  if (current) return reviseFact(userId, current.id, { content: text, data: { field }, source: "user_stated" });
+  if (current) return reviseFact(userId, current.id, { content: text, data, source: "user_stated" });
   if (!text) return null;
-  return addFact(userId, { category: base.category, content: text, data: { field }, experienceId: base.experienceId ?? null, source: "user_stated", sourceDetail: base.sourceDetail });
+  return addFact(userId, { category: base.category, content: text, data, experienceId: base.experienceId ?? null, source: "user_stated", sourceDetail: base.sourceDetail });
 }
 
-export type EducationInput = { school: string; degree: string; major: string; gradDate: string; gpa: string };
+export type EducationEntryInput = {
+  /** Set when editing a school already saved. Blank means a new school. */
+  entryId?: string | null;
+  school: string;
+  degree?: string;
+  major?: string;
+  gradDate?: string;
+  gpa?: string;
+  honors?: string;
+  coursework?: string;
+  /** Extra lines explicitly checked by the person, retained on this degree. */
+  details?: string[];
+};
 
-export async function saveEducation(userId: string, input: EducationInput, sourceDetail = "onboarding") {
-  const existing = await listFacts(userId, { states: ["confirmed"], categories: ["education"] });
-  await updateProfile(userId, {
-    school: clean(input.school) || null,
-    degree: clean(input.degree) || null,
-    major: clean(input.major) || null,
-    gradDate: input.gradDate || null,
-    gpa: input.gpa ? Number(input.gpa) : null,
+type EducationFact = Pick<Fact, "id" | "category" | "content" | "data">;
+
+export type EducationRecord = {
+  id: string;
+  school: string;
+  degree: string;
+  major: string;
+  /** The graduation fact as stored, for example "Jun 2027". */
+  gradDate: string;
+  /** YYYY-MM when the stored date can be read that way. */
+  gradMonth: string | null;
+  gpa: string;
+  honors: string;
+  coursework: string;
+  extras: string[];
+  factIds: { school?: string; degree?: string; major?: string; grad?: string; gpa?: string; honors: string[]; coursework?: string; extras: string[] };
+};
+
+const textOf = (facts: EducationFact[], field: EducationField) => facts.find((f) => fieldOf(f) === field)?.content ?? "";
+const idOf = (facts: EducationFact[], field: EducationField) => facts.find((f) => fieldOf(f) === field)?.id;
+
+/** "Jun 2027" or "2027-06" to YYYY-MM. */
+export function gradMonthOf(text: string): string | null {
+  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(text)) return text;
+  if (/^\d{4}$/.test(text)) return text;
+  return toYearMonth(text);
+}
+
+function numericGpa(text: string): number | null {
+  const match = text.match(/[0-4](?:\.\d{1,2})?/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** Confirmed education facts, one record per school, latest graduation first. */
+export function readEducationRecords(facts: EducationFact[]): EducationRecord[] {
+  const groups = new Map<string, EducationFact[]>();
+  const order: string[] = [];
+  for (const fact of facts) {
+    if (fact.category !== "education") continue;
+    const id = entryIdOf(fact);
+    if (!groups.has(id)) {
+      groups.set(id, []);
+      order.push(id);
+    }
+    groups.get(id)!.push(fact);
+  }
+  const records = order.map((id) => {
+    const own = groups.get(id)!;
+    const honorsFact = own.find((f) => fieldOf(f) === "honors");
+    const courseworkFact = own.find((f) => fieldOf(f) === "coursework") ?? own.find((f) => fieldOf(f) == null && /^coursework/i.test(f.content));
+    const extras = own.filter((f) => fieldOf(f) === "detail" || (fieldOf(f) == null && f !== courseworkFact));
+    const gradDate = textOf(own, "grad_date");
+    return {
+      id,
+      school: textOf(own, "school"),
+      degree: textOf(own, "degree"),
+      major: textOf(own, "major"),
+      gradDate,
+      gradMonth: gradMonthOf(gradDate),
+      gpa: textOf(own, "gpa"),
+      honors: honorsFact?.content ?? "",
+      coursework: courseworkFact?.content ?? "",
+      extras: extras.map((f) => f.content),
+      factIds: {
+        school: idOf(own, "school"),
+        degree: idOf(own, "degree"),
+        major: idOf(own, "major"),
+        grad: idOf(own, "grad_date"),
+        gpa: idOf(own, "gpa"),
+        honors: honorsFact ? [honorsFact.id] : [],
+        coursework: courseworkFact?.id,
+        extras: extras.map((f) => f.id),
+      },
+    };
   });
+  return records.sort((a, b) => (b.gradMonth ?? "").localeCompare(a.gradMonth ?? "") || order.indexOf(a.id) - order.indexOf(b.id));
+}
+
+/**
+ * Awards saved before honors lived on a school. They stay on the first school
+ * until that school has honors of its own, so an older resume doesn't drop them.
+ */
+export function applyLooseHonors(entries: EducationRecord[], awards: Array<{ id: string; content: string }>): EducationRecord[] {
+  const lines = awards.map((a) => a.content.trim()).filter(Boolean);
+  if (!entries.length || !lines.length || entries.some((e) => e.honors.trim())) return entries;
+  const [first, ...rest] = entries;
+  return [{ ...first, honors: lines.join("; "), factIds: { ...first.factIds, honors: awards.map((a) => a.id) } }, ...rest];
+}
+
+/** Profile columns keep the latest degree. A GPA on an earlier degree still counts when the latest one has none. */
+async function syncProfileFromEducation(userId: string) {
+  const facts = await listFacts(userId, { states: ["confirmed"], categories: ["education"] });
+  const records = readEducationRecords(facts).filter((r) => r.school);
+  if (!records.length) {
+    await updateProfile(userId, { school: null, degree: null, major: null, gradDate: null, gpa: null });
+    return;
+  }
+  const primary = records[0];
+  const gpaText = primary.gpa || records.find((r) => r.gpa)?.gpa || "";
+  await updateProfile(userId, {
+    school: primary.school,
+    degree: primary.degree || null,
+    major: primary.major || null,
+    gradDate: primary.gradMonth,
+    gpa: numericGpa(gpaText),
+  });
+}
+
+/**
+ * Saves every school the person confirmed. Schools left off the list are removed.
+ * At least one school is required; use deleteEducationEntry to remove the last one.
+ */
+export async function saveEducation(userId: string, entries: EducationEntryInput[], sourceDetail = "onboarding") {
+  const cleaned = entries.map((entry) => ({
+    entryId: entry.entryId?.trim() || "",
+    school: clean(entry.school),
+    degree: clean(entry.degree ?? ""),
+    major: clean(entry.major ?? ""),
+    gradDate: (entry.gradDate ?? "").trim(),
+    gpa: clean(entry.gpa ?? ""),
+    honors: clean(entry.honors ?? ""),
+    coursework: clean(entry.coursework ?? ""),
+    details: (entry.details ?? []).map(clean).filter((line) => line.length > 1),
+  })).filter((entry) => entry.school);
+  if (!cleaned.length) throw new Error("Add your school.");
+  if (cleaned.length > 6) throw new Error("Six schools is the limit. Remove one to add another.");
+
+  const existing = await listFacts(userId, { states: ["confirmed"], categories: ["education"] });
+  if (cleaned.some((entry) => entry.entryId && !existing.some((fact) => entryIdOf(fact) === entry.entryId))) throw new Error("That education entry changed. Reload and try again.");
+  const planned = cleaned.map((entry) => ({ ...entry, entryId: entry.entryId || randomUUID() }));
+  if (new Set(planned.map((entry) => entry.entryId)).size !== planned.length) throw new Error("Each education entry must have its own id.");
+  const kept = new Set(planned.map((entry) => entry.entryId));
+  for (const fact of existing) {
+    if (!kept.has(entryIdOf(fact))) await rejectFact(userId, fact.id, "school removed");
+  }
   const base = { category: "education" as const, sourceDetail };
-  await setFieldFact(userId, existing, "school", input.school, base);
-  await setFieldFact(userId, existing, "degree", input.degree, base);
-  await setFieldFact(userId, existing, "major", input.major, base);
-  await setFieldFact(userId, existing, "grad_date", input.gradDate ? formatMonth(input.gradDate) : "", base);
-  await setFieldFact(userId, existing, "gpa", input.gpa, base);
+  for (const entry of planned) {
+    const own = existing.filter((f) => entryIdOf(f) === entry.entryId);
+    await setFieldFact(userId, own, "school", entry.school, base, entry.entryId);
+    await setFieldFact(userId, own, "degree", entry.degree, base, entry.entryId);
+    await setFieldFact(userId, own, "major", entry.major, base, entry.entryId);
+    await setFieldFact(userId, own, "grad_date", entry.gradDate ? formatMonth(entry.gradDate) : "", base, entry.entryId);
+    await setFieldFact(userId, own, "gpa", entry.gpa, base, entry.entryId);
+    await setFieldFact(userId, own, "honors", entry.honors, base, entry.entryId);
+    await setFieldFact(userId, own, "coursework", entry.coursework, base, entry.entryId);
+    const knownDetails = new Set(own.filter((fact) => fieldOf(fact) === "detail").map((fact) => fact.content.toLowerCase()));
+    for (const text of entry.details) {
+      if (knownDetails.has(text.toLowerCase())) continue;
+      knownDetails.add(text.toLowerCase());
+      await addFact(userId, { category: "education", content: text, data: { field: "detail", entry: entry.entryId }, source: "user_stated", sourceDetail });
+    }
+  }
+  await syncProfileFromEducation(userId);
+}
+
+/** Adds one school without removing the ones already confirmed. */
+export async function addEducationEntry(userId: string, input: EducationEntryInput, sourceDetail = "my-facts") {
+  const existing = await listFacts(userId, { states: ["confirmed"], categories: ["education"] });
+  const current = readEducationRecords(existing).filter((r) => r.school).map(recordToInput);
+  await saveEducation(userId, [...current, { ...input, entryId: undefined }], sourceDetail);
+}
+
+/** Removes one school and every fact saved on it. */
+export async function deleteEducationEntry(userId: string, entryId: string) {
+  const existing = await listFacts(userId, { states: ["confirmed"], categories: ["education"] });
+  const victims = existing.filter((f) => entryIdOf(f) === entryId);
+  if (!victims.length) return;
+  for (const fact of victims) await rejectFact(userId, fact.id, "school removed");
+  await syncProfileFromEducation(userId);
+}
+
+function recordToInput(record: EducationRecord): EducationEntryInput {
+  return {
+    entryId: record.id,
+    school: record.school,
+    degree: record.degree,
+    major: record.major,
+    gradDate: record.gradMonth ?? record.gradDate,
+    gpa: record.gpa,
+    honors: record.honors,
+    coursework: record.coursework,
+  };
 }
 
 export type RoleInput = {
@@ -198,7 +399,7 @@ export async function addListFacts(userId: string, group: "skill" | "license", i
 }
 
 /** Manual add from My facts. The caller has already checked the user ticked "this is true". */
-export async function addManualFact(userId: string, input: { group: FactGroup; text: string; experienceId?: string | null }) {
+export async function addManualFact(userId: string, input: { group: FactGroup; text: string; experienceId?: string | null; entryId?: string | null; eduField?: "honors" | "coursework" | "detail" | null }) {
   const text = clean(input.text);
   if (text.length < 2) throw new Error("Write the fact first.");
   if (input.group === "experience" || input.group === "project") {
@@ -207,7 +408,18 @@ export async function addManualFact(userId: string, input: { group: FactGroup; t
     return (await addBulletFact(userId, experience, text, "my-facts"))?.fact ?? null;
   }
   if (input.group === "skill" || input.group === "license") return (await addListFacts(userId, input.group, [text], "my-facts"))[0] ?? null;
-  return addFact(userId, { category: categoryFor(input.group), content: text, data: { field: input.group === "education" ? "detail" : "item" }, source: "user_stated", sourceDetail: "my-facts" });
+  if (input.group === "education") {
+    const field = input.eduField === "honors" || input.eduField === "coursework" ? input.eduField : "detail";
+    const existing = await listFacts(userId, { states: ["confirmed"], categories: ["education"] });
+    const schools = readEducationRecords(existing).filter((r) => r.school);
+    const entryId = input.entryId && schools.some((r) => r.id === input.entryId) ? input.entryId : schools[0]?.id;
+    if ((field === "honors" || field === "coursework") && entryId) {
+      const saved = await setFieldFact(userId, existing.filter((f) => entryIdOf(f) === entryId), field, text, { category: "education", sourceDetail: "my-facts" }, entryId);
+      return saved ?? null;
+    }
+    return addFact(userId, { category: "education", content: text, data: entryId ? { field, entry: entryId } : { field }, source: "user_stated", sourceDetail: "my-facts" });
+  }
+  return addFact(userId, { category: categoryFor(input.group), content: text, data: { field: "item" }, source: "user_stated", sourceDetail: "my-facts" });
 }
 
 // ─── Editing and deleting ─────────────────────────────────────────────────────
@@ -227,21 +439,6 @@ const PROFILE_FIELD: Partial<Record<FactField, "school" | "degree" | "major" | "
   grad_date: "gradDate",
   gpa: "gpa",
 };
-
-/** Mirrors an education field onto the profile columns the resume reads. */
-async function syncProfileField(userId: string, field: FactField, text: string | null) {
-  const column = PROFILE_FIELD[field];
-  if (!column) return;
-  if (column === "gpa") {
-    const value = text ? Number(text.match(/[0-4](?:\.\d{1,2})?/)?.[0]) : NaN;
-    await updateProfile(userId, { gpa: Number.isFinite(value) ? value : null });
-  } else if (column === "gradDate") {
-    const month = text ? (text.match(/^(\d{4})-(\d{2})$/)?.[0] ?? toYearMonth(text)) : null;
-    await updateProfile(userId, { gradDate: month });
-  } else {
-    await updateProfile(userId, { [column]: text });
-  }
-}
 
 function toYearMonth(text: string): string | null {
   const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
@@ -279,7 +476,7 @@ export async function editFact(userId: string, factId: string, text: string): Pr
   } else if (field && old.experienceId && (field === "org" || field === "title" || field === "location")) {
     await updateExperience(userId, old.experienceId, { [field]: next.content } as Partial<Pick<Experience, "org" | "title" | "location">>);
   } else if (field && PROFILE_FIELD[field]) {
-    await syncProfileField(userId, field, next.content);
+    await syncProfileFromEducation(userId);
   } else {
     // A bullet written from this fact (older flows) no longer matches it.
     await archiveBulletsCiting(userId, factId);
@@ -294,7 +491,7 @@ export async function deleteFact(userId: string, factId: string) {
   if (fact.experienceId && field === "org") throw new Error("Delete the whole role instead; a role needs a name.");
   await rejectFact(userId, factId, "deleted on My facts");
   await archiveBulletsCiting(userId, factId);
-  if (field && PROFILE_FIELD[field]) await syncProfileField(userId, field, null);
+  if (field && PROFILE_FIELD[field]) await syncProfileFromEducation(userId);
   if (fact.experienceId && (field === "title" || field === "location")) await updateExperience(userId, fact.experienceId, { [field]: null });
 }
 
@@ -318,7 +515,7 @@ export async function ensureFactBase(userId: string) {
   const [profile, experiences, facts] = await Promise.all([getProfile(userId), listExperiences(userId), listFacts(userId, { states: ["confirmed"] })]);
   const education = facts.filter((f) => f.category === "education");
   const base = { category: "education" as const, sourceDetail: "profile" };
-  if (profile) {
+  if (profile && !education.length) {
     const want: Array<[EducationField, string]> = [
       ["school", profile.school ?? ""],
       ["degree", profile.degree ?? ""],
@@ -341,10 +538,13 @@ export async function ensureFactBase(userId: string) {
   }
 }
 
-export type FactRow = { id: string; text: string; field: FactField | null; label: string; verifiedAt: Date | null; source: string };
+export type FactRow = { id: string; text: string; field: FactField | null; label: string; verifiedAt: Date | null; source: string; entryId?: string };
+export type EducationBlock = EducationRecord & { facts: FactRow[] };
 export type RoleBlock = { experience: Experience; group: "experience" | "project"; header: FactRow[]; bullets: FactRow[] };
 export type FactBase = {
   education: FactRow[];
+  /** One block per school. Omitted only on hand-built fixtures. */
+  educationEntries?: EducationBlock[];
   roles: RoleBlock[];
   skill: FactRow[];
   license: FactRow[];
@@ -360,7 +560,7 @@ export async function loadFactBase(userId: string): Promise<FactBase> {
   const [experiences, facts] = await Promise.all([listExperiences(userId), listFacts(userId, { states: ["confirmed"] })]);
   const row = (f: Fact): FactRow => {
     const field = fieldOf(f);
-    return { id: f.id, text: f.content, field, label: field && field !== "item" ? FIELD_LABEL[field] : "", verifiedAt: f.confirmedAt, source: f.source };
+    return { id: f.id, text: f.content, field, label: field && field !== "item" ? FIELD_LABEL[field] : "", verifiedAt: f.confirmedAt, source: f.source, entryId: f.category === "education" ? entryIdOf(f) : undefined };
   };
   const byExperience = new Map<string, Fact[]>();
   for (const f of facts) if (f.experienceId) byExperience.set(f.experienceId, [...(byExperience.get(f.experienceId) ?? []), f]);
@@ -373,9 +573,15 @@ export async function loadFactBase(userId: string): Promise<FactBase> {
       return { experience, group: groupOf(own[0], experience.kind) === "project" ? ("project" as const) : ("experience" as const), header: header.map(row), bullets: bullets.map(row) };
     });
   const loose = facts.filter((f) => !f.experienceId || !experiences.some((e) => e.id === f.experienceId));
-  const eduOrder: EducationField[] = ["school", "degree", "major", "grad_date", "gpa", "detail"];
+  const eduOrder: EducationField[] = ["school", "degree", "major", "grad_date", "gpa", "honors", "coursework", "detail"];
+  const eduFacts = loose.filter((f) => groupOf(f) === "education");
+  const educationEntries: EducationBlock[] = readEducationRecords(eduFacts).map((record) => ({
+    ...record,
+    facts: eduFacts.filter((f) => entryIdOf(f) === record.id).sort((a, b) => eduOrder.indexOf(fieldOf(a) as EducationField) - eduOrder.indexOf(fieldOf(b) as EducationField)).map(row),
+  }));
   return {
-    education: loose.filter((f) => groupOf(f) === "education").sort((a, b) => eduOrder.indexOf(fieldOf(a) as EducationField) - eduOrder.indexOf(fieldOf(b) as EducationField)).map(row),
+    education: educationEntries.flatMap((entry) => entry.facts),
+    educationEntries,
     roles,
     skill: loose.filter((f) => groupOf(f) === "skill").map(row),
     license: loose.filter((f) => groupOf(f) === "license").map(row),
