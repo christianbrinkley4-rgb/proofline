@@ -177,3 +177,54 @@ describe("links", () => {
     expect(parsed.links).toEqual(["github.com/samlee"]);
   });
 });
+
+// Shapes from a real Word-made resume: Symbol-font bullets (U+F0B7), degree-first
+// education lines, a GPA written before "GPA", wrapped coursework, and labeled skill lines.
+describe("Word-made resumes", () => {
+  const B = "";
+  const text = [
+    "Casey Morgan",
+    "Durham, NC | 919.555.0101 | casey@example.com",
+    "EDUCATION",
+    "Master of Science in Accounting, UNC Greensboro | January 2027 to June 2027",
+    "Bachelor of Science in Accounting, UNC Greensboro | Expected December 2026 | 3.69 GPA | Dean's List",
+    "Relevant Coursework: Federal Tax Concepts (prepared tax returns, Grade A), Auditing, Cost",
+    "Accounting, Corporate Finance",
+    "EXPERIENCE",
+    "Licensed Insurance Agent | Bankers Life, Greensboro, NC",
+    "June 2026 to Present",
+    `${B} Guide 50+ clients through tax implications of RMDs and Roth conversions across`,
+    "25+ appointments, explaining the rules in plain language.",
+    `${B} Write 12 policies since June 2026 by running client appointments solo.`,
+    "Treasurer | UNCG Investment Club",
+    "August 2024 to August 2026",
+    `${B} Trained 10+ members on treasurer procedures and record-`,
+    "keeping.",
+    "SKILLS",
+    "Technical: Excel, Python, Tableau",
+    "Licenses: NC Life & Health | SIE scheduled December 14, 2026",
+    "Interests: AI tools and data analytics",
+  ].join("\n");
+  const parsed = parseResumeText(text);
+
+  it("reads Symbol-font bullets and rejoins wrapped lines, including hyphen breaks", () => {
+    expect(parsed.entries.map((e) => [e.title, e.org, e.bullets.length])).toEqual([
+      ["Licensed Insurance Agent", "Bankers Life", 2],
+      ["Treasurer", "UNCG Investment Club", 1],
+    ]);
+    expect(parsed.entries[0].bullets[0]).toBe("Guide 50+ clients through tax implications of RMDs and Roth conversions across 25+ appointments, explaining the rules in plain language.");
+    expect(parsed.entries[1].bullets[0]).toBe("Trained 10+ members on treasurer procedures and record-keeping.");
+  });
+
+  it("reads degree-first education, a GPA before the word GPA, honors, and wrapped coursework", () => {
+    expect(parsed.education).toMatchObject([
+      { school: "UNC Greensboro", degree: "Master of Science", major: "Accounting", gradDate: "2027-06" },
+      { school: "UNC Greensboro", degree: "Bachelor of Science", major: "Accounting", gradDate: "2026-12", gpa: 3.69, honors: ["Dean's List"], coursework: ["Federal Tax Concepts (prepared tax returns, Grade A)", "Auditing", "Cost Accounting", "Corporate Finance"] },
+    ]);
+  });
+
+  it("sends licenses to certifications and leaves interests out of skills", () => {
+    expect(parsed.skills).toEqual(["Excel", "Python", "Tableau"]);
+    expect(parsed.certifications).toEqual(["NC Life & Health", "SIE scheduled December 14, 2026"]);
+  });
+});

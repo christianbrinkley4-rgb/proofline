@@ -1,3 +1,4 @@
+import { BULLET as BULLET_START, GLYPH_BULLET, joinWrapped } from "./bullets";
 /**
  * Turns positioned PDF text and DOCX HTML into the plain lines the rules parser reads.
  *
@@ -12,7 +13,6 @@ export type PositionedItem = { str: string; x: number; y: number; width: number;
 
 type Line = { items: PositionedItem[]; y: number; size: number };
 
-const BULLET_START = /^\s*[•●▪◦■\-*–·]\s+/;
 /** A gap wider than this many font sizes separates columns rather than words. */
 const COLUMN_GAP = 1.2;
 
@@ -135,7 +135,7 @@ function columnLines(items: PositionedItem[]): string[] {
     const { text, columns } = lineText(line);
     if (!text.trim()) continue;
     const x = firstTextX(line);
-    const isBullet = /^\s*[•●▪◦■]/.test(text) || /^\s*[-*–·]\s+/.test(text);
+    const isBullet = GLYPH_BULLET.test(text) || /^\s*[-*–·]\s+/.test(text);
     if (
       bullet &&
       !isBullet &&
@@ -143,7 +143,7 @@ function columnLines(items: PositionedItem[]): string[] {
       x > bullet.markerX + 1.5 &&
       bullet.y - line.y <= Math.max(bullet.size, line.size) * 1.8
     ) {
-      out[bullet.index] = `${out[bullet.index]} ${text.trim()}`;
+      out[bullet.index] = joinWrapped(out[bullet.index], text.trim());
       bullet.y = line.y;
       continue;
     }

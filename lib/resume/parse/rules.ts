@@ -2,6 +2,7 @@ import { METROS, STATES } from "@/lib/jobs/locations";
 import { findDateRange } from "./dates";
 import { COLUMN_BREAK } from "./layout-text";
 import type { ParsedEducation, ParsedEntry, ParsedResume } from "./types";
+import { BULLET, joinWrapped } from "./bullets";
 
 /**
  * Rules-based resume parser. Works on the plain text of a PDF or DOCX, needs no
@@ -51,15 +52,14 @@ function isMetaLine(line: string): boolean {
   return rest.length === 0;
 }
 
-const BULLET = /^\s*[•●▪◦■\-*–·]\s+/;
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/;
 const PHONE = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
 const LINK = /\b(?:https?:\/\/)?(?:www\.)?(?:linkedin\.com\/in\/[\w-]+|github\.com\/[\w-]+|[\w-]+\.(?:dev|io|me|com)\/?[\w/-]*)/gi;
 const CITY_STATE = /\b([A-Z][a-zA-Z.]+(?:\s[A-Z][a-zA-Z.]+)*),\s?([A-Z]{2})\b/;
 const SCHOOL = /\b(university|college|institute|school|academy)\b/i;
 const DEGREE = /\b(bachelor|master|associate|doctor|b\.?\s?s\.?|b\.?\s?a\.?|m\.?\s?s\.?|m\.?\s?b\.?\s?a\.?|ph\.?\s?d\.?|b\.?\s?b\.?\s?a\.?)\b/i;
-const GPA = /\bgpa[:\s]*([0-4]\.\d{1,2})|([0-4]\.\d{1,2})\s*\/\s*4\.0/i;
-const GPA_TEXT = /\bgpa[:\s]*[0-4]\.\d{1,2}(?:\s*\/\s*4(?:\.0+)?)?|[0-4]\.\d{1,2}\s*\/\s*4(?:\.0+)?/gi;
+const GPA = /\bgpa[:\s]*([0-4]\.\d{1,2})|([0-4]\.\d{1,2})\s*\/\s*4\.0|\b([0-4]\.\d{1,2})\s+(?:cumulative\s+)?gpa\b/i;
+const GPA_TEXT = /\bgpa[:\s]*[0-4]\.\d{1,2}(?:\s*\/\s*4(?:\.0+)?)?|[0-4]\.\d{1,2}\s*\/\s*4(?:\.0+)?|\b[0-4]\.\d{1,2}\s+(?:cumulative\s+)?gpa\b/gi;
 
 function headingOf(line: string): Section | null {
   const clean = line.trim().replace(/[:|]+$/, "").toLowerCase().replace(/\s+/g, " ");
@@ -139,7 +139,7 @@ function parseEntry(section: ParsedEntry["section"], header: string[], bullets: 
     }
     return [p];
   });
-  const TITLE_NOUN = /\b(manager|assistant|analyst|accountant|cashier|clerk|coordinator|director|engineer|intern|receptionist|representative|specialist|supervisor|technician|server|stock(er)?|consultant|associate|lead|nurse|teacher|tutor|member|volunteer|preparer|president|treasurer|secretary|officer|founder|captain|chair)\b/i;
+  const TITLE_NOUN = /\b(manager|assistant|analyst|accountant|cashier|clerk|coordinator|director|engineer|intern|receptionist|representative|specialist|supervisor|technician|server|stock(er)?|consultant|associate|lead|nurse|teacher|tutor|member|volunteer|preparer|president|treasurer|secretary|officer|founder|captain|chair|agent|advisor|adviser|bookkeeper|auditor|developer|designer|writer|editor|researcher|fellow|mentor|ambassador|instructor|aide|barista|driver|administrator|organizer|coach|trainee|apprentice|counselor|scribe|lifeguard)\b/i;
   let roleParts = withoutLocation;
   if (roleParts.length === 1) {
     const comma = roleParts[0].match(/^(.+?),\s+(.+)$/);
@@ -165,8 +165,46 @@ function parseEntry(section: ParsedEntry["section"], header: string[], bullets: 
 function parseEducation(lines: string[]): ParsedEducation[] {
   const results: ParsedEducation[] = [];
   let current: ParsedEducation | null = null;
+  let inCoursework = false;
   for (const line of lines) {
     const text = line.replace(BULLET, "").trim();
+    // Coursework that wraps: "…, Cost" then "Accounting, Corporate Finance".
+    if (inCoursework && current && !SCHOOL.test(text) && !DEGREE.test(text) && !/:/.test(text) && !/(honors|dean's list|cum laude|scholar|gpa)/i.test(text)) {
+      const [first = "", ...more] = splitList(text).map((s) => s.trim()).filter(Boolean);
+      const last = current.coursework.length - 1;
+      if (last >= 0) current.coursework[last] = `${current.coursework[last]} ${first}`.trim();
+      else current.coursework.push(first);
+      current.coursework.push(...more);
+      continue;
+    }
+    inCoursework = false;
+    // Degree first, then the school: "Master of Science in Accounting, UNC Greensboro | January 2027 to June 2027".
+    // Both must sit in the first column, so "Bachelor of Science   Raleigh, NC" (a campus column) doesn't count.
+    const firstColumn = splitParts(text)[0] ?? "";
+    const degreeAndSchool = firstColumn.match(/^([^,]+),\s*(.+)$/);
+    const lead = degreeAndSchool?.[1].trim() ?? "";
+    const afterDegree = degreeAndSchool && DEGREE.test(lead) && !SCHOOL.test(lead) ? degreeAndSchool[2].trim() : undefined;
+    const isPlace = afterDegree ? trailingPlace(afterDegree)?.rest === "" || Boolean(placeWithStateName(afterDegree)) : false;
+    if (afterDegree && !isPlace && (SCHOOL.test(afterDegree) || /^[A-Z]{2,}\b/.test(afterDegree)) && !/^(minor|major|concentration|with|gpa)\b/i.test(afterDegree)) {
+      if (current) results.push(current);
+      const range = findDateRange(text);
+      current = {
+        school: stripDates(afterDegree).replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
+        degree: null,
+        major: null,
+        minor: null,
+        gradDate: range?.end ?? null,
+        gpa: null,
+        honors: splitParts(text).filter((p) => /(honors|dean's list|cum laude|scholar)/i.test(p)),
+        coursework: [],
+      };
+      const gpa = text.match(GPA);
+      if (gpa) current.gpa = Number(gpa[1] ?? gpa[2] ?? gpa[3]);
+      const [degreePart, ...majorParts] = lead.split(/\s+in\s+/i);
+      current.degree = degreePart.trim() || null;
+      current.major = majorParts.join(" in ").trim() || null;
+      continue;
+    }
     // Columns without dates or the campus location: "Bachelor of Science in Accounting   Raleigh, NC".
     const clean = splitParts(text)
       .map((p) => {
@@ -201,7 +239,7 @@ function parseEducation(lines: string[]): ParsedEducation[] {
     }
     if (!current) continue;
     const gpa = detailText.match(GPA);
-    if (gpa) current.gpa = Number(gpa[1] ?? gpa[2]);
+    if (gpa) current.gpa = Number(gpa[1] ?? gpa[2] ?? gpa[3]);
     const range = findDateRange(detailText);
     if (range && !current.gradDate) current.gradDate = range.end;
     if (DEGREE.test(detailText) && !current.degree) {
@@ -215,7 +253,8 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       const minor = body.match(/minor\s+in\s+([^,;|]+)/i);
       if (minor) current.minor = minor[1].trim();
     } else if (/^(relevant\s+)?coursework/i.test(text)) {
-      current.coursework = text.replace(/^(relevant\s+)?coursework\s*:?\s*/i, "").split(/\s*[,;]\s*/).filter(Boolean);
+      current.coursework = splitList(text.replace(/^(relevant\s+)?coursework\s*:?\s*/i, "")).map((s) => s.trim()).filter(Boolean);
+      inCoursework = true;
     } else if (/(honors|dean's list|cum laude|scholar)/i.test(text)) {
       current.honors.push(text.replace(/^honors\s*:?\s*/i, ""));
     }
@@ -223,6 +262,9 @@ function parseEducation(lines: string[]): ParsedEducation[] {
   if (current) results.push(current);
   return results;
 }
+
+/** A line that stops mid-phrase ("…conversions across", "…in QuickBooks,"), so a number on the next line continues it. */
+const MID_PHRASE = /(,|\b(across|and|or|of|to|for|in|on|at|by|with|from|over|than|about|per|the|a|an|into|through|while|including|between))$/i;
 
 function looksLikeSentence(line: string): boolean {
   const text = line.trim();
@@ -246,6 +288,23 @@ function splitList(text: string): string[] {
   }
   items.push(current);
   return items;
+}
+
+/**
+ * A Skills section often carries labeled lines: "Technical: ...", "Licenses: ...",
+ * "Interests: ...". Licenses and certifications go with certifications; interests
+ * aren't skills, so they're left out. Unlabeled lines are skills.
+ */
+function splitSkillLabels(lines: string[]): { skills: string[]; licenses: string[] } {
+  const skills: string[] = [];
+  const licenses: string[] = [];
+  for (const line of lines) {
+    const label = line.replace(BULLET, "").match(/^\s*([A-Za-z &/]+):\s*/)?.[1].trim().toLowerCase() ?? "";
+    if (/^(interests?|hobbies|activities)$/.test(label)) continue;
+    if (/licen[cs]es?|certifications?|certificates?|credentials?/.test(label)) licenses.push(line);
+    else skills.push(line);
+  }
+  return { skills: parseList(skills), licenses };
 }
 
 function parseCertifications(lines: string[]): string[] {
@@ -293,6 +352,7 @@ export function parseResumeText(text: string): ParsedResume {
   const withoutEmails = headerText.replace(new RegExp(EMAIL.source, "g"), " ");
   const links = [...new Set((withoutEmails.match(LINK) ?? []).map((l) => l.replace(/^https?:\/\//, "").replace(/^www\./, "")))];
 
+  const skillLines = splitSkillLabels(buckets.get("skills") ?? []);
   const entries: ParsedEntry[] = [];
   for (const kind of ["experience", "leadership", "project", "volunteer", "research"] as const) {
     let headerLines: string[] = [];
@@ -305,12 +365,15 @@ export function parseResumeText(text: string): ParsedResume {
     for (const line of buckets.get(kind) ?? []) {
       if (BULLET.test(line)) {
         bullets.push(line.replace(BULLET, "").trim());
+      } else if (bullets.length && /^[\d$]/.test(line.trim()) && MID_PHRASE.test(bullets[bullets.length - 1])) {
+        // "…Roth conversions across" then "25+ appointments…": the number finishes the line above.
+        bullets[bullets.length - 1] = joinWrapped(bullets[bullets.length - 1], line.trim());
       } else if (headerLines.length && looksLikeSentence(line)) {
         // Some exports drop the bullet marker; a full sentence under a role is still a bullet.
         bullets.push(line.trim());
       } else if (bullets.length && /^[a-z(]/.test(line.trim())) {
-        // A wrapped bullet continues on the next line.
-        bullets[bullets.length - 1] += ` ${line.trim()}`;
+        // A wrapped bullet continues on the next line; a word broken at a hyphen rejoins without a space.
+        bullets[bullets.length - 1] = joinWrapped(bullets[bullets.length - 1], line.trim());
       } else if (headerLines.length && !bullets.length && isMetaLine(line)) {
         // Dates or a place on their own line still describe the role above.
         headerLines.push(line.trim());
@@ -331,7 +394,7 @@ export function parseResumeText(text: string): ParsedResume {
     links,
     education: parseEducation(buckets.get("education") ?? []),
     entries,
-    skills: parseList(buckets.get("skills") ?? []),
-    certifications: parseCertifications(buckets.get("certifications") ?? []),
+    skills: skillLines.skills,
+    certifications: parseCertifications([...(buckets.get("certifications") ?? []), ...skillLines.licenses]),
   };
 }
