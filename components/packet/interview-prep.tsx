@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, ChevronDown, LoaderCircle } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
-import { saveInterviewNoteAction } from "@/app/app/jobs/[id]/packet/actions";
+import { practiceFeedbackAction, saveInterviewNoteAction } from "@/app/app/jobs/[id]/packet/actions";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MicButton } from "@/components/voice/mic-button";
 import type { PrepQuestion, QuestionCategory } from "@/lib/packet/interview";
+import { WORDS_PER_MINUTE, type PracticeFeedback } from "@/lib/packet/practice";
 import { cn } from "@/lib/utils";
 
 const CATEGORY: Record<QuestionCategory, string> = {
@@ -23,6 +26,9 @@ export function InterviewPrep({ jobId, questions, notes }: { jobId: string; ques
     <div>
       <p className="text-[12.5px] text-muted-foreground">
         <span className="font-medium text-foreground tabular-nums">{practiced}</span> of {questions.length} practiced. Answers stay private to you.
+      </p>
+      <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">
+        Say each answer out loud with the mic, then check it. This is for rehearsing; Proofline never listens in on a real interview.
       </p>
       <ol className="mt-3 divide-y rounded-lg border">
         {questions.map((q, i) => (
@@ -53,6 +59,19 @@ function QuestionDetail({ jobId, question: q, note }: { jobId: string; question:
   const [text, setText] = useState(note);
   const [saved, setSaved] = useState(note);
   const [pending, startTransition] = useTransition();
+  const [checking, startCheck] = useTransition();
+  const [feedback, setFeedback] = useState<PracticeFeedback | null>(null);
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const check = () =>
+    startCheck(async () => {
+      const result = await practiceFeedbackAction(jobId, q.id, text).catch(() => ({ ok: false as const, error: "Couldn't reach the server. Your answer is still here; try again." }));
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setSaved(text);
+      setFeedback(result.feedback);
+    });
   const save = () => {
     if (text === saved) return;
     startTransition(async () => {
@@ -97,9 +116,12 @@ function QuestionDetail({ jobId, question: q, note }: { jobId: string; question:
         </ul>
       )}
       <div>
-        <label htmlFor={`note-${q.id}`} className="text-[12.5px] font-medium">
-          Practice your answer
-        </label>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor={`note-${q.id}`} className="text-[12.5px] font-medium">
+            Practice your answer
+          </label>
+          <MicButton label="Answer out loud" onText={(said) => setText((prev) => (prev.trim() ? `${prev.trim()} ${said}` : said))} />
+        </div>
         <Textarea
           id={`note-${q.id}`}
           value={text}
@@ -108,20 +130,46 @@ function QuestionDetail({ jobId, question: q, note }: { jobId: string; question:
           maxLength={4000}
           rows={4}
           className="mt-1.5"
-          placeholder="Write it the way you'd say it. Saves when you click away."
+          placeholder="Say it with the mic, or write it the way you'd say it. Saves when you click away."
         />
-        <p className="mt-1 h-4 text-[11.5px] text-subtle-foreground">
-          {pending ? (
-            <span className="inline-flex items-center gap-1">
-              <LoaderCircle className="size-3 animate-spin" /> Saving
-            </span>
-          ) : text !== saved ? (
-            "Unsaved"
-          ) : saved ? (
-            "Saved"
-          ) : null}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <Button type="button" size="sm" variant="outline" disabled={checking || wordCount < 5} onClick={check}>
+            {checking ? <LoaderCircle className="animate-spin" /> : null}
+            How did that sound?
+          </Button>
+          {wordCount > 0 && <span className="text-[12px] text-subtle-foreground tabular-nums">About {Math.round((wordCount / WORDS_PER_MINUTE) * 60)} seconds out loud</span>}
+          <span className="ml-auto text-[11.5px] text-subtle-foreground">
+            {pending ? (
+              <span className="inline-flex items-center gap-1">
+                <LoaderCircle className="size-3 animate-spin" /> Saving
+              </span>
+            ) : text !== saved ? (
+              "Unsaved"
+            ) : saved ? (
+              "Saved"
+            ) : null}
+          </span>
+        </div>
+        {feedback && <FeedbackList feedback={feedback} />}
       </div>
     </div>
+  );
+}
+
+/** What to fix first, then what's already working. */
+function FeedbackList({ feedback }: { feedback: PracticeFeedback }) {
+  return (
+    <ul aria-live="polite" className="mt-3 space-y-2 rounded-lg border bg-muted/30 p-3.5 motion-safe:animate-view-in">
+      {feedback.notes.map((note) => (
+        <li key={note.text} className="flex gap-2 text-[13px] leading-5">
+          {note.tone === "good" ? (
+            <Check className="mt-0.5 size-3.5 shrink-0 text-brand" strokeWidth={2.5} aria-label="Working" />
+          ) : (
+            <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-pending" aria-label="To fix" />
+          )}
+          <span>{note.text}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

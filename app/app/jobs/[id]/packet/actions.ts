@@ -2,9 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { logEvent } from "@/lib/agent/events";
 import { requireSession } from "@/lib/auth";
+import { confirmedFactTexts } from "@/lib/facts/base";
+import { getJobForUser } from "@/lib/jobs/store";
 import { CoverLetterSchema, type CoverLetter } from "@/lib/packet/cover-letter";
-import { deleteAnswer, draftAnswer, draftCoverLetter, saveAnswer, saveCoverLetter, saveInterviewNote, saveWhy } from "@/lib/packet/service";
+import { practiceFeedback, type PracticeFeedback } from "@/lib/packet/practice";
+import { deleteAnswer, draftAnswer, draftCoverLetter, packetView, saveAnswer, saveCoverLetter, saveInterviewNote, saveWhy } from "@/lib/packet/service";
 
 const JobId = z.uuid();
 
@@ -65,4 +69,22 @@ export async function saveInterviewNoteAction(jobId: string, questionId: string,
   const session = await requireSession();
   const id = JobId.parse(jobId);
   await saveInterviewNote(session.user.id, id, questionId, note);
+}
+
+export type PracticeResult = { ok: true; feedback: PracticeFeedback } | { ok: false; error: string };
+
+/** Saves a practiced answer and returns rules-based feedback on it, checked against the person's confirmed facts. */
+export async function practiceFeedbackAction(jobId: string, questionId: string, answer: string): Promise<PracticeResult> {
+  const session = await requireSession();
+  const userId = session.user.id;
+  const id = JobId.parse(jobId);
+  const text = z.string().max(4000).safeParse(answer);
+  if (!text.success) return { ok: false, error: "Keep a practice answer under 4,000 characters." };
+  const [view, data, facts] = await Promise.all([packetView(userId, id), getJobForUser(userId, id), confirmedFactTexts(userId)]);
+  const question = view?.prep.find((q) => q.id === questionId);
+  if (!question || !data) return { ok: false, error: "This question isn't available anymore. Reload the page." };
+  const feedback = practiceFeedback(text.data, question, facts, data.job.company);
+  await saveInterviewNote(userId, id, questionId, text.data);
+  await logEvent(userId, "practice_answered", { jobId: id, questionId, words: feedback.words, fixes: feedback.notes.filter((n) => n.tone === "fix").length });
+  return { ok: true, feedback };
 }
