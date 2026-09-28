@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, LoaderCircle, Plus, Upload } from "lucide-react";
 import {
   finishOnboardingStepAction,
   goToStepAction,
@@ -20,6 +20,9 @@ import { SearchableInput } from "@/components/shared/searchable-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import type { DraftResponse } from "@/app/api/onboarding/resume-draft/route";
+import { Textarea } from "@/components/ui/textarea";
+import type { ResumeDraft, RoleDraft } from "@/lib/onboarding/draft";
 import { ChipInput, Field, PillChoice } from "./parts";
 
 export type BetaOnboardingData = {
@@ -47,6 +50,31 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
   const router = useRouter();
   const [step, setStep] = useState<OnboardingStep>(data.step === "done" ? "job" : data.step);
   const [, start] = useTransition();
+  const [draft, setDraftState] = useState<ResumeDraft | null>(null);
+  // Keep a read resume through reloads in this tab.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(DRAFT_KEY);
+      // Known only in the browser; restored after mount so server and client markup match.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setDraftState(JSON.parse(saved) as ResumeDraft);
+    } catch {
+      // Storage can be blocked; the person can read the resume again.
+    }
+  }, []);
+  const setDraft = (next: ResumeDraft | null) => {
+    setDraftState(next);
+    try {
+      if (next) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      else sessionStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // Not kept across reloads; the draft still works on this page.
+    }
+  };
+  const doneWithDraft = (key: string) => {
+    if (draft) setDraft({ ...draft, roles: draft.roles.filter((r) => r.key !== key) });
+  };
+  const isProject = (kind: string) => kind === "project" || kind === "research";
   const aboutIndex = (ABOUT_SCREENS as readonly string[]).indexOf(step);
   const progress = step === "job" ? 1 : 0;
 
@@ -56,6 +84,7 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
       router.refresh();
       return;
     }
+    if (next === "job") setDraft(null);
     setStep(next);
     start(() => goToStepAction(next));
     window.scrollTo({ top: 0 });
@@ -84,12 +113,14 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
             Step 1 · {SCREEN_TITLE[step as (typeof ABOUT_SCREENS)[number]]} <span className="font-normal text-subtle-foreground">({aboutIndex + 1} of {ABOUT_SCREENS.length})</span>
           </p>
         )}
-        {step === "education" && <EducationScreen data={data} onDone={() => go("experience")} />}
+        {step === "education" && <EducationScreen key={draft ? "draft" : "blank"} data={data} draft={draft} onDraft={setDraft} onDone={() => go("experience")} />}
         {step === "experience" && (
           <RoleScreen
             key="experience"
             project={false}
             roles={data.roles.filter((r) => r.kind !== "project" && r.kind !== "research")}
+            drafts={draft?.roles.filter((r) => !isProject(r.kind)) ?? []}
+            onDraftSaved={doneWithDraft}
             onBack={() => go("education")}
             onContinue={hasRole ? () => go("projects") : null}
           />
@@ -99,12 +130,14 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
             key="projects"
             project
             roles={data.roles.filter((r) => r.kind === "project" || r.kind === "research")}
+            drafts={draft?.roles.filter((r) => isProject(r.kind)) ?? []}
+            onDraftSaved={doneWithDraft}
             onBack={() => go("experience")}
             onContinue={() => go("skills")}
             onSkip={() => go("skills")}
           />
         )}
-        {step === "skills" && <ListsScreen data={data} onBack={() => go("projects")} onDone={() => go("logistics")} onSkip={() => go("logistics")} />}
+        {step === "skills" && <ListsScreen data={data} draft={draft} onBack={() => go("projects")} onDone={() => go("logistics")} onSkip={() => go("logistics")} />}
         {step === "logistics" && <LogisticsScreen data={data} onBack={() => go("skills")} onDone={() => go("job")} onSkip={() => go("job")} />}
         {step === "job" && <JobScreen onBack={() => go("logistics")} needs={!data.hasEducation ? "education" : !hasRole ? "experience" : null} onFix={go} />}
       </div>
@@ -170,8 +203,11 @@ function useSave() {
   return { pending, error, save };
 }
 
-function EducationScreen({ data, onDone }: { data: BetaOnboardingData; onDone: () => void }) {
-  const [v, setV] = useState(data.basics);
+function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardingData; draft: ResumeDraft | null; onDraft: (d: ResumeDraft) => void; onDone: () => void }) {
+  // What they've already saved wins; the resume fills only what's still empty.
+  const [v, setV] = useState(() =>
+    draft ? (Object.fromEntries(Object.entries(data.basics).map(([k, value]) => [k, value || draft.basics[k as keyof typeof data.basics]])) as typeof data.basics) : data.basics,
+  );
   const [confirmed, setConfirmed] = useState(false);
   const { pending, error, save } = useSave();
   const set = (key: keyof typeof v) => (value: string) => setV((x) => ({ ...x, [key]: value }));
@@ -184,6 +220,7 @@ function EducationScreen({ data, onDone }: { data: BetaOnboardingData; onDone: (
       }}
     >
       <Heading title={`Hi ${data.firstName}. Tell us about yourself.`} hint="Start with school. Everything you type here is saved as a fact in your own words, and only your facts ever reach a resume." />
+      {!data.hasEducation && data.roles.length === 0 && <ResumeImport draft={draft} onDraft={onDraft} />}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Name on your resume" htmlFor="fullName">
           <Input id="fullName" value={v.fullName} onChange={(e) => set("fullName")(e.target.value)} required maxLength={120} className="h-10" />
@@ -245,12 +282,17 @@ const PROJECT_KINDS = [
 function RoleScreen({
   project,
   roles,
+  drafts,
+  onDraftSaved,
   onBack,
   onContinue,
   onSkip,
 }: {
   project: boolean;
   roles: BetaOnboardingData["roles"];
+  /** Roles read from their resume and not saved yet. */
+  drafts: RoleDraft[];
+  onDraftSaved: (key: string) => void;
   onBack: () => void;
   /** Null until at least one experience is saved: that's the minimum to score. */
   onContinue: (() => void) | null;
@@ -258,9 +300,17 @@ function RoleScreen({
 }) {
   const router = useRouter();
   const blank = { kind: project ? "project" : "work", org: "", title: "", startDate: "", endDate: "", bullets: ["", ""] };
-  const [v, setV] = useState(blank);
+  const fromDraft = (d: RoleDraft) => ({ kind: d.kind, org: d.org, title: d.title, startDate: d.startDate, endDate: d.endDate, bullets: [...d.bullets, "", ""].slice(0, Math.max(d.bullets.length, project ? 1 : 2)) });
+  const [editing, setEditing] = useState<RoleDraft | null>(roles.length === 0 ? drafts[0] ?? null : null);
+  const [v, setV] = useState(() => (editing ? fromDraft(editing) : blank));
   const [open, setOpen] = useState(roles.length === 0);
   const [confirmed, setConfirmed] = useState(false);
+  const review = (d: RoleDraft) => {
+    setEditing(d);
+    setV(fromDraft(d));
+    setConfirmed(false);
+    setOpen(true);
+  };
   const { pending, error, save } = useSave();
   const kinds = project ? PROJECT_KINDS : ROLE_KINDS;
 
@@ -268,9 +318,15 @@ function RoleScreen({
     save(
       () => saveRoleStepAction({ ...v, kind: v.kind as "work", bullets: v.bullets, confirmed: confirmed as true }),
       () => {
-        setV(blank);
+        if (editing) onDraftSaved(editing.key);
+        const next = drafts.find((d) => d.key !== editing?.key);
         setConfirmed(false);
-        setOpen(false);
+        if (next) review(next);
+        else {
+          setEditing(null);
+          setV(blank);
+          setOpen(false);
+        }
         router.refresh();
       },
     );
@@ -299,6 +355,24 @@ function RoleScreen({
         </ul>
       )}
 
+      {drafts.some((d) => d.key !== editing?.key) && (
+        <div className="mt-6 rounded-xl border border-dashed border-border-strong p-4">
+          <p className="text-[13px] font-medium">From your resume, not saved yet</p>
+          <ul className="mt-2 space-y-1.5">
+            {drafts
+              .filter((d) => d.key !== editing?.key)
+              .map((d) => (
+                <li key={d.key} className="flex items-center gap-2 text-[14px]">
+                  <span className="min-w-0 flex-1 truncate">{[d.title, d.org].filter(Boolean).join(", ")}</span>
+                  <Button size="sm" variant="outline" type="button" onClick={() => review(d)}>
+                    Review
+                  </Button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+
       {open ? (
         <form
           className="mt-6 space-y-4 rounded-2xl border bg-background p-4 sm:p-5"
@@ -307,6 +381,12 @@ function RoleScreen({
             submit();
           }}
         >
+          {editing && (
+            <p className="rounded-lg bg-brand-soft/60 px-3 py-2 text-[13px] leading-5 text-brand-ink">
+              Read from your resume. Check every line, fix anything that isn&apos;t exactly right, then confirm.
+              {editing.extraLines > 0 && ` Your resume had ${editing.extraLines} more ${editing.extraLines === 1 ? "line" : "lines"} for this role; add ${editing.extraLines === 1 ? "it" : "them"} on My facts afterward.`}
+            </p>
+          )}
           <PillChoice label="Kind" options={kinds} value={[v.kind as (typeof kinds)[number]["value"]]} onChange={(next) => next[0] && setV((x) => ({ ...x, kind: next[0] }))} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={project ? "Project name" : "Company or organization"} htmlFor="org">
@@ -349,8 +429,16 @@ function RoleScreen({
               {pending ? <LoaderCircle className="animate-spin" /> : null}
               {project ? "Save this project" : "Save this role"}
             </Button>
-            {roles.length > 0 && (
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+            {(roles.length > 0 || editing) && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setOpen(false);
+                  setEditing(null);
+                  setV(blank);
+                }}
+              >
                 Cancel
               </Button>
             )}
@@ -377,9 +465,10 @@ function RoleScreen({
   );
 }
 
-function ListsScreen({ data, onBack, onDone, onSkip }: { data: BetaOnboardingData; onBack: () => void; onDone: () => void; onSkip: () => void }) {
-  const [skills, setSkills] = useState<string[]>(data.skills);
-  const [licenses, setLicenses] = useState<string[]>(data.licenses);
+function ListsScreen({ data, draft, onBack, onDone, onSkip }: { data: BetaOnboardingData; draft: ResumeDraft | null; onBack: () => void; onDone: () => void; onSkip: () => void }) {
+  const merge = (saved: string[], read: string[] = []) => [...saved, ...read.filter((x) => !saved.some((y) => y.toLowerCase() === x.toLowerCase()))];
+  const [skills, setSkills] = useState<string[]>(() => merge(data.skills, draft?.skills));
+  const [licenses, setLicenses] = useState<string[]>(() => merge(data.licenses, draft?.licenses));
   const [confirmed, setConfirmed] = useState(false);
   const { pending, error, save } = useSave();
   const changed = skills.length !== data.skills.length || licenses.length !== data.licenses.length;
@@ -509,6 +598,100 @@ function JobScreen({ onBack, needs, onFix }: { onBack: () => void; needs: "educa
       <Nav onBack={onBack} onSkip={() => void finish(() => "/app")()}>
         {pending && <LoaderCircle className="size-4 animate-spin text-muted-foreground" />}
       </Nav>
+    </div>
+  );
+}
+
+const DRAFT_KEY = "proofline:resume-draft";
+
+/**
+ * "Start from your resume": reads a PDF, DOCX, or pasted text into these screens.
+ * Nothing is saved until the person checks each screen and confirms it.
+ */
+function ResumeImport({ draft, onDraft }: { draft: ResumeDraft | null; onDraft: (d: ResumeDraft) => void }) {
+  const [mode, setMode] = useState<"file" | "paste">("file");
+  const [text, setText] = useState("");
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const read = (form: FormData) =>
+    start(async () => {
+      setError(null);
+      const res = await fetch("/api/onboarding/resume-draft", { method: "POST", body: form }).catch(() => null);
+      const data = res ? ((await res.json().catch(() => null)) as DraftResponse | null) : null;
+      if (!data) {
+        setError("Couldn't reach Proofline. Check your connection and try again.");
+        return;
+      }
+      if (!data.ok) {
+        setError(data.error);
+        return;
+      }
+      onDraft(data.draft);
+    });
+
+  if (draft) {
+    return (
+      <div className="mt-6 rounded-xl border border-brand/30 bg-brand-soft/40 px-4 py-3 text-[13.5px] leading-6">
+        <p className="flex items-center gap-2 font-medium">
+          <Check className="size-4 text-brand" strokeWidth={3} aria-hidden="true" />
+          Read your resume: {draft.roles.length} {draft.roles.length === 1 ? "role or project" : "roles and projects"}, {draft.skills.length} skills.
+        </p>
+        <p className="text-muted-foreground">
+          We filled in what we found. Check each screen and fix anything that&apos;s off; nothing is saved until you confirm it.
+          {draft.otherEducation.length > 0 && ` Your resume also lists ${draft.otherEducation.join("; ")}. Add it on My facts after this.`}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 rounded-xl border bg-muted/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[14px] font-medium">Have a resume? Start from it.</p>
+        <button type="button" onClick={() => setMode(mode === "file" ? "paste" : "file")} className="text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
+          {mode === "file" ? "Paste text instead" : "Upload a file instead"}
+        </button>
+      </div>
+      <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">We&apos;ll fill in these screens for you to check. It takes a few seconds.</p>
+      {mode === "file" ? (
+        <label className={cn("mt-3 flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong bg-background px-4 text-[14px] transition-colors hover:bg-muted/50", pending && "pointer-events-none opacity-60")}>
+          {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4 text-muted-foreground" aria-hidden="true" />}
+          {pending ? "Reading your resume" : "Choose a PDF or DOCX"}
+          <input
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            className="sr-only"
+            disabled={pending}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const form = new FormData();
+              form.set("resume", file);
+              read(form);
+            }}
+          />
+        </label>
+      ) : (
+        <div className="mt-3">
+          <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} maxLength={30_000} placeholder="Paste your whole resume" className="bg-background text-[14px] leading-6" aria-label="Your resume" />
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2"
+            disabled={pending || text.trim().length < 80}
+            onClick={() => {
+              const form = new FormData();
+              form.set("text", text);
+              read(form);
+            }}
+          >
+            {pending ? <LoaderCircle className="animate-spin" /> : <FileText data-icon="inline-start" />}
+            Read my resume
+          </Button>
+        </div>
+      )}
+      <ErrorLine error={error} />
     </div>
   );
 }
