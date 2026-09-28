@@ -2,6 +2,7 @@ import type { DrawOp } from "@/lib/resume/layout";
 import { PAGE } from "@/lib/resume/layout";
 import type { Template } from "@/lib/resume/templates";
 import { cn } from "@/lib/utils";
+import { resumeSans, resumeSerif } from "./fonts";
 
 /**
  * The resume page drawn from the exact operations the PDF renderer uses, so what
@@ -43,7 +44,7 @@ export function PagePreview({
       viewBox={`0 0 ${PAGE.width} ${PAGE.height}`}
       role="img"
       aria-label="Resume preview"
-      className={cn("h-auto w-full bg-white", className)}
+      className={cn("h-auto w-full bg-white", resumeSerif.variable, resumeSans.variable, className)}
       style={{ fontFamily }}
     >
       {marks.map((op, i) => (

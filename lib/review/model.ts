@@ -120,7 +120,7 @@ export async function modelReview(userId: string, input: { requirements: string;
       }),
       signal: AbortSignal.timeout(25_000),
     });
-    if (!response.ok) throw new Error(`Review model returned ${response.status}`);
+    if (!response.ok) throw new Error(`Review model ${model} returned ${response.status}: ${(await response.text().catch(() => "")).slice(0, 300)}`);
     const body = (await response.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
     const parsed = Output.parse(JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, "")));
@@ -132,6 +132,8 @@ export async function modelReview(userId: string, input: { requirements: string;
       message: settled.status === "pass" ? "AI review passed." : `AI review found ${settled.issues.length} ${settled.issues.length === 1 ? "line" : "lines"} to fix.`,
     };
   } catch (error) {
+    // Visible in the host's function logs; the file log below is off in production. Never includes the key.
+    console.error("[review.gate] failed:", error instanceof Error ? error.message : String(error));
     await logLlmCall({ purpose: "review.gate", promptVersion: REVIEW_PROMPT_VERSION, model, ms: Date.now() - started, input: prompt, error: error instanceof Error ? error.message : String(error) });
     return { status: "error", issues: [], model, message: "AI review didn't finish. Re-run the review in a minute; your checks above still count." };
   }
