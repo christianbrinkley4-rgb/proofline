@@ -2,6 +2,8 @@
 
 Living document. Updated as slices land.
 
+**Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
+
 ## Direction (from the founder, September 2026)
 
 1. **Every account gets a personal agent** that learns and grows with the user.

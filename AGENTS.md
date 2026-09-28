@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Where to pick up
+
+Read `docs/handoff/CURSOR-NEXT.md` before starting: it has the live beta's state, the owner's test findings, and the next fixes in priority order.
