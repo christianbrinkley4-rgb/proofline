@@ -1,3 +1,4 @@
+import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TailorStarter } from "@/components/resume/tailor-starter";
@@ -7,6 +8,7 @@ import { getJobForUser } from "@/lib/jobs/store";
 export const metadata: Metadata = { title: "Building your resume" };
 
 export default async function NewResumePage({ searchParams }: PageProps<"/app/resumes/new">) {
+  hiddenInBeta("/app/jobs");
   const session = await requireSession();
   const { job: jobId, variant, template } = await searchParams;
   const id = typeof jobId === "string" ? jobId : null;

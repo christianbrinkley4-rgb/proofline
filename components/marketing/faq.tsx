@@ -8,27 +8,31 @@ const FAQS = [
   },
   {
     q: "Where do the jobs come from?",
-    a: "Anywhere you find them. Paste a link from LinkedIn, Indeed, Handshake, or a company site, or paste the description itself when a site needs a sign-in. You can also search employer career sites live from inside Proofline.",
+    a: "Anywhere you find them. Paste a link from LinkedIn, Indeed, Handshake, or a company site, or paste the description itself when a site needs a sign-in.",
+  },
+  {
+    q: "How many resumes do I get per job?",
+    a: "One: the best version for that posting, built from your confirmed facts. If the posting asks for something you haven't shown, Proofline asks you about it instead of guessing.",
   },
   {
     q: "Does it apply for me?",
-    a: "No, and that's on purpose. Every job gets a packet with a cover letter and answers to the form's questions, built from your confirmed facts, plus the link and deadline. You stay in control of what gets sent and when.",
+    a: "No, and that's on purpose. You download the resume, apply on the employer's site, and track it on your board. You stay in control of what gets sent and when.",
   },
   {
     q: "Will my resume get through applicant tracking systems?",
     a: "Resumes export as clean one-page DOCX and PDF files with standard headings and simple formatting, which is what those systems read best. Your fit score also shows which terms from the posting you're missing.",
   },
   {
-    q: "Can I use my own AI?",
-    a: "Yes. Connect Claude, Cursor, or another app that supports MCP from Settings. It gets the same tools and the same rules: anything it learns about you waits for your confirmation, and it can't send or submit anything.",
-  },
-  {
     q: "Who is it for right now?",
-    a: "Built first for students and recent grads, but you don't need to be in college to use it. Add paid work, projects, volunteering, training, or other experience, then search for roles and see where your evidence fits. Live job coverage is strongest in our current fields; you can paste a posting from any field.",
+    a: "A small private beta of invited testers. It's built first for students and recent grads, but paid work, projects, volunteering, and training all count.",
   },
   {
     q: "What does it cost?",
-    a: "Nothing during the beta. If that changes, you'll get at least 30 days' notice and can export everything you've built.",
+    a: "Nothing. It's free during the private beta.",
+  },
+  {
+    q: "What happens to my data?",
+    a: "It's yours. You can download all of it or delete your account and everything in it from Settings at any time.",
   },
 ];
 

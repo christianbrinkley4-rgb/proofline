@@ -295,8 +295,26 @@ export const DEMO_JOBS: DemoJob[] = [
   },
 ];
 
+/** Knockouts are shown on their own and never blended into the score. */
 export function jobFit(job: DemoJob) {
-  return computeFit(job.points, job.gates);
+  return computeFit(job.points);
+}
+
+export type DemoKnockout = { key: string; label: string; status: "ok" | "knockout"; reason: string };
+
+/** The four knockout checks for a sample job. `gates` holds the ones this job fails. */
+export function jobKnockouts(job: DemoJob): DemoKnockout[] {
+  const failing = (word: RegExp) => job.gates.find((gate) => word.test(gate.reason));
+  const grad = failing(/graduat/i);
+  const auth = failing(/sponsor|citizen|authoriz/i);
+  const place = failing(/on-?site|remote|relocat|located/i);
+  const start = failing(/start/i);
+  return [
+    { key: "graduation", label: "Graduation date", status: grad ? "knockout" : "ok", reason: grad?.reason ?? "Your May 2028 graduation fits." },
+    { key: "work_authorization", label: "Work authorization", status: auth ? "knockout" : "ok", reason: auth?.reason ?? "No sponsorship or citizenship limits you'd miss." },
+    { key: "location", label: "Location and work mode", status: place ? "knockout" : "ok", reason: place?.reason ?? `${job.location}, ${job.mode.toLowerCase()}. Inside where you said you can work.` },
+    { key: "start_date", label: "Start date", status: start ? "knockout" : "ok", reason: start?.reason ?? "Starts after you're available." },
+  ];
 }
 
 /** Cross-job gap insight: the professional development engine in one line. */

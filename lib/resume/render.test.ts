@@ -20,7 +20,7 @@ describe("layout", () => {
   it("reports overflow when content runs past one page", async () => {
     const long = structuredClone(sample);
     const exp = long.sections[1];
-    if (exp.kind === "entries") for (const e of exp.entries) for (let i = 0; i < 6; i++) e.bullets.push({ ...e.bullets[0], id: `${e.experienceId}-${i}` });
+    if (exp.kind === "entries") for (const e of exp.entries) for (let i = 0; i < 10; i++) e.bullets.push({ ...e.bullets[0], id: `${e.experienceId}-${i}` });
     expect((await layoutResume(long, TEMPLATES.classic)).overflow).toBe(true);
   });
 

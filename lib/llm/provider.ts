@@ -109,8 +109,10 @@ let cached: LlmProvider | null | undefined;
 
 /** The configured provider, or null in offline mode. */
 export function getLlm(): LlmProvider | null {
-  // The first beta deliberately uses the independent rules-based engine.
-  if (process.env.PROOFLINE_AI_MODE === "rules") return null;
+  // The private beta makes exactly one kind of model call, the resume review
+  // (lib/review/model.ts, keyed by PROOFLINE_REVIEW_KEY). Legacy drafting stays off
+  // unless someone opts in explicitly.
+  if (process.env.PROOFLINE_AI_MODE !== "anthropic") return null;
   if (cached !== undefined) return cached;
   const key = process.env.ANTHROPIC_API_KEY?.trim();
   cached = key ? new AnthropicProvider(key, process.env.LLM_MODEL?.trim() || DEFAULT_MODEL) : null;

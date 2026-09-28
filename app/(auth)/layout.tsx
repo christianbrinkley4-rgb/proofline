@@ -17,9 +17,9 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       <aside aria-hidden="true" className="relative hidden overflow-hidden bg-zinc-950 text-zinc-100 lg:block">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(255_255_255/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.04)_1px,transparent_1px)] bg-[size:48px_48px]" />
         <div className="relative flex h-full flex-col justify-center px-14">
-          <p className="font-mono text-[12px] text-zinc-500">Your agent, day one</p>
+          <p className="font-mono text-[12px] text-zinc-500">Private beta</p>
           <h2 className="mt-3 max-w-md text-[34px] leading-[1.1] font-semibold tracking-[-0.03em]">
-            It learns what you&apos;ve done, then goes and finds where it counts.
+            Every line on your resume traces back to something you confirmed.
           </h2>
           <div className="mt-10 max-w-md space-y-2.5">
             <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
@@ -37,7 +37,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
               </span>
             </div>
             <div className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-[13.5px] text-zinc-400">
-              3 new audit internships near Raleigh since yesterday. Best fit: 87.
+              Review passed. Every number matches a fact you confirmed.
             </div>
           </div>
         </div>

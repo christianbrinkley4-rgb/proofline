@@ -6,9 +6,14 @@ import { Button } from "@/components/ui/button";
 import { FOLLOW_UP_DRAFT, TRACKER_CARDS, TRACKER_STAGES, TRACKER_STATS, type TrackerCard } from "@/lib/demo/sample-data";
 import { cn } from "@/lib/utils";
 
-export function TrackView() {
+export function TrackView({ followUpSent, onMarkSent, onUndo }: { followUpSent: boolean; onMarkSent: () => void; onUndo: () => void }) {
   const [draftOpen, setDraftOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Marking the follow-up sent moves its card out of the "due" state and updates the count.
+  const cards = followUpSent
+    ? TRACKER_CARDS.map((c) => (c.flag === "follow-up" ? { ...c, flag: "sent" as const, sentLabel: "Follow-up sent today" } : c))
+    : TRACKER_CARDS;
+  const stats = TRACKER_STATS.map((s) => (s.label === "Follow-ups due" ? { ...s, value: String(cards.filter((c) => c.flag === "follow-up").length) } : s));
 
   const copyDraft = async () => {
     try {
@@ -24,7 +29,7 @@ export function TrackView() {
   return (
     <div className="relative flex h-full flex-col">
       <dl className="grid grid-cols-2 border-b sm:grid-cols-4">
-        {TRACKER_STATS.map((s, i) => (
+        {stats.map((s, i) => (
           <div
             key={s.label}
             className={cn("px-4 py-3 sm:px-5", i % 2 === 1 && "border-l", i >= 2 && "border-t sm:border-t-0", i === 2 && "sm:border-l")}
@@ -37,18 +42,18 @@ export function TrackView() {
 
       <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto bg-muted/40 p-3 sm:p-4">
         {TRACKER_STAGES.map((stage) => {
-          const cards = TRACKER_CARDS.filter((c) => c.stage === stage);
+          const inStage = cards.filter((c) => c.stage === stage);
           return (
             <section key={stage} className="flex w-[11.5rem] shrink-0 flex-col md:w-auto md:min-w-0 md:flex-1">
               <h4 className="flex items-center justify-between px-1 pb-2 text-[12.5px] font-medium">
                 {stage}
-                <span className="text-[12px] font-normal text-subtle-foreground tabular-nums">{cards.length}</span>
+                <span className="text-[12px] font-normal text-subtle-foreground tabular-nums">{inStage.length}</span>
               </h4>
               <div className="space-y-2">
-                {cards.map((card) => (
+                {inStage.map((card) => (
                   <Card key={card.id} card={card} onOpenDraft={() => setDraftOpen(true)} />
                 ))}
-                {cards.length === 0 && (
+                {inStage.length === 0 && (
                   <div className="rounded-lg border border-dashed border-border-strong p-3 text-[12px] leading-5 text-subtle-foreground">
                     Nothing yet. Two interviews in progress.
                   </div>
@@ -59,18 +64,34 @@ export function TrackView() {
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t px-4 py-2.5 text-[12.5px] sm:px-5">
-        <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
-          <span className="size-1.5 shrink-0 rounded-full bg-pending" />
-          <span className="truncate">
-            Follow up with <span className="font-medium text-foreground">{FOLLOW_UP_DRAFT.company}</span>. It&apos;s been 8
-            days.
-          </span>
-        </span>
-        <Button size="sm" variant="outline" onClick={() => setDraftOpen(true)}>
-          <Mail data-icon="inline-start" />
-          View draft
-        </Button>
+      <div role="status" className="flex items-center justify-between gap-3 border-t px-4 py-2.5 text-[12.5px] sm:px-5">
+        {followUpSent ? (
+          <>
+            <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+              <Check className="size-3.5 shrink-0 text-brand" strokeWidth={3} />
+              <span className="truncate">
+                Follow-up to <span className="font-medium text-foreground">{FOLLOW_UP_DRAFT.company}</span> marked sent. Nothing else is due.
+              </span>
+            </span>
+            <Button size="sm" variant="ghost" onClick={onUndo}>
+              Undo
+            </Button>
+          </>
+        ) : (
+          <>
+            <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+              <span className="size-1.5 shrink-0 rounded-full bg-pending" />
+              <span className="truncate">
+                Follow up with <span className="font-medium text-foreground">{FOLLOW_UP_DRAFT.company}</span>. It&apos;s been 14
+                days.
+              </span>
+            </span>
+            <Button size="sm" variant="outline" onClick={() => setDraftOpen(true)}>
+              <Mail data-icon="inline-start" />
+              View draft
+            </Button>
+          </>
+        )}
       </div>
 
       {draftOpen && (
@@ -108,8 +129,17 @@ export function TrackView() {
                 {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
                 {copied ? "Copied" : "Copy draft"}
               </Button>
-              <Button size="sm" variant="outline" className="flex-1" onClick={() => setDraftOpen(false)}>
-                Mark as sent
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                disabled={followUpSent}
+                onClick={() => {
+                  onMarkSent();
+                  setDraftOpen(false);
+                }}
+              >
+                {followUpSent ? "Marked as sent" : "Mark as sent"}
               </Button>
             </div>
           </div>
@@ -119,7 +149,7 @@ export function TrackView() {
   );
 }
 
-function Card({ card, onOpenDraft }: { card: TrackerCard; onOpenDraft: () => void }) {
+function Card({ card, onOpenDraft }: { card: TrackerCard & { sentLabel?: string }; onOpenDraft: () => void }) {
   const body = (
     <>
       <div className="truncate text-[12.5px] font-medium">{card.company}</div>
@@ -140,7 +170,7 @@ function Card({ card, onOpenDraft }: { card: TrackerCard; onOpenDraft: () => voi
       {card.flag === "sent" && (
         <div className="mt-2 inline-flex items-center gap-1 text-[11px] text-subtle-foreground">
           <Check className="size-3" />
-          Follow-up sent Sep 17
+          {card.sentLabel ?? "Follow-up sent Sep 17"}
         </div>
       )}
     </>

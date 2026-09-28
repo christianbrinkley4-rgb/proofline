@@ -2,20 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  FileText,
-  Goal,
-  House,
-  LogOut,
-  MessageSquareText,
-  Search,
-  Settings,
-  Sparkle,
-  SquareKanban,
-  UserRound,
-  type LucideIcon,
-} from "lucide-react";
+import { ClipboardPaste, House, ListChecks, LogOut, Settings, SquareKanban, type LucideIcon } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
+import { FeedbackButton } from "@/components/feedback/feedback-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,14 +20,13 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean };
 
+// The private beta loop: facts, jobs (paste, score, tailor), tracker.
 const NAV: NavItem[] = [
   { href: "/app", label: "Today", icon: House, mobile: true },
-  { href: "/app/jobs", label: "Jobs", icon: Search, mobile: true },
-  { href: "/app/resumes", label: "Resumes", icon: FileText, mobile: true },
+  { href: "/app/jobs", label: "Jobs", icon: ClipboardPaste, mobile: true },
+  { href: "/app/facts", label: "My facts", icon: ListChecks, mobile: true },
   { href: "/app/tracker", label: "Tracker", icon: SquareKanban, mobile: true },
-  { href: "/app/career", label: "Career", icon: Goal, mobile: true },
-  { href: "/app/profile", label: "Profile", icon: UserRound, mobile: true },
-  { href: "/app/agent", label: "Agent", icon: Sparkle },
+  { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
 export type ShellUser = { name: string; email: string };
@@ -87,19 +75,10 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
             <LogoMark className="size-5" />
             <span className="font-display text-[16px] font-semibold">{site.name}</span>
           </Link>
-          <div className="flex items-center gap-1">
-            <Link
-              href="/app/agent"
-              aria-label="Agent"
-              className="grid size-10 place-items-center rounded-md text-muted-foreground hover:bg-muted"
-            >
-              <Sparkle className="size-[18px]" />
-            </Link>
-            <UserMenu user={user} compact />
-          </div>
+          <UserMenu user={user} compact />
         </header>
 
-        <main className="relative isolate flex-1 pb-20 md:pb-0">
+        <main className="relative isolate flex-1 pb-36 md:pb-24">
           {/* A little morning light at the top of every page. */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 atmosphere-soft opacity-45 [mask-image:linear-gradient(to_bottom,black,transparent)]" />
           {children}
@@ -107,7 +86,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
 
         <nav
           aria-label="App"
-          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
         >
           {NAV.filter((n) => n.mobile).map(({ href, label, icon: Icon }) => (
             <Link
@@ -125,6 +104,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
           ))}
         </nav>
       </div>
+      <FeedbackButton />
       {/* On phones, keep toasts above the bottom tab bar instead of covering it. */}
       <Toaster position="bottom-right" mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom) + 72px)" }} />
     </div>
@@ -134,10 +114,10 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
 function ProfileMeter({ facts }: { facts: ShellFacts }) {
   const total = Math.max(1, facts.confirmed + facts.toReview);
   return (
-    <Link href="/app/profile" className="block rounded-md">
+    <Link href="/app/facts" className="block rounded-md">
       <div className="flex items-center justify-between text-[12px]">
-        <span className="font-medium">Your profile</span>
-        <span className="text-subtle-foreground tabular-nums">{facts.confirmed} facts</span>
+        <span className="font-medium">My facts</span>
+        <span className="text-subtle-foreground tabular-nums">{facts.confirmed} confirmed</span>
       </div>
       <div className="mt-2 flex h-1 overflow-hidden rounded-full bg-muted">
         <span className="bg-brand" style={{ width: `${(facts.confirmed / total) * 100}%` }} />
@@ -147,7 +127,7 @@ function ProfileMeter({ facts }: { facts: ShellFacts }) {
         {facts.toReview > 0 ? (
           <span className="text-pending-ink">{facts.toReview} waiting on you</span>
         ) : facts.confirmed === 0 ? (
-          "Tell your agent about yourself"
+          "Tell us about yourself"
         ) : (
           "All reviewed"
         )}
@@ -189,13 +169,7 @@ function UserMenu({ user, compact, className }: { user: ShellUser; compact?: boo
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => router.push("/app/settings")}>
           <Settings />
-          Settings and connections
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href={`mailto:${site.contactEmail}?subject=${encodeURIComponent("Proofline beta feedback")}&body=${encodeURIComponent("What worked well?\nWhat was confusing or missing?\nWould you use Proofline for a real application?\n")}`}>
-            <MessageSquareText />
-            Share feedback
-          </a>
+          Settings and your data
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={async () => {

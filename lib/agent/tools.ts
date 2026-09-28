@@ -325,7 +325,7 @@ export const TOOLS: AgentTool[] = [
     name: "plan_application",
     title: "Plan the next step",
     description:
-      "The coach's single next step toward the best resume for a job. Without a jobId: where the student is in the loop (your resume, paste a job, three resumes, close the gaps) and the one action to take now. With a jobId: that job's fit, the skills it asks for that the student hasn't shown (as questions to ask them), and whether their tailored resumes need building or rebuilding. Call this before suggesting what to do.",
+      "The coach's single next step toward the best resume for a job. Without a jobId: where the student is in the loop (your facts, paste a job, one tailored resume, close the gaps) and the one action to take now. With a jobId: that job's fit, the skills it asks for that the student hasn't shown (as questions to ask them), and whether their tailored resumes need building or rebuilding. Call this before suggesting what to do.",
     input: { jobId: z.uuid().optional().describe("A job from search results, a pasted link, or the tracker.") },
     readOnly: true,
     run: async (args, ctx) => {

@@ -63,6 +63,12 @@ export function sanitize(text: string): string {
 
 type Segment = { text: string; font: FontKey };
 
+/** "Bookkeeping Assistant | Oakwood Family Dental | Raleigh, NC": only the title is bold. */
+export function entryHeading(e: { title: string | null; org: string; location: string | null }): Segment[] {
+  const rest = [e.title ? e.org : null, e.location].filter((part): part is string => Boolean(part));
+  return [{ text: e.title || e.org, font: "bold" }, ...rest.map((part) => ({ text: `  |  ${part}`, font: "regular" as const }))];
+}
+
 function wrapSegments(segments: Segment[], maxWidth: number, size: number, fonts: Fonts): Segment[][] {
   const words: Segment[] = [];
   for (const seg of segments) {
@@ -161,8 +167,8 @@ export async function layoutResume(doc: ResumeDocument, t: Template): Promise<La
     } else if (section.kind === "entries") {
       for (const e of section.entries) {
         y -= 3;
-        row([{ text: e.org, font: "bold" }], e.dates || null, "regular", t.bodySize);
-        if (e.title || e.location) row([{ text: e.title ?? "", font: "italic" }], e.location, "italic", t.bodySize);
+        // Title bold; company and location regular (a project without a role leads with its name).
+        row(entryHeading(e), e.dates || null, "regular", t.bodySize);
         for (const b of e.bullets) {
           const lines = wrapSegments([{ text: b.text, font: "regular" }], width - 14, t.bodySize, fonts);
           lines.forEach((line, i) => {

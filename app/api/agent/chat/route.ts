@@ -1,3 +1,4 @@
+import { PRIVATE_BETA } from "@/lib/beta";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { appendChat, clearChat, listChat } from "@/lib/agent/chat-store";
@@ -19,6 +20,8 @@ const Body = z.object({ message: z.string().trim().min(1).max(4000) });
 type WireEvent = ChatEvent | { type: "done"; mode: "model" | "offline" } | { type: "error"; message: string };
 
 export async function POST(request: Request) {
+  // Agent chat is off for the private beta.
+  if (PRIVATE_BETA) return new Response("Not found", { status: 404 });
   const session = await getSession();
   if (!session) return new Response("Sign in first.", { status: 401 });
   const parsed = Body.safeParse(await request.json().catch(() => null));

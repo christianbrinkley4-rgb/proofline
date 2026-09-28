@@ -20,7 +20,7 @@ export { storyReady };
  *
  *   1. Your resume: confirmed facts and a general one-page resume
  *   2. Paste a job: a link from anywhere, or the posting itself
- *   3. Three resumes: tailored versions, with the best one picked
+ *   3. Tailored resume: the one best version for the job
  *   4. Close the gaps: answer what the posting asks for, then rebuild
  *
  * Cover letters, tracking, and interview prep follow once the resume is right.
@@ -30,7 +30,7 @@ export { storyReady };
 export const JOURNEY = [
   { id: "resume", label: "Your resume" },
   { id: "job", label: "Paste a job" },
-  { id: "tailor", label: "3 resumes" },
+  { id: "tailor", label: "Tailored resume" },
   { id: "strengthen", label: "Close gaps" },
 ] as const;
 
@@ -139,13 +139,13 @@ function actionFor(id: JourneyStepId | "done", input: JourneyInput): CoachAction
     case "job":
       return {
         title: "Paste a job you want",
-        detail: "A link from LinkedIn, Indeed, Handshake, or any company site, or the description itself. I'll score your fit and build three versions of your resume for it.",
+        detail: "A link from LinkedIn, Indeed, Handshake, or any company site, or the description itself. I'll check the knockouts, score your fit, and build one tailored version of your resume for it.",
         href: PASTE_HREF,
         cta: "Paste a job",
       };
     case "tailor":
       return {
-        title: `Build your three resumes for ${f!.company}`,
+        title: `Build your tailored resume for ${f!.company}`,
         detail: "Experience-first, skills-first, and keyword-matched, each one page and built only from your confirmed facts. I'll tell you which one fits best.",
         href: `/app/jobs/${f!.jobId}?build=1#resumes`,
         cta: "Build them",
@@ -169,7 +169,7 @@ function actionFor(id: JourneyStepId | "done", input: JourneyInput): CoachAction
         title: "Paste your next job",
         detail: f
           ? `Your ${f.company} resume is as strong as your evidence allows. Download it, write the cover letter when you're ready, or line up the next role.`
-          : "Paste a job to get your fit and three tailored resumes.",
+          : "Paste a job to get your fit and one tailored resume.",
         href: PASTE_HREF,
         cta: "Paste a job",
       };

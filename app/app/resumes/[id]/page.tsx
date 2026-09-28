@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { PRIVATE_BETA } from "@/lib/beta";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { PageBody } from "@/components/app/page-header";
 import { PasteJobBox } from "@/components/coach/paste-job-box";
@@ -24,6 +25,8 @@ export default async function ResumePage({ params }: PageProps<"/app/resumes/[id
   const session = await requireSession();
   const stored = await getResume(session.user.id, (await params).id);
   if (!stored) notFound();
+  // In the private beta a resume lives on its job's Tailor tab, with the review gate.
+  if (PRIVATE_BETA) redirect(stored.row.jobId ? `/app/jobs/${stored.row.jobId}?tab=tailor` : "/app/jobs");
   const { layout, checks } = await freshChecks(session.user.id, stored);
   const job = stored.row.jobId ? await db.query.job.findFirst({ where: (j, { eq }) => eq(j.id, stored.row.jobId!) }) : null;
   // Roles with confirmed facts but no resume lines are silently left off; say so and say how to fix it.
@@ -99,7 +102,7 @@ export default async function ResumePage({ params }: PageProps<"/app/resumes/[id
           <p className="text-[12px] font-medium text-brand-ink">Next step</p>
           <h2 id="after-general" className="mt-1 font-display text-[20px] font-semibold">Paste a job you want</h2>
           <p className="mt-1 text-[13.5px] leading-6 text-muted-foreground">
-            I&apos;ll score your fit and build three versions of this resume for it, using only your confirmed facts.
+            I&apos;ll score your fit and build one tailored version of this resume for it, using only your confirmed facts.
           </p>
           <PasteJobBox className="mt-4" compact />
         </section>

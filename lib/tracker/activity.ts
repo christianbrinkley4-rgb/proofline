@@ -57,6 +57,8 @@ export function parseApplicationActivity(events: EventRecord[]): ApplicationActi
       items.push({ ...base, type: "resume", title: "Linked a resume version", detail: null });
     } else if (event.type === "follow_up_recorded" && typeof data.subject === "string" && typeof data.body === "string") {
       items.push({ ...base, type: "followup", title: "Follow-up marked sent", detail: null, subject: data.subject, body: data.body });
+    } else if (event.type === "follow_up_recorded" && data.markedSent === true) {
+      items.push({ ...base, type: "followup", title: "Follow-up marked sent", detail: null });
     } else if (event.type === "application_reply_recorded") {
       const kind = ReplySchema.shape.kind.safeParse(data.kind);
       if (!kind.success || typeof data.summary !== "string") continue;

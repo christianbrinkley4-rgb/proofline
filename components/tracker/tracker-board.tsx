@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, Copy, FileText, GripVertical, LayoutList, PenLine, Plus, Search, SquareKanban, X } from "lucide-react";
+import { ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, Copy, FileText, GripVertical, LayoutList, MailCheck, Plus, Search, SquareKanban, X } from "lucide-react";
 import { toast } from "sonner";
-import { addManualApplicationAction, deleteApplicationAction, moveApplicationAction, recordFollowUpAction, recordReplyAction, snoozeFollowUpAction, updateApplicationAction } from "@/app/app/tracker/actions";
+import { addManualApplicationAction, deleteApplicationAction, markFollowUpSentAction, moveApplicationAction, recordFollowUpAction, recordReplyAction, snoozeFollowUpAction, updateApplicationAction } from "@/app/app/tracker/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { followUpDraft, safeJobUrl, STAGES, STAGE_LABEL, trackerStats, type Application, type Stage } from "@/lib/tracker/model";
+import { followUpDraft, followUpState, safeJobUrl, STAGES, STAGE_LABEL, stagePatch, trackerStats, type Application, type Stage } from "@/lib/tracker/model";
 import { REPLY_LABEL, type ApplicationActivity, type ReplyKind } from "@/lib/tracker/activity";
 import { cn } from "@/lib/utils";
 
@@ -36,14 +36,30 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
   const [over, setOver] = useState<Stage | null>(null);
   const [pending, startTransition] = useTransition();
   const instant = new Date(now);
-  const stats = trackerStats(applications, instant);
+  // Moves and "Mark as sent" show on the board and in the counts at once; the server catches up.
+  const [apps, applyLocal] = useOptimistic(applications, (state: Application[], change: { id: string; stage?: Stage; sent?: boolean }) =>
+    state.map((a) => {
+      if (a.id !== change.id) return a;
+      if (change.sent) return { ...a, followUpSentAt: new Date() };
+      return change.stage ? ({ ...a, ...stagePatch(a, change.stage, new Date()) } as Application) : a;
+    }),
+  );
+  const stats = trackerStats(apps, instant);
   const repliesLogged = new Set(activity.filter((item) => item.type === "reply").map((item) => item.applicationId)).size;
-  const isDue = (a: Application) => a.stage === "applied" && a.nextFollowUpAt != null && new Date(a.nextFollowUpAt) <= instant;
-  const visible = applications.filter((a) => (!dueOnly || isDue(a)) && (a.company + " " + a.title).toLowerCase().includes(query.toLowerCase()));
-  const active = applications.find((a) => a.id === selected);
+  const isDue = (a: Application) => followUpState(a, instant) === "due";
+  const visible = apps.filter((a) => (!dueOnly || isDue(a)) && (a.company + " " + a.title + " " + (a.confirmationRef ?? "")).toLowerCase().includes(query.toLowerCase()));
+  const active = apps.find((a) => a.id === selected);
   function move(id: string, stage: Stage) {
     startTransition(async () => {
+      applyLocal({ id, stage });
       try { await moveApplicationAction(id, stage); toast("Moved to " + STAGE_LABEL[stage] + "."); }
+      catch { toast.error(errorMessage); }
+    });
+  }
+  function markSent(id: string) {
+    startTransition(async () => {
+      applyLocal({ id, sent: true });
+      try { await markFollowUpSentAction(id); toast("Follow-up marked as sent. Nothing was sent by Proofline."); }
       catch { toast.error(errorMessage); }
     });
   }
@@ -66,7 +82,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
       <div className="mt-7 flex flex-wrap items-center gap-2">
         <div className="relative min-w-0 flex-1 max-sm:basis-full sm:max-w-xs">
           <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-subtle-foreground" />
-          <Input aria-label="Search applications" placeholder="Find a role or company..." value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
+          <Input aria-label="Search applications" placeholder="Search role, company, or confirmation #" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
         </div>
         <Button variant={dueOnly ? "secondary" : "outline"} size="sm" aria-pressed={dueOnly} onClick={() => setDueOnly(!dueOnly)}>
           <CalendarClock data-icon="inline-start" /> Follow-ups {stats.dueFollowUps > 0 && <span className="tabular-nums">{stats.dueFollowUps}</span>}
@@ -77,12 +93,12 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
         </div>
         <Button size="sm" onClick={() => setAdding(true)}><Plus data-icon="inline-start" />Add application</Button>
       </div>
-      {applications.length === 0 ? (
+      {apps.length === 0 ? (
         <div className="mt-5 rounded-xl border border-dashed px-6 py-14 text-center">
           <BriefcaseBusiness className="mx-auto size-8 text-subtle-foreground" strokeWidth={1.25} />
-          <h2 className="mt-4 text-xl font-semibold tracking-tight">Your next chapter starts here.</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Save a role from Jobs or add one you found elsewhere. Keep the posting, your resume, notes, and next steps together.</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2"><Button asChild><Link href="/app/jobs">Find matching roles<ArrowUpRight data-icon="inline-end" /></Link></Button><Button variant="outline" onClick={() => setAdding(true)}>Add a role manually</Button></div>
+          <h2 className="mt-4 text-xl font-semibold tracking-tight">Nothing tracked yet.</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Track a job from its page, or add one you applied to elsewhere. Mark it Applied and a follow-up reminder is set for two weeks later.</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2"><Button asChild><Link href="/app/jobs">Paste a job<ArrowUpRight data-icon="inline-end" /></Link></Button><Button variant="outline" onClick={() => setAdding(true)}>Add a role manually</Button></div>
         </div>
       ) : visible.length === 0 ? (
         <div className="mt-5 rounded-xl border p-10 text-center text-sm text-muted-foreground">No applications match these filters.<Button className="ml-2" variant="ghost" onClick={() => { setQuery(""); setDueOnly(false); }}>Clear filters</Button></div>
@@ -94,7 +110,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
               return (
                 <section key={stage} aria-label={STAGE_LABEL[stage]} onDragOver={(e) => { e.preventDefault(); setOver(stage); }} onDragLeave={() => setOver(null)} onDrop={(e) => { e.preventDefault(); if (dragged && !pending) move(dragged, stage); setDragged(null); setOver(null); }} className={cn("min-h-72 rounded-xl border bg-muted/40 p-2 transition-colors", over === stage && "border-border-strong bg-muted")}>
                   <header className="mb-2 flex items-center justify-between px-2 py-2"><h2 className="flex items-center gap-2 text-[13px] font-medium"><span className={cn("size-1.5 rounded-full bg-border-strong", stage === "offer" && "bg-brand", stage === "applied" && "bg-pending")} />{STAGE_LABEL[stage]}</h2><span className="font-mono text-xs text-subtle-foreground">{cards.length}</span></header>
-                  <div className="space-y-2">{cards.map((a) => <ApplicationCard key={a.id} app={a} insight={insights[a.id]} due={isDue(a)} pending={pending} onOpen={() => setSelected(a.id)} onMove={(s) => move(a.id, s)} onDrag={() => setDragged(a.id)} onDragEnd={() => { setDragged(null); setOver(null); }} />)}</div>
+                  <div className="space-y-2">{cards.map((a) => <ApplicationCard key={a.id} app={a} insight={insights[a.id]} due={isDue(a)} pending={pending} onOpen={() => setSelected(a.id)} onMove={(s) => move(a.id, s)} onSent={() => markSent(a.id)} onDrag={() => setDragged(a.id)} onDragEnd={() => { setDragged(null); setOver(null); }} />)}</div>
                   {!cards.length && <p className="px-3 py-8 text-center text-xs text-subtle-foreground">{dragged ? "Drop here" : "No roles here yet"}</p>}
                 </section>
               );
@@ -102,9 +118,9 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
           </div>
         </div>
       ) : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{visible.map((a) => <ApplicationCard key={a.id} app={a} insight={insights[a.id]} due={isDue(a)} pending={pending} onOpen={() => setSelected(a.id)} onMove={(s) => move(a.id, s)} />)}</div>
+        <ApplicationTable apps={visible} instant={instant} pending={pending} onOpen={(id) => setSelected(id)} onMove={move} onSent={markSent} />
       )}
-      <p className="mt-2 text-[12px] leading-5 text-subtle-foreground">Apply on the employer&apos;s site, then mark the role Applied here. Follow-ups are drafts and reminders; you choose what to send.</p>
+      <p className="mt-2 text-[12px] leading-5 text-subtle-foreground">Apply on the employer&apos;s site, then mark the role Applied here. A follow-up is due 14 days after you apply; you choose what to send.</p>
       <Dialog open={adding} onOpenChange={setAdding}><DialogContent><DialogHeader><DialogTitle>Add an application</DialogTitle><DialogDescription>A role from anywhere, all in one place.</DialogDescription></DialogHeader><AddApplication onDone={() => setAdding(false)} /></DialogContent></Dialog>
       <Sheet open={Boolean(active)} onOpenChange={(open) => { if (!open) setSelected(null); }}><SheetContent className="data-[side=right]:w-full sm:data-[side=right]:max-w-lg overflow-y-auto">
         {active && <ApplicationDetail key={active.id} app={active} insight={insights[active.id]} logs={activity.filter((item) => item.applicationId === active.id)} name={name} onClose={() => setSelected(null)} />}
@@ -113,8 +129,65 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
   );
 }
 
-function ApplicationCard({ app, insight, due, pending, onOpen, onMove, onDrag, onDragEnd }: {
-  app: Application; insight?: ApplicationInsight; due: boolean; pending: boolean; onOpen: () => void; onMove: (stage: Stage) => void; onDrag?: () => void; onDragEnd?: () => void;
+function ApplicationTable({ apps, instant, pending, onOpen, onMove, onSent }: {
+  apps: Application[]; instant: Date; pending: boolean; onOpen: (id: string) => void; onMove: (id: string, stage: Stage) => void; onSent: (id: string) => void;
+}) {
+  // Soonest deadline first, then the rest by the date applied.
+  const rows = [...apps].sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999") || (b.appliedAt ? new Date(b.appliedAt).getTime() : 0) - (a.appliedAt ? new Date(a.appliedAt).getTime() : 0));
+  return (
+    <div className="mt-5 overflow-x-auto rounded-xl border bg-background">
+      <table className="w-full min-w-[760px] text-left text-[13px]">
+        <thead className="border-b bg-muted/40 text-[12px] text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2 font-medium">Role</th>
+            <th className="px-3 py-2 font-medium">Status</th>
+            <th className="px-3 py-2 font-medium">Deadline</th>
+            <th className="px-3 py-2 font-medium">Applied</th>
+            <th className="px-3 py-2 font-medium">Follow-up</th>
+            <th className="px-3 py-2 font-medium">Confirmation</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((a) => {
+            const follow = followUpState(a, instant);
+            return (
+              <tr key={a.id}>
+                <td className="px-3 py-2.5">
+                  <button type="button" onClick={() => onOpen(a.id)} className="text-left hover:underline">
+                    <span className="block font-medium">{a.title}</span>
+                    <span className="block text-[12px] text-muted-foreground">{a.company}</span>
+                  </button>
+                </td>
+                <td className="px-3 py-2.5">
+                  <select aria-label={`Stage for ${a.title} at ${a.company}`} className={cn(selectClass, "w-32")} value={a.stage} disabled={pending} onChange={(e) => onMove(a.id, e.target.value as Stage)}>
+                    {STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABEL[stage]}</option>)}
+                  </select>
+                </td>
+                <td className="px-3 py-2.5 tabular-nums">{a.deadline ? date(a.deadline) : <span className="text-subtle-foreground">None</span>}</td>
+                <td className="px-3 py-2.5 tabular-nums">{a.appliedAt ? date(a.appliedAt) : <span className="text-subtle-foreground">Not yet</span>}</td>
+                <td className="px-3 py-2.5">
+                  {follow === "due" ? (
+                    <Button size="xs" variant="outline" disabled={pending} onClick={() => onSent(a.id)}><MailCheck data-icon="inline-start" />Mark as sent</Button>
+                  ) : follow === "sent" ? (
+                    <span className="text-muted-foreground">Sent {date(a.followUpSentAt)}</span>
+                  ) : follow === "upcoming" ? (
+                    <span className="tabular-nums">Due {date(a.nextFollowUpAt)}</span>
+                  ) : (
+                    <span className="text-subtle-foreground">None</span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5">{a.confirmationRef || <span className="text-subtle-foreground">None</span>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ApplicationCard({ app, insight, due, pending, onOpen, onMove, onSent, onDrag, onDragEnd }: {
+  app: Application; insight?: ApplicationInsight; due: boolean; pending: boolean; onOpen: () => void; onMove: (stage: Stage) => void; onSent: () => void; onDrag?: () => void; onDragEnd?: () => void;
 }) {
   return (
     <article draggable={Boolean(onDrag) && !pending} onDragStart={(e) => { e.dataTransfer.setData("text/plain", app.id); e.dataTransfer.effectAllowed = "move"; onDrag?.(); }} onDragEnd={onDragEnd} className="rounded-lg border bg-background p-3 shadow-xs">
@@ -126,11 +199,15 @@ function ApplicationCard({ app, insight, due, pending, onOpen, onMove, onDrag, o
         {onDrag && <GripVertical aria-hidden="true" className="mt-1 size-3.5 shrink-0 text-subtle-foreground" />}
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-        {insight && <span className="rounded border px-1.5 py-0.5">{insight.score}% fit</span>}
+        {insight && <span className="rounded border px-1.5 py-0.5">{insight.score} fit</span>}
         {app.resumeId && <span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-muted-foreground"><FileText className="size-3" />Resume attached</span>}
+        {app.appliedAt && <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Applied {date(app.appliedAt)}</span>}
+        {app.deadline && <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Deadline {date(app.deadline)}</span>}
+        {app.confirmationRef && <span className="max-w-full truncate rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Conf. {app.confirmationRef}</span>}
         {due && <span className="rounded bg-pending-soft px-1.5 py-0.5 text-pending-ink">Follow-up due</span>}
-        {app.deadline && <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Due {date(app.deadline)}</span>}
+        {app.followUpSentAt && <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground"><Check className="size-3" />Follow-up sent {date(app.followUpSentAt)}</span>}
       </div>
+      {due && <Button size="xs" variant="outline" className="mt-2 w-full" disabled={pending} onClick={onSent}><MailCheck data-icon="inline-start" />Mark as sent</Button>}
       <label className="mt-3 block"><span className="sr-only">Stage for {app.title} at {app.company}</span><select className={selectClass} value={app.stage} disabled={pending} onChange={(e) => onMove(e.target.value as Stage)}>{STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABEL[stage]}</option>)}</select></label>
     </article>
   );
@@ -158,6 +235,7 @@ function AddApplication({ onDone }: { onDone: () => void }) {
 function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Application; insight?: ApplicationInsight; logs: ApplicationActivity[]; name: string; onClose: () => void }) {
   const [notes, setNotes] = useState(app.notes ?? "");
   const [deadline, setDeadline] = useState(app.deadline ?? "");
+  const [confirmationRef, setConfirmationRef] = useState(app.confirmationRef ?? "");
   const [contact, setContact] = useState(app.contacts?.[0]?.name ?? "");
   const [email, setEmail] = useState(app.contacts?.[0]?.email ?? "");
   const initialDraft = followUpDraft(app, name);
@@ -179,13 +257,12 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
     <div className="space-y-6 px-4 pb-8">
       <div className="flex flex-wrap gap-2">
         {url && <Button asChild size="sm"><a href={url} target="_blank" rel="noreferrer">Open posting<ArrowUpRight data-icon="inline-end" /></a></Button>}
-        {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId}>Job & fit report</Link></Button>}
-        {app.resumeId && <Button asChild size="sm" variant="outline"><Link href={"/app/resumes/" + app.resumeId}><FileText data-icon="inline-start" />Linked resume</Link></Button>}
-        {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "/packet"}><PenLine data-icon="inline-start" />Cover letter & interview prep</Link></Button>}
+        {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId}>Fit score</Link></Button>}
+        {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "?tab=tailor"}><FileText data-icon="inline-start" />{app.resumeId ? "Linked resume" : "Tailor a resume"}</Link></Button>}
       </div>
       {!app.jobId && <div className="rounded-lg border border-dashed p-3 text-[12.5px] leading-5 text-muted-foreground">
-        Paste this posting to get a fit score, tailored resumes, a cover letter, and interview prep for it.
-        <Button asChild size="sm" variant="outline" className="mt-2 flex w-fit"><Link href={`/app/jobs?paste=1&company=${encodeURIComponent(app.company)}&title=${encodeURIComponent(app.title)}`}>Add the posting</Link></Button>
+        Paste this posting on Jobs to get the knockouts, a fit score, and a tailored resume for it. It links up with this entry automatically.
+        <Button asChild size="sm" variant="outline" className="mt-2 flex w-fit"><Link href="/app/jobs">Paste the posting</Link></Button>
       </div>}
       {insight && <section className="rounded-xl border p-4">
         <div className="flex items-baseline justify-between"><h3 className="text-sm font-semibold">Your plan for this role</h3><span className="text-sm font-medium tabular-nums">{insight.score}/100 fit</span></div>
@@ -196,12 +273,14 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
         <ul className="mt-2 space-y-2 text-[13px] text-muted-foreground">{(insight.gaps.length ? insight.gaps : ["No obvious gaps in the available posting. Check the employer's full requirements."]).map((s) => <li key={s}>{s}</li>)}</ul>
         <h4 className="mt-4 text-xs font-medium">Make your next move count</h4>
         <ol className="mt-2 list-decimal space-y-2 pl-4 text-[13px] leading-5">{insight.nextSteps.map((s) => <li key={s}>{s}</li>)}</ol>
-        {app.jobId && <Button asChild size="sm" variant="outline" className="mt-4"><Link href={"/app/resumes/compare?job=" + app.jobId}>{insight.versions ? "Compare " + insight.versions + " resume versions" : "Create tailored resume versions"}</Link></Button>}
       </section>}
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => updateApplicationAction(app.id, { notes, deadline: deadline || null, contacts: contact.trim() ? [{ name: contact.trim(), email }, ...(app.contacts ?? []).slice(1)] : [] }), "Application details saved."); }}>
-        <h3 className="text-sm font-semibold">Your notes & next deadline</h3>
+      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => updateApplicationAction(app.id, { notes, deadline: deadline || null, confirmationRef: confirmationRef.trim() || null, contacts: contact.trim() ? [{ name: contact.trim(), email }, ...(app.contacts ?? []).slice(1)] : [] }), "Application details saved."); }}>
+        <h3 className="text-sm font-semibold">Details</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block space-y-1.5 text-xs"><span>Deadline</span><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
+          <label className="block space-y-1.5 text-xs"><span>Confirmation reference</span><Input value={confirmationRef} onChange={(e) => setConfirmationRef(e.target.value)} maxLength={160} placeholder="From their confirmation email" /></label>
+        </div>
         <label className="block space-y-1.5 text-xs"><span>Notes</span><Textarea aria-label="Application notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={5000} rows={4} placeholder="Interview prep, conversations, what to do next..." /></label>
-        <label className="block space-y-1.5 text-xs"><span>Next deadline</span><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
         <div className="grid grid-cols-2 gap-2">
           <label className="space-y-1.5 text-xs"><span>Contact name</span><Input value={contact} maxLength={160} onChange={(e) => setContact(e.target.value)} /></label>
           <label className="space-y-1.5 text-xs"><span>Contact email</span><Input type="email" value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} /></label>
@@ -215,7 +294,7 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
         <label className="block space-y-1 text-xs"><span>Message</span><Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={9} maxLength={5000} /></label>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText("Subject: " + subject + "\n\n" + body); toast("Draft copied."); } catch { toast.error("Select the draft and copy it manually."); } }}><Copy data-icon="inline-start" />Copy draft</Button>
-          <Button size="sm" disabled={pending || !body.trim() || !subject.trim()} onClick={() => run(() => recordFollowUpAction(app.id, { subject, body }), "Follow-up recorded. Nothing was sent by Proofline.")}>I sent this</Button>
+          <Button size="sm" disabled={pending || !body.trim() || !subject.trim() || Boolean(app.followUpSentAt)} onClick={() => run(() => recordFollowUpAction(app.id, { subject, body }), "Follow-up marked as sent. Nothing was sent by Proofline.")}>{app.followUpSentAt ? `Marked as sent ${date(app.followUpSentAt)}` : "Mark as sent"}</Button>
           {app.stage === "applied" && <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => snoozeFollowUpAction(app.id, 3), "Reminder moved to three days from now.")}>Remind me in 3 days</Button>}
         </div>
       </section>}

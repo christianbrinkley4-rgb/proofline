@@ -126,7 +126,7 @@ export async function moveApplication(userId: string, id: string, stage: Stage, 
     });
   });
 }
-export async function updateApplication(userId: string, id: string, patch: Partial<Pick<Application, "notes" | "contacts" | "nextFollowUpAt" | "deadline">>) {
+export async function updateApplication(userId: string, id: string, patch: Partial<Pick<Application, "notes" | "contacts" | "nextFollowUpAt" | "deadline" | "confirmationRef" | "followUpSentAt">>) {
   const app = await getApplication(userId, id);
   if (!app) throw new Error("Application not found");
   await db.update(schema.application).set({ ...patch, updatedAt: new Date() }).where(and(eq(schema.application.id, id), eq(schema.application.userId, userId)));

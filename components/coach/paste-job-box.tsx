@@ -14,9 +14,20 @@ const MIN_TEXT = 200;
 /**
  * The front door: paste a link or a whole posting. A link is fetched when the site
  * allows it; otherwise the student pastes the text and confirms the title and
- * company we read from it. Either way they land on the job with its resumes building.
+ * company we read from it. Either way they land on the job's knockouts and fit score.
  */
-export function PasteJobBox({ className, autoFocus = false, compact = false }: { className?: string; autoFocus?: boolean; compact?: boolean }) {
+export function PasteJobBox({
+  className,
+  autoFocus = false,
+  compact = false,
+  onIngested,
+}: {
+  className?: string;
+  autoFocus?: boolean;
+  compact?: boolean;
+  /** Runs instead of opening the job, e.g. to finish onboarding first. */
+  onIngested?: (jobId: string) => Promise<void> | void;
+}) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [link, setLink] = useState("");
@@ -34,7 +45,7 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
   const company = edits.company ?? guess?.company ?? "";
   const location = edits.location ?? guess?.location ?? "";
 
-  const open = (jobId: string) => router.push(`/app/jobs/${jobId}?build=1#resumes`);
+  const open = async (jobId: string) => (onIngested ? onIngested(jobId) : router.push(`/app/jobs/${jobId}`));
 
   const submit = () => {
     setError("");
@@ -142,11 +153,11 @@ export function PasteJobBox({ className, autoFocus = false, compact = false }: {
                     `Keep going: paste the whole posting, duties and requirements included (${trimmed.length}/${MIN_TEXT} characters).`
                   : link
                   ? `Saving the link too: ${new URL(link).hostname}`
-                  : "You get a fit score, three tailored resumes, and what would make them stronger."}
+                  : "You get the knockouts, a fit score with the math shown, and one tailored resume."}
           </p>
           <Button type="submit" size="lg" disabled={pending || (!asLink && !asText)}>
             {pending ? <LoaderCircle className="animate-spin" /> : null}
-            Get my fit and resumes
+            Check my fit
             {!pending && <ArrowRight data-icon="inline-end" />}
           </Button>
         </div>

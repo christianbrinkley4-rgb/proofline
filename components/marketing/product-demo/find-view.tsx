@@ -1,5 +1,5 @@
-import { Bell, ChevronRight, CornerDownLeft, Search, TriangleAlert } from "lucide-react";
-import { DEMO_INTENT, DEMO_JOBS, DEMO_QUERY, DEMO_SEARCH_META, jobFit } from "@/lib/demo/sample-data";
+import { ChevronRight, ClipboardPaste, CornerDownLeft, TriangleAlert } from "lucide-react";
+import { DEMO_JOBS, jobFit, jobKnockouts } from "@/lib/demo/sample-data";
 import { CompanyAvatar, ScoreMeter } from "./parts";
 
 export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
@@ -7,28 +7,21 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
     <div className="flex h-full flex-col">
       <div className="border-b p-4 sm:p-5">
         <div className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2.5 shadow-xs">
-          <Search className="size-4 shrink-0 text-subtle-foreground" />
-          <span className="min-w-0 flex-1 text-[13.5px] sm:truncate">{DEMO_QUERY}</span>
+          <ClipboardPaste className="size-4 shrink-0 text-subtle-foreground" />
+          <span className="min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">Paste a job link or the full posting</span>
           <kbd className="hidden items-center gap-1 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-subtle-foreground sm:inline-flex">
             <CornerDownLeft className="size-3" />
             Enter
           </kbd>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-[12px] text-subtle-foreground">Understood as</span>
-          {DEMO_INTENT.map((chip) => (
-            <span key={chip.label} className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[12px] leading-4">
-              <span className="text-subtle-foreground">{chip.label}</span>
-              <span className="font-medium">{chip.value}</span>
-            </span>
-          ))}
-        </div>
+        <p className="mt-3 text-[12px] leading-5 text-subtle-foreground">
+          A link from LinkedIn, Indeed, Handshake, or a company site, or the posting text itself.
+        </p>
       </div>
 
       <div className="flex items-center justify-between gap-4 border-b px-4 py-2.5 text-[12px] text-subtle-foreground sm:px-5">
         <span>
-          <span className="font-medium text-foreground">{DEMO_SEARCH_META.matches} matches</span> from{" "}
-          {DEMO_SEARCH_META.boards} company job boards · {DEMO_SEARCH_META.duplicatesMerged} duplicates merged
+          <span className="font-medium text-foreground">{DEMO_JOBS.length} saved roles</span>, each checked for knockouts, then scored
         </span>
         <span className="hidden shrink-0 lg:inline">Sorted by best fit</span>
       </div>
@@ -36,6 +29,7 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
       <ul className="divide-y md:overflow-y-auto scroll-thin">
         {DEMO_JOBS.map((job) => {
           const fit = jobFit(job);
+          const knockout = jobKnockouts(job).find((k) => k.status === "knockout");
           return (
             <li key={job.id}>
               <button
@@ -50,12 +44,12 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
                     {job.company} · {job.location} · {job.mode}
                   </span>
                   <span className="mt-1 block truncate text-[12px] leading-4 text-subtle-foreground">
-                    {job.pay ?? "Pay not listed"} · Due {job.deadline} · via {job.source} · {job.posted}
+                    {job.pay ?? "Pay not listed"} · Due {job.deadline} · pasted from {job.source}
                   </span>
-                  {fit.cappedBy && (
+                  {knockout && (
                     <span className="mt-1.5 flex items-start gap-1.5 text-[12px] text-pending-ink">
                       <TriangleAlert className="mt-px size-3.5 shrink-0" />
-                      <span className="line-clamp-2 sm:truncate">Capped at {fit.score}: {fit.cappedBy.reason}</span>
+                      <span className="line-clamp-2 sm:truncate">Knockout: {knockout.reason}</span>
                     </span>
                   )}
                 </span>
@@ -67,15 +61,9 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
         })}
       </ul>
 
-      <div className="mt-auto flex items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2.5 text-[12px] text-muted-foreground sm:px-5">
-        <span className="flex items-center gap-2">
-          <Bell className="size-3.5 shrink-0" />
-          Saved. You&apos;ll get an alert when new matches post.
-        </span>
-        <span className="flex shrink-0 items-center gap-1.5 font-medium text-foreground">
-          <span className="size-1.5 rounded-full bg-brand" />
-          Alerts on
-        </span>
+      <div className="mt-auto flex items-center gap-2 border-t bg-muted/40 px-4 py-2.5 text-[12px] text-muted-foreground sm:px-5">
+        <span className="size-1.5 shrink-0 rounded-full bg-brand" />
+        Knockouts show first. A role you can&apos;t take never gets a tailored resume.
       </div>
     </div>
   );

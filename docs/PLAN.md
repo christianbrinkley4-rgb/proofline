@@ -12,6 +12,22 @@ Living document. Updated as slices land.
 
 6. **Students first, everyone welcome.** Students and recent graduates are the primary audience. School, degree, and internship history are optional; paid work, caregiving, training, projects, and volunteering can support a profile. The core path is: who you are and what you have done, what you want next, suggested roles, fit and gaps, then concrete steps to improve. A fit score is not a hiring probability.
 
+## September 27 private beta (2 to 5 testers)
+
+Proofline is scoped down to one loop for invited testers (`lib/beta.ts` hides the rest; the code stays):
+
+- **Access**: `BETA_EMAILS` allowlist enforced twice in `lib/auth.ts` (request hook and user-create hook). Password reset works; without an email provider the link is stored in `inbox_message` for the owner to forward.
+- **Onboarding** (`components/onboarding/beta-flow.tsx`): tell us about yourself (education, experience with 2 to 4 lines, projects, skills and licenses, where and when you can work), paste your first job, land on its fit score. Education and one experience are required; everything else can be skipped.
+- **Fact base** (`lib/facts/base.ts`, `/app/facts`): every claim is a confirmed fact in the user's exact words. Edit re-confirms; delete takes it off every resume. The `facts` view gives the spec's columns.
+- **Knockouts** (`lib/fit/knockouts.ts`): graduation window, work authorization, location and work mode, start date. Shown before the score, never blended into it; a knockout turns tailoring off.
+- **Score**: the same six weights, each row with its math and a reason per item; plus what the role rewards and one pattern across saved roles (`lib/fit/insights.ts`). Keywords (`lib/jobs/keywords.ts`) are stored per job.
+- **Tailor** (`lib/resume/tailor-best.ts`): one best resume per job, skills in the posting's wording only when it names the same thing. Gap questions become facts only on explicit confirm.
+- **Review gate** (`lib/review/*`): 16-check linter (blocking: one page, em dashes, unconfirmed claims, banned content), then one Gemini Flash-Lite call keyed by `PROOFLINE_REVIEW_KEY`, capped at 50 calls per user per day. Export requires both, fingerprinted to the exact resume and facts.
+- **Tracker**: 14-day follow-up, Mark as sent, confirmation reference, deadline column, search, optimistic moves.
+- **Owner tools**: feedback button and contact form store to `inbox_message`; funnel events in `event_log`. Runbook: `docs/handoff/PRIVATE-BETA.md`.
+
+Verified locally in the browser end to end; the model review was verified against a local stub of the Gemini endpoint, not the real model.
+
 ## September 26 readiness
 
 The resume and cover-letter core is locally testable, but the hosted beta is intentionally on hold. After Claude Code's second UI pass and backend integration, the checkout passed 554 tests across 61 files, typecheck, lint without errors, and a production build. The deterministic 200-profile/800-posting evaluation also passes after the latest matching fixes. These checks cover consistency and claim support; they do not establish that a document wins interviews.

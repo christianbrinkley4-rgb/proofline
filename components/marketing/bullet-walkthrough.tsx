@@ -1,83 +1,65 @@
 import { ArrowRight, Check, CircleAlert } from "lucide-react";
 import { Section, SectionHeading } from "./section";
 
-const QUESTIONS = [
-  { q: "How many vendor accounts do you reconcile each month?", a: "About 40" },
-  { q: "How much were the double payments, roughly?", a: "$3,200" },
-  { q: "Over what stretch of time?", a: "My first 3 months" },
+const CHECKED = [
+  { token: "40+", fact: "your fact about vendor accounts" },
+  { token: "$3,200", fact: "your fact about duplicate payments" },
 ];
-
-const PICKED_UP = ["Bookkeeping, part-time", "Dental office", "Vendor payments", "Reconciliations", "QuickBooks"];
-
-const FACTS = ["40+ accounts a month", "$3,200 in duplicates", "First quarter", "QuickBooks Online"];
 
 export function BulletWalkthrough() {
   return (
     <Section id="proof">
       <SectionHeading eyebrow="Proof, not guesses" title="Every line on your resume has proof behind it.">
-        Recruiters ask about the numbers on your resume. Proofline only writes what you&apos;ve confirmed, so you&apos;ll
-        always have the answer.
+        Recruiters ask about the numbers on your resume. Proofline only uses what you&apos;ve confirmed, in your words, so
+        you&apos;ll always have the answer.
       </SectionHeading>
 
       <div className="mt-12 grid gap-4 lg:grid-cols-[1fr_auto_1.15fr_auto_1.15fr] lg:items-stretch">
-        <Step n="01" title="You say what you did">
-          <div className="rounded-2xl rounded-tl-md bg-background px-4 py-3 text-[14px] leading-6 shadow-xs ring-1 ring-border">
-            I do the books part-time for a dental office. Mostly paying vendors in QuickBooks and matching statements.
-            Found some double payments once.
+        <Step n="01" title="You write what you did">
+          <div className="rounded-lg border bg-background px-4 py-3 text-[14px] leading-6 shadow-xs">
+            Reconciled vendor accounts in QuickBooks and caught duplicate payments
           </div>
-          <div className="mt-5 text-[12px] text-subtle-foreground">What it picked up</div>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {PICKED_UP.map((item) => (
-              <li key={item} className="rounded-md border bg-background px-2 py-0.5 text-[12px] leading-5">
-                {item}
-              </li>
-            ))}
-            <li className="inline-flex items-center gap-1 rounded-md border border-pending/50 bg-pending-soft px-1.5 py-0.5 text-[12px] leading-5 text-pending-ink">
-              <CircleAlert className="size-3" strokeWidth={2.5} aria-hidden="true" />
-              Double payments, no numbers yet
-            </li>
-          </ul>
+          <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-brand-ink">
+            <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />
+            Saved as a fact, exactly as you wrote it
+          </p>
         </Step>
 
         <Connector />
 
-        <Step n="02" title="It asks for the details">
-          <ul className="space-y-2">
-            {QUESTIONS.map(({ q, a }) => (
-              <li key={q} className="rounded-lg border bg-background p-3">
-                <div className="text-[13px] text-muted-foreground">{q}</div>
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <span className="text-[14px] font-medium">{a}</span>
-                  <Check className="size-3.5 text-brand" strokeWidth={3} aria-label="Confirmed" />
-                </div>
-              </li>
-            ))}
-          </ul>
+        <Step n="02" title="The review asks for the number">
+          <div className="rounded-lg border border-pending/50 bg-pending-soft p-3 text-[13px] leading-5 text-pending-ink">
+            <p className="flex items-center gap-1.5 font-medium">
+              <CircleAlert className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+              No number in this bullet
+            </p>
+            <p className="mt-1">How many accounts? How much did the duplicates add up to?</p>
+          </div>
+          <div className="mt-3 rounded-lg border bg-background p-3 text-[13.5px] leading-6">
+            Reconciled 40+ vendor accounts a month in QuickBooks, catching $3,200 in duplicate payments
+          </div>
+          <p className="mt-2 text-[12.5px] text-muted-foreground">You edit your fact. Editing re-confirms it.</p>
         </Step>
 
         <Connector />
 
-        <Step n="03" title="It writes the bullet">
+        <Step n="03" title="Every number is checked">
           <div className="rounded-lg border bg-background p-4 shadow-xs">
             <p className="text-[15px] leading-7">
-              <span className="font-semibold">Reconciled</span> 40+ vendor accounts each month in QuickBooks Online,
-              catching $3,200 in duplicate payments within the first quarter.
+              <span className="font-semibold">Reconciled</span> 40+ vendor accounts a month in QuickBooks, catching $3,200 in
+              duplicate payments.
             </p>
-            <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-3">
-              {FACTS.map((f) => (
-                <span
-                  key={f}
-                  className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[12px] leading-5 text-muted-foreground"
-                >
+            <ul className="mt-3 space-y-1 border-t pt-3">
+              {CHECKED.map((c) => (
+                <li key={c.token} className="flex items-center gap-1.5 text-[12px] leading-5 text-muted-foreground">
                   <Check className="size-3 text-brand" strokeWidth={2.5} aria-hidden="true" />
-                  {f}
-                </span>
+                  <span className="font-medium text-foreground">{c.token}</span> matches {c.fact}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
           <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
-            Strong verb first, then the result, then how. Anything you haven&apos;t confirmed stays flagged and never ends
-            up in an export.
+            A number you never confirmed blocks the download, with the line quoted so you know exactly what to fix.
           </p>
         </Step>
       </div>

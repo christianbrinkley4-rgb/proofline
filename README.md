@@ -16,9 +16,9 @@ PGlite is the default local database, stored in `.data/pglite`. It is single-pro
 
 In development, `/api/dev/login` signs in a test student and `/api/dev/seed` gives them a complete sample profile.
 
-## Small beta sharing
+## Private beta
 
-The signup page is open to anyone with the link. The in-app account menu has a **Share feedback** email link. To collect useful feedback, ask testers to try a real or sample posting and tell you what worked, what was confusing, and whether they would use the result.
+Sign-up is limited to the addresses in `BETA_EMAILS`. The private beta ships one loop: tell us about yourself, paste a job, knockouts and a fit score, one tailored resume behind a review gate, download, track. Other surfaces are hidden by `PRIVATE_BETA` in `lib/beta.ts`. Testers send feedback with the always-visible button; it lands in the `inbox_message` table. See the [private beta runbook](docs/handoff/PRIVATE-BETA.md) for env vars and the SQL to read feedback and the event funnel.
 
 Before sharing a hosted link, configure a persistent Postgres `DATABASE_URL`, a unique `BETTER_AUTH_SECRET`, and both `BETTER_AUTH_URL` and `NEXT_PUBLIC_SITE_URL` set to the final HTTPS origin. Set `ANTHROPIC_API_KEY` only if the hosted beta should use paid AI drafting; rules-based features work without it. Vercel deployments fail fast if the database URL or authentication secret is missing. Keep `.env.local` and hosted secrets out of Git. See [beta sharing handoff](docs/handoff/BETA-SHARING.md).
 
@@ -33,7 +33,7 @@ Before sharing a hosted link, configure a persistent Postgres `DATABASE_URL`, a 
 
 - Profile: import a resume (PDF or DOCX), add free-form life notes or talk through an experience, correct experiences, review proposed facts, and build source-backed accomplishment bullets.
 - Jobs: search live sources and inspect fit, strengths, gaps, and eligibility limits.
-- Resumes: create experience-first, skills-first, and keyword-match versions for a posting; preview and export one-page PDF/DOCX files. Stored versions preserve what was prepared for a job.
+- Resumes: one best version per posting (the engine compares its layouts internally and keeps the strongest); preview and export one-page PDF/DOCX files after the review gate passes. Stored versions preserve what was prepared for a job.
 - Packet: for each job, a grounded cover letter (PDF/DOCX, in the resume's template) and interview prep built on the student's own stories.
 - Tracker: save jobs or add opportunities manually, move stages, keep notes and contacts, see improvement steps, set deadlines, draft follow-ups, and record messages after sending them.
 - Agent: see the next actions based on the profile and applications.

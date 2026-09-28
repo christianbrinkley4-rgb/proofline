@@ -10,7 +10,7 @@ import {
 } from "docx";
 import { PDFDocument, rgb } from "pdf-lib";
 import type { ResumeDocument } from "./document";
-import { layoutResume, loadFonts, PAGE, sanitize, type LayoutResult } from "./layout";
+import { entryHeading, layoutResume, loadFonts, PAGE, sanitize, type LayoutResult } from "./layout";
 import type { Template } from "./templates";
 
 /**
@@ -87,8 +87,7 @@ export async function renderDocx(doc: ResumeDocument, t: Template, _layout?: Lay
       }
     } else if (section.kind === "entries") {
       for (const e of section.entries) {
-        children.push(row([run(e.org, { bold: true })], e.dates || null, false, 60));
-        if (e.title || e.location) children.push(row([run(e.title ?? "", { italics: true })], e.location, true));
+        children.push(row(entryHeading(e).map((seg) => run(seg.text, { bold: seg.font === "bold" })), e.dates || null, false, 60));
         for (const b of e.bullets) {
           children.push(new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { after: 0, line }, children: [run(b.text)] }));
         }

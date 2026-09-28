@@ -29,15 +29,14 @@ export default async function TrackerPage({ searchParams }: { searchParams: Prom
     if (!job) continue;
     const fit = scoreFit({ ...job, requirements: requirementsOf(job) }, candidate);
     const steps: string[] = [];
-    if (fit.cappedBy) steps.push("Check this requirement before investing more time: " + fit.cappedBy.reason);
     if (fit.details.requiredSkills.missing.length) steps.push("If you have used " + fit.details.requiredSkills.missing.slice(0, 2).join(" or ") + ", add a specific example to your profile. Otherwise, build a small project to gain that experience.");
     if (fit.strengths.length) steps.push("Prepare a short example that demonstrates: " + fit.strengths[0] + ".");
-    steps.push(app.resumeId ? "Review the attached resume against the full posting before your next conversation." : "Compare the tailored resume versions and attach the one that best supports this role.");
+    steps.push(app.resumeId ? "Review the attached resume against the full posting before your next conversation." : "Build the tailored resume on the job's Tailor tab and track it with that version.");
     if (app.stage === "interview") steps.push("Prepare two stories about your work: the problem, your own contribution, and the result.");
     insights[app.id] = { score: fit.score, strengths: fit.strengths, gaps: fit.gaps, nextSteps: steps.slice(0, 4), versions: resumes.filter((r) => r.jobId === job.id).length };
   }
   const activity = parseApplicationActivity(events);
   const initialAppId = typeof openApp === "string" && applications.some((a) => a.id === openApp) ? openApp : null;
-  return <PageBody className="max-w-[1600px]"><PageHeader title="Your next chapter." description="Every opportunity, the evidence behind it, and your next move. All in one place." /><TrackerBoard applications={applications} insights={insights} activity={activity} name={session.user.name} now={new Date().toISOString()} initialAppId={initialAppId} /></PageBody>;
+  return <PageBody className="max-w-[1600px]"><PageHeader title="Tracker" description="Every application on one board. Mark a role Applied and a follow-up comes due 14 days later." /><TrackerBoard applications={applications} insights={insights} activity={activity} name={session.user.name} now={new Date().toISOString()} initialAppId={initialAppId} /></PageBody>;
 }
 

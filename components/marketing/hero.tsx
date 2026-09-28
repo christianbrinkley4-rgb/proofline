@@ -13,7 +13,7 @@ export function Hero() {
           <span className="grid size-4 place-items-center rounded-full bg-brand text-background">
             <Check className="size-2.5" strokeWidth={3.5} />
           </span>
-          Free during beta. Built first for students.
+          Free during the private beta. Built first for students.
         </p>
 
         <h1 className="mx-auto mt-7 max-w-[15ch] font-display text-[46px] leading-[0.98] font-semibold text-balance motion-safe:animate-rise motion-safe:[animation-delay:80ms] sm:text-[68px] lg:text-[84px]">
@@ -21,14 +21,14 @@ export function Hero() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-[38rem] text-[17px] leading-7 text-pretty text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:160ms] sm:text-[19px] sm:leading-8">
-          {site.name} builds your resume from what you&apos;ve actually done. Paste any job and get your fit, three tailored
-          one-page versions, and exactly what would make them stronger.
+          {site.name} builds your resume from what you&apos;ve actually done. Paste any job and get your fit, one tailored
+          one-page resume, and exactly what would make it stronger.
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 motion-safe:animate-rise motion-safe:[animation-delay:240ms] sm:flex-row">
           <Button size="xl" asChild className="w-full px-6 sm:w-auto">
             <Link href={site.routes.signUp}>
-              Start free
+              Get started
               <ArrowRight data-icon="inline-end" />
             </Link>
           </Button>
@@ -36,7 +36,7 @@ export function Hero() {
             <a href="#how">See how it works</a>
           </Button>
         </div>
-        <p className="mt-4 text-[13px] text-subtle-foreground motion-safe:animate-rise motion-safe:[animation-delay:240ms]">No credit card. Your data stays yours.</p>
+        <p className="mt-4 text-[13px] text-subtle-foreground motion-safe:animate-rise motion-safe:[animation-delay:240ms]">Invited testers only for now. Your data stays yours.</p>
       </div>
 
       {/* The product is the hero's visual: full width, on the same light. */}
@@ -47,7 +47,7 @@ export function Hero() {
             <ProductDemo />
           </div>
         </div>
-        <p className="mt-4 text-center text-[12.5px] text-subtle-foreground">Sample student, made-up companies. Everything above is clickable.</p>
+        <p className="mt-4 text-center text-[12.5px] text-subtle-foreground">Sample data: a fictional student and made-up companies. Everything above is clickable.</p>
       </div>
     </section>
   );

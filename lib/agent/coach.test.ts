@@ -20,7 +20,7 @@ describe("buildJourney", () => {
   it("starts a brand-new student on their story, one action, four steps", () => {
     const j = buildJourney(base);
     expect(j.current).toBe("resume");
-    expect(j.steps.map((s) => s.label)).toEqual(["Your resume", "Paste a job", "3 resumes", "Close gaps"]);
+    expect(j.steps.map((s) => s.label)).toEqual(["Your resume", "Paste a job", "Tailored resume", "Close gaps"]);
     expect(j.action.href).toBe("/app/profile#start");
   });
 

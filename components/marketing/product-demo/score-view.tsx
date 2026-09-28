@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Lightbulb, Minus, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DEMO_TOP_GAP, jobFit, type DemoJob } from "@/lib/demo/sample-data";
+import { DEMO_TOP_GAP, jobFit, jobKnockouts, type DemoJob } from "@/lib/demo/sample-data";
 import { FIT_BAND_LABEL, FIT_COMPONENTS, fitBand, type FitComponentKey } from "@/lib/fit/rubric";
 import { cn } from "@/lib/utils";
 import { MatchChip } from "./parts";
@@ -20,6 +20,8 @@ export function ScoreView({
   const [open, setOpen] = useState<FitComponentKey | null>("requiredSkills");
   const fit = jobFit(job);
   const band = fitBand(fit.score);
+  const knockouts = jobKnockouts(job);
+  const knockout = knockouts.find((k) => k.status === "knockout");
 
   return (
     <div className="flex h-full flex-col">
@@ -31,7 +33,7 @@ export function ScoreView({
             className="-ml-1 inline-flex items-center gap-1 rounded px-1 text-[12px] text-subtle-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-3.5" />
-            All results
+            All saved roles
           </button>
           <h3 className="mt-1 text-[16px] font-semibold tracking-tight">{job.title}</h3>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
@@ -50,14 +52,26 @@ export function ScoreView({
         </div>
       </div>
 
-      {fit.cappedBy && (
-        <div className="flex items-start gap-2 border-b bg-pending-soft px-4 py-2.5 text-[12.5px] text-pending-ink sm:px-5">
-          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-          <span>
-            <span className="font-medium">Capped at {fit.score} from {fit.raw}.</span> {fit.cappedBy.reason}
-          </span>
-        </div>
-      )}
+      {/* Knockouts come first and stay out of the score. */}
+      <div className={cn("border-b px-4 py-2.5 sm:px-5", knockout ? "bg-pending-soft text-pending-ink" : "bg-muted/30")}>
+        {knockout ? (
+          <p className="flex items-start gap-2 text-[12.5px]">
+            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              <span className="font-medium">Knockout: don&apos;t tailor for this job.</span> {knockout.reason}
+            </span>
+          </p>
+        ) : (
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+            {knockouts.map((k) => (
+              <li key={k.key} className="flex items-center gap-1">
+                <Check className="size-3 text-brand" strokeWidth={3} />
+                {k.label}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(0,1fr)_17rem]">
         <ul className="divide-y md:overflow-y-auto scroll-thin">
@@ -136,10 +150,10 @@ export function ScoreView({
             </ul>
           </div>
 
-          {fit.cappedBy ? (
+          {knockout ? (
             <div className="rounded-lg border bg-background p-3 text-[12.5px] leading-5 text-muted-foreground">
               <span className="font-medium text-foreground">Skip this one for now.</span> You match the work, but not the
-              graduation window. If they open a 2028 cohort, your saved search will catch it.
+              graduation window. The score above is only here so you can see why the skills line up.
             </div>
           ) : (
             <div className="rounded-lg border bg-background p-3 text-[12.5px] leading-5 text-muted-foreground">
@@ -154,9 +168,9 @@ export function ScoreView({
           )}
 
           <div className="mt-auto">
-            {fit.cappedBy ? (
+            {knockout ? (
               <Button variant="outline" className="w-full" onClick={onBack}>
-                Back to results
+                Back to saved roles
               </Button>
             ) : (
               <Button className="w-full" onClick={onTailor}>

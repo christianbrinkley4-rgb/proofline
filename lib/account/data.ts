@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 
 /**
@@ -28,6 +28,7 @@ export async function exportAccount(userId: string) {
       db.query.careerGoal.findMany({ where: eq(schema.careerGoal.userId, userId) }),
       db.query.careerCheckin.findMany({ where: eq(schema.careerCheckin.userId, userId) }),
     ]);
+  const feedback = await db.query.inboxMessage.findMany({ where: eq(schema.inboxMessage.userId, userId), columns: { id: true, kind: true, message: true, page: true, createdAt: true } });
   const jobIds = [...new Set([...matches.map((m) => m.jobId), ...applications.flatMap((a) => (a.jobId ? [a.jobId] : []))])];
   const jobs = jobIds.length
     ? await db.query.job.findMany({ where: inArray(schema.job.id, jobIds), columns: { id: true, company: true, title: true, location: true, url: true, postedAt: true } })
@@ -53,10 +54,28 @@ export async function exportAccount(userId: string) {
     connections: tokens,
     careerGoals,
     careerCheckins,
+    feedback: feedback.filter((f) => f.kind === "feedback"),
   };
 }
 
-/** Removes the account and everything tied to it (the schema cascades from the user row). */
+/**
+ * Removes the account and everything tied to it. The schema cascades from the
+ * user row (profile, facts, experiences, bullets, resumes, applications, job
+ * matches, events, feedback). Job postings are shared rows, so they go too only
+ * when no one else has them: a pasted description, or a link only this person saved.
+ */
 export async function deleteAccount(userId: string) {
-  await db.delete(schema.user).where(eq(schema.user.id, userId));
+  await db.transaction(async (tx) => {
+    const matches = await tx.select({ jobId: schema.jobMatch.jobId }).from(schema.jobMatch).where(eq(schema.jobMatch.userId, userId));
+    const applied = await tx.select({ jobId: schema.application.jobId }).from(schema.application).where(eq(schema.application.userId, userId));
+    const jobIds = [...new Set([...matches.map((m) => m.jobId), ...applied.flatMap((a) => (a.jobId ? [a.jobId] : []))])];
+    await tx.delete(schema.user).where(eq(schema.user.id, userId));
+    if (!jobIds.length) return;
+    const stillUsed = new Set([
+      ...(await tx.select({ jobId: schema.jobMatch.jobId }).from(schema.jobMatch).where(inArray(schema.jobMatch.jobId, jobIds))).map((r) => r.jobId),
+      ...(await tx.select({ jobId: schema.application.jobId }).from(schema.application).where(inArray(schema.application.jobId, jobIds))).flatMap((r) => (r.jobId ? [r.jobId] : [])),
+    ]);
+    const orphans = jobIds.filter((id) => !stillUsed.has(id));
+    if (orphans.length) await tx.delete(schema.job).where(and(inArray(schema.job.id, orphans), eq(schema.job.source, "link")));
+  });
 }

@@ -12,7 +12,7 @@ import { pastedJob, PastedJobSchema, type PastedJob } from "@/lib/jobs/sources/p
 import { linkManualApplication } from "@/lib/tracker/service";
 import { acceptSuggestion, declineSuggestion } from "@/lib/agent/preferences";
 import { markViewed, refreshSearch, unwatchSearch, watchSearch } from "@/lib/jobs/saved";
-import { requirementsOf, saveMatches, setMatchStatus, upsertJobs } from "@/lib/jobs/store";
+import { keywordsOf, requirementsOf, saveMatches, setMatchStatus, upsertJobs } from "@/lib/jobs/store";
 
 async function userId() {
   return (await requireSession()).user.id;
@@ -46,10 +46,11 @@ export async function importLinkAction(url: string): Promise<{ ok: true; jobId: 
     const rows = await upsertJobs([job]);
     const row = rows.get(`${job.source}|${job.sourceId}`)!;
     const candidate = await loadCandidate(id);
-    const fit = scoreFit({ title: row.title, location: row.location, mode: row.mode, level: row.level, requirements: requirementsOf(row) }, candidate);
+    const fit = scoreFit({ title: row.title, location: row.location, mode: row.mode, level: row.level, requirements: requirementsOf(row), keywords: keywordsOf(row) }, candidate);
     await saveMatches(id, [{ job: row, fit }]);
     await setMatchStatus(id, row.id, "saved");
     await logEvent(id, "job_saved", { jobId: row.id, via: "link" });
+    await logEvent(id, "job_ingested", { jobId: row.id, via: "link", keywords: keywordsOf(row).length });
     revalidatePath("/app/jobs");
     return { ok: true, jobId: row.id };
   } catch (error) {
@@ -68,11 +69,12 @@ export async function importPastedJobAction(input: PastedJob): Promise<{ ok: tru
   const rows = await upsertJobs([pastedJob(id, parsed.data)]);
   const row = [...rows.values()][0];
   const candidate = await loadCandidate(id);
-  const fit = scoreFit({ title: row.title, location: row.location, mode: row.mode, level: row.level, requirements: requirementsOf(row) }, candidate);
+  const fit = scoreFit({ title: row.title, location: row.location, mode: row.mode, level: row.level, requirements: requirementsOf(row), keywords: keywordsOf(row) }, candidate);
   await saveMatches(id, [{ job: row, fit }]);
   await setMatchStatus(id, row.id, "saved");
   await linkManualApplication(id, row);
   await logEvent(id, "job_saved", { jobId: row.id, via: "pasted" });
+  await logEvent(id, "job_ingested", { jobId: row.id, via: "pasted", keywords: keywordsOf(row).length });
   revalidatePath("/app/jobs");
   revalidatePath("/app/tracker");
   return { ok: true, jobId: row.id };

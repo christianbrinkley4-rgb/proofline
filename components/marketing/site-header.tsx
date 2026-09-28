@@ -7,7 +7,6 @@ import { container } from "./section";
 const LINKS = [
   { href: "#how", label: "How it works" },
   { href: "#proof", label: "Proof, not guesses" },
-  { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
 ];
 
@@ -34,7 +33,7 @@ export function SiteHeader() {
             <Link href={site.routes.signIn}>Sign in</Link>
           </Button>
           <Button size="lg" asChild className="rounded-full px-4 text-[14px]">
-            <Link href={site.routes.signUp}>Start free</Link>
+            <Link href={site.routes.signUp}>Get started</Link>
           </Button>
         </div>
       </div>

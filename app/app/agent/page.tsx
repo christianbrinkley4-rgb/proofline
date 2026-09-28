@@ -1,3 +1,4 @@
+import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Bot, CircleCheck } from "lucide-react";
@@ -15,6 +16,7 @@ import { listApplications } from "@/lib/tracker/service";
 export const metadata: Metadata = { title: "Agent" };
 
 export default async function AgentPage() {
+  hiddenInBeta("/app");
   const session = await requireSession();
   const userId = session.user.id;
   const [profile, facts, applications, moves, chat] = await Promise.all([

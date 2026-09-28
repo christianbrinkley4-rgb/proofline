@@ -1,3 +1,4 @@
+import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -33,6 +34,7 @@ export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]/pac
 const ORDER = ["resume", "letter", "track"] as const;
 
 export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/packet">) {
+  hiddenInBeta("/app/jobs");
   const session = await requireSession();
   const userId = session.user.id;
   const { id } = await params;
@@ -108,7 +110,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
           {resumes.length === 0 ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="max-w-md text-[14px] leading-6 text-muted-foreground">
-                Start here. Compare three one-page versions built from your confirmed facts and keep the one you can defend.
+                Start here. Build the one-page version from your confirmed facts and keep it if you can defend every line.
               </p>
               <Button size="lg" asChild>
                 <Link href={`/app/resumes/compare?job=${id}`}>Compare resumes</Link>

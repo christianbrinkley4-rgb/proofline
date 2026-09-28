@@ -1,4 +1,4 @@
-import { FileText, Search, SquareKanban, UserRound } from "lucide-react";
+import { ClipboardPaste, FileText, ListChecks, SquareKanban } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { site } from "@/lib/site";
 import { DEMO_CANDIDATE } from "@/lib/demo/sample-data";
@@ -6,16 +6,16 @@ import { cn } from "@/lib/utils";
 import type { DemoTab } from "./index";
 
 const NAV = [
-  { label: "Search", icon: Search, tabs: ["find", "score"] },
+  { label: "Jobs", icon: ClipboardPaste, tabs: ["find", "score"] },
   { label: "Resumes", icon: FileText, tabs: ["tailor"] },
   { label: "Tracker", icon: SquareKanban, tabs: ["track"] },
-  { label: "Profile", icon: UserRound, tabs: [] },
+  { label: "My facts", icon: ListChecks, tabs: [] },
 ] as const satisfies ReadonlyArray<{ label: string; icon: unknown; tabs: readonly DemoTab[] }>;
 
-const SAVED_SEARCHES = [
-  { name: "Summer 2027 audit, Raleigh", fresh: 3 },
-  { name: "Remote FP&A internships", fresh: 0 },
-  { name: "Tax internships, Triangle", fresh: 1 },
+const SAVED_ROLES = [
+  { name: "Whitfield & Lowe, Audit", fresh: 0 },
+  { name: "Keystone Mutual, Finance", fresh: 1 },
+  { name: "Pellham Software, Revenue", fresh: 0 },
 ];
 
 export function DemoSidebar({ tab, facts }: { tab: DemoTab; facts: { confirmed: number; toReview: number } }) {
@@ -47,9 +47,9 @@ export function DemoSidebar({ tab, facts }: { tab: DemoTab; facts: { confirmed: 
         })}
       </nav>
 
-      <div className="mt-6 px-4 text-[11px] font-medium tracking-wide text-subtle-foreground">Saved searches</div>
+      <div className="mt-6 px-4 text-[11px] font-medium tracking-wide text-subtle-foreground">Saved roles</div>
       <ul className="mt-1.5 space-y-0.5 px-2">
-        {SAVED_SEARCHES.map((s) => (
+        {SAVED_ROLES.map((s) => (
           <li key={s.name} className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-[12.5px] text-muted-foreground">
             <span className="truncate">{s.name}</span>
             {s.fresh > 0 && (

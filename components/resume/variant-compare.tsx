@@ -17,10 +17,10 @@ export function VariantCompareActions({ jobId, selected }: { jobId: string; sele
         try {
           const result = await createVariantsAction(jobId);
           if (!result.ok) { setError(result.error); return; }
-          toast("Three tailored versions are ready.");
+          toast("Your versions are ready.");
           router.refresh();
         } catch { setError("Couldn't build the versions. Please try again."); }
-      })}>{pending ? "Building..." : "Build three versions"}</Button>
+      })}>{pending ? "Building..." : "Build versions"}</Button>
       {selected && <Button variant="outline" disabled={pending} onClick={() => startTransition(async () => {
         try { await trackJobAction(jobId, selected); toast("Selected for this application."); router.refresh(); }
         catch { setError("Couldn't select this version. A submitted version stays attached after applying."); }

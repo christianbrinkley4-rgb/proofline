@@ -1,3 +1,4 @@
+import { PRIVATE_BETA } from "@/lib/beta";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { eq } from "drizzle-orm";
@@ -69,4 +70,6 @@ async function handle(request: Request): Promise<Response> {
   }
 }
 
-export { handle as GET, handle as POST, handle as DELETE };
+// The public MCP connector is off for the private beta (no public API).
+const gated = (request: Request) => (PRIVATE_BETA ? new Response("Not found", { status: 404 }) : handle(request));
+export { gated as GET, gated as POST, gated as DELETE };

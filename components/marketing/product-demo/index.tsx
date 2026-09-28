@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
-import { DEMO_CANDIDATE, DEMO_JOBS, jobFit } from "@/lib/demo/sample-data";
+import { DEMO_CANDIDATE, DEMO_JOBS, jobKnockouts } from "@/lib/demo/sample-data";
 import { cn } from "@/lib/utils";
 import { DemoSidebar } from "./demo-sidebar";
 import { FindView } from "./find-view";
@@ -12,7 +12,7 @@ import { TrackView } from "./track-view";
 export type DemoTab = "find" | "score" | "tailor" | "track";
 
 const STEPS: { id: DemoTab; label: string; blurb: string }[] = [
-  { id: "find", label: "Find", blurb: "Say what you want. It searches live job boards." },
+  { id: "find", label: "Find", blurb: "Paste postings you found. They line up by fit." },
   { id: "score", label: "Score", blurb: "A fit score out of 100, with the math shown." },
   { id: "tailor", label: "Tailor", blurb: "A one-page resume from facts you confirmed." },
   { id: "track", label: "Track", blurb: "Every application and follow-up in one place." },
@@ -23,12 +23,14 @@ export function ProductDemo() {
   const [jobId, setJobId] = useState(DEMO_JOBS[0].id);
   const [pending, setPending] = useState<PendingState>("pending");
   const [hours, setHours] = useState(3);
+  // Lives here, not in the Track view, so switching tabs doesn't undo it.
+  const [followUpSent, setFollowUpSent] = useState(false);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const tablistRef = useRef<HTMLDivElement>(null);
 
   const job = DEMO_JOBS.find((j) => j.id === jobId) ?? DEMO_JOBS[0];
-  // A capped job isn't worth tailoring, so the Tailor step falls back to the best match.
-  const tailorJob = jobFit(job).cappedBy ? DEMO_JOBS[0] : job;
+  // A knocked-out job never gets a tailored resume, so the Tailor step falls back to the best match.
+  const tailorJob = jobKnockouts(job).some((k) => k.status === "knockout") ? DEMO_JOBS[0] : job;
 
   const facts = {
     confirmed: DEMO_CANDIDATE.profileFacts.confirmed + (pending === "confirmed" ? 1 : 0),
@@ -103,7 +105,12 @@ export function ProductDemo() {
         aria-labelledby={`demo-tab-${tab}`}
         className="mt-3 overflow-hidden rounded-xl border border-border-strong/60 bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04),0_24px_56px_-24px_rgb(0_0_0/0.22)]"
       >
-        <div className="flex md:h-[40rem]">
+        {/* On every tab, so nobody mistakes Jordan's data for their own. */}
+        <div className="flex items-center gap-2 border-b border-pending/30 bg-pending-soft px-4 py-2 text-[12.5px] text-pending-ink">
+          <span className="rounded-md bg-background/80 px-1.5 py-0.5 font-semibold">Sample: fictional student</span>
+          <span className="min-w-0 truncate">Jordan Reyes and every company here are made up. Your account starts empty.</span>
+        </div>
+        <div className="flex md:h-[37.5rem]">
           <DemoSidebar tab={tab} facts={facts} />
           <div className="min-w-0 flex-1">
             <div key={tab === "score" ? `score-${job.id}` : tab} className="h-full motion-safe:animate-view-in">
@@ -129,7 +136,7 @@ export function ProductDemo() {
                   onUndo={() => setPending("pending")}
                 />
               )}
-              {tab === "track" && <TrackView />}
+              {tab === "track" && <TrackView followUpSent={followUpSent} onMarkSent={() => setFollowUpSent(true)} onUndo={() => setFollowUpSent(false)} />}
             </div>
           </div>
         </div>

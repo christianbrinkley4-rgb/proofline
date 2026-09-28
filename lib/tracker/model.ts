@@ -8,7 +8,8 @@ export const STAGE_LABEL: Record<Stage, string> = {
   saved: "Saved", applied: "Applied", assessment: "Assessment", interview: "Interview", offer: "Offer", rejected: "Rejected",
 };
 export const StageSchema = z.enum(STAGES);
-export const FOLLOW_UP_DAYS = 7;
+/** A follow-up is due two weeks after the application went in. */
+export const FOLLOW_UP_DAYS = 14;
 export const HttpUrl = z.string().url().max(2000).refine((value) => ["https:", "http:"].includes(new URL(value).protocol), "Use an http or https link.");
 export const ManualApplicationSchema = z.object({
   company: z.string().trim().min(1).max(160),
@@ -23,6 +24,7 @@ export const NoteSchema = z.object({
     role: z.string().max(160).optional(),
     email: z.union([z.literal(""), z.string().email().max(254)]).optional(),
   })).max(10).optional(),
+  confirmationRef: z.string().trim().max(160).nullable().optional(),
   deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
     const date = new Date(value + "T12:00:00Z");
     return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
@@ -33,8 +35,10 @@ export function stagePatch(app: Pick<Application, "stage" | "appliedAt" | "sortO
   const patch: Partial<Application> = { stage, sortOrder: sortOrder ?? app.sortOrder, updatedAt: now };
   if (stage === app.stage) return patch;
   patch.stageChangedAt = now;
-  patch.nextFollowUpAt = stage === "applied" ? new Date(now.getTime() + FOLLOW_UP_DAYS * 864e5) : null;
-  if (stage !== "saved" && !app.appliedAt && stage !== "rejected") patch.appliedAt = now;
+  const submittedAt = app.appliedAt ?? (stage !== "saved" && stage !== "rejected" ? now : null);
+  if (submittedAt && !app.appliedAt) patch.appliedAt = submittedAt;
+  // followup_due = submitted_at + 14 days, only while waiting to hear back.
+  patch.nextFollowUpAt = stage === "applied" && submittedAt ? followUpDue(submittedAt) : null;
   return patch;
 }
 
@@ -44,8 +48,19 @@ export function trackerStats(apps: Application[], now = new Date()) {
     applications: applied.length,
     interviews: apps.filter((a) => a.stage === "interview" || a.stage === "offer").length,
     offers: apps.filter((a) => a.stage === "offer").length,
-    dueFollowUps: apps.filter((a) => a.stage === "applied" && a.nextFollowUpAt && a.nextFollowUpAt <= now).length,
+    dueFollowUps: apps.filter((a) => followUpState(a, now) === "due").length,
   };
+}
+
+export function followUpDue(submittedAt: Date): Date {
+  return new Date(submittedAt.getTime() + FOLLOW_UP_DAYS * 864e5);
+}
+
+/** "due" until the person marks the follow-up sent; then "sent" for good. */
+export function followUpState(app: Pick<Application, "stage" | "nextFollowUpAt" | "followUpSentAt">, now = new Date()): "none" | "upcoming" | "due" | "sent" {
+  if (app.followUpSentAt) return "sent";
+  if (app.stage !== "applied" || !app.nextFollowUpAt) return "none";
+  return app.nextFollowUpAt <= now ? "due" : "upcoming";
 }
 
 /** Draft only. Never sends email or claims an interview that wasn't recorded. */

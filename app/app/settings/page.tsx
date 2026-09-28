@@ -1,82 +1,83 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Bot, CircleCheck, CircleDashed, Database, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Database, ShieldCheck, UserRound } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
-import { AiConnections } from "@/components/settings/ai-connections";
 import { YourData } from "@/components/settings/your-data";
 import { requireSession } from "@/lib/auth";
-import { listTokens } from "@/lib/agent/tokens";
 import { getProfile } from "@/lib/kb/profile";
-import { site } from "@/lib/site";
+import { PRIVACY_POINTS } from "@/lib/privacy";
+import { formatMonth } from "@/lib/resume/parse/dates";
 
 export const metadata: Metadata = { title: "Settings" };
 
+const AUTH_LABEL: Record<string, string> = {
+  us_citizen: "U.S. citizen",
+  permanent_resident: "Permanent resident",
+  authorized: "Authorized, no sponsorship needed",
+  needs_sponsorship: "Needs visa sponsorship",
+};
+
 export default async function SettingsPage() {
   const session = await requireSession();
-  const [profile, tokens] = await Promise.all([getProfile(session.user.id), listTokens(session.user.id)]);
-  const mcpUrl = `${(process.env.NEXT_PUBLIC_SITE_URL ?? site.url).replace(/\/$/, "")}/api/mcp`;
+  const profile = await getProfile(session.user.id);
+  const modes = profile?.workModes.map((m) => (m === "onsite" ? "on-site" : m)).join(", ");
   return (
-    <PageBody>
-      <PageHeader title="Settings and connections" description="Manage the details that shape your search and connect the AI you already use." />
-      <div className="mt-8 grid gap-5 lg:grid-cols-2">
-        <section className="rounded-xl border bg-background p-5 sm:p-6">
-          <div className="flex items-center gap-2"><UserRound className="size-4 text-brand" /><h2 className="text-[16px] font-semibold">Account and goals</h2></div>
-          <dl className="mt-4 space-y-3 text-[13.5px]">
-            <div><dt className="text-subtle-foreground">Signed in as</dt><dd className="mt-0.5 break-all font-medium">{session.user.email}</dd></div>
-            <div><dt className="text-subtle-foreground">Name</dt><dd className="mt-0.5">{profile?.fullName || session.user.name}</dd></div>
-            <div><dt className="text-subtle-foreground">Target roles</dt><dd className="mt-0.5">{profile?.targetRoles.length ? profile.targetRoles.join(", ") : "Choose roles to improve matches"}</dd></div>
-            <div><dt className="text-subtle-foreground">Target locations</dt><dd className="mt-0.5">{profile?.targetLocations.length ? profile.targetLocations.join(", ") : "Any location"}</dd></div>
-          </dl>
-          <Link href="/app/onboarding?step=goals" className="mt-5 inline-flex items-center gap-1 text-[13px] font-medium hover:underline">Edit career goals <ArrowRight className="size-3.5" /></Link>
-        </section>
-        <section className="rounded-xl border bg-background p-5 sm:p-6">
-          <div className="flex items-center gap-2"><Mail className="size-4 text-brand" /><h2 className="text-[16px] font-semibold">Email and calendar</h2></div>
-          <div className="mt-4 space-y-3 text-[13px]">
-            <div className="flex items-start gap-2.5 rounded-lg border p-3">
-              <CircleCheck className="mt-0.5 size-4 shrink-0 text-brand" />
-              <div><p className="font-medium">Your {site.name} account</p><p className="mt-0.5 text-muted-foreground">Your story, resumes, and application tracker are available here.</p></div>
-            </div>
-            <div className="flex items-start gap-2.5 rounded-lg border p-3">
-              <CircleDashed className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div><p className="font-medium">Email and calendar</p><p className="mt-0.5 text-muted-foreground">Direct sending, inbox updates, and calendar sync are not connected yet. Follow-up drafts and reminders work inside the tracker.</p></div>
-            </div>
+    <PageBody className="max-w-4xl">
+      <PageHeader title="Settings" description="Your account, what we use to check knockouts, and your data." />
+      <section className="mt-8 rounded-xl border bg-background p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <UserRound className="size-4 text-brand" />
+          <h2 className="text-[16px] font-semibold">Account and knockout details</h2>
+        </div>
+        <dl className="mt-4 grid gap-3 text-[13.5px] sm:grid-cols-2">
+          <div>
+            <dt className="text-subtle-foreground">Signed in as</dt>
+            <dd className="mt-0.5 font-medium break-all">{session.user.email}</dd>
           </div>
-        </section>
-      </div>
+          <div>
+            <dt className="text-subtle-foreground">Work authorization</dt>
+            <dd className="mt-0.5">{profile?.workAuthorization ? AUTH_LABEL[profile.workAuthorization] ?? profile.workAuthorization : "Not set"}</dd>
+          </div>
+          <div>
+            <dt className="text-subtle-foreground">Where you can work</dt>
+            <dd className="mt-0.5">
+              {[profile?.targetLocations.join(", "), modes, profile?.openToRelocate ? "open to moving" : profile?.openToRelocate === false ? "not moving" : null].filter(Boolean).join("; ") || "Not set"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-subtle-foreground">Earliest start</dt>
+            <dd className="mt-0.5">{profile?.availableFrom ? formatMonth(profile.availableFrom) : "Not set"}</dd>
+          </div>
+        </dl>
+        <Link href="/app/onboarding?step=logistics&back=/app/settings" className="mt-5 inline-flex min-h-10 items-center gap-1 text-[13px] font-medium hover:underline">
+          Edit these <ArrowRight className="size-3.5" />
+        </Link>
+      </section>
 
-      <section id="ai" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
-        <div className="flex items-center gap-2"><Bot className="size-4 text-brand" /><h2 className="text-[16px] font-semibold">Optional AI connection</h2></div>
-        <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-muted-foreground">
-          No API key is needed to use Proofline. If you already use Claude, Cursor, or another app that supports MCP, you can connect it to your confirmed story, job search, resumes, letters, and interview prep.
-        </p>
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-[12.5px] leading-5">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />
-          <span>
-            The same rules apply to every AI: anything it learns about you is saved as a proposal you confirm here, it can&apos;t confirm facts or download files, and it never applies or sends email for you. Revoke a token any time.
-          </span>
+      <section id="privacy" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="size-4 text-brand" />
+          <h2 className="text-[16px] font-semibold">Privacy: your data is yours</h2>
         </div>
-        <div className="mt-5">
-          <AiConnections
-            mcpUrl={mcpUrl}
-            tokens={tokens.map((t) => ({ id: t.id, name: t.name, prefix: t.prefix, createdAt: t.createdAt.toISOString(), lastUsedAt: t.lastUsedAt?.toISOString() ?? null }))}
-          />
-        </div>
-        <p className="mt-4 text-[12px] leading-5 text-muted-foreground">
-          Connecting from ChatGPT or claude.ai in the browser needs a sign-in flow that isn&apos;t available yet. Desktop and coding apps work with a token today.
-        </p>
+        <ul className="mt-3 space-y-2.5">
+          {PRIVACY_POINTS.map((point) => (
+            <li key={point.title} className="text-[13.5px] leading-6">
+              <span className="font-medium">{point.title}.</span> <span className="text-muted-foreground">{point.text}</span>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section id="data" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
-        <div className="flex items-center gap-2"><Database className="size-4 text-brand" /><h2 className="text-[16px] font-semibold">Your data</h2></div>
-        <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-muted-foreground">It&apos;s yours. Take a full copy any time, or delete it all.</p>
+        <div className="flex items-center gap-2">
+          <Database className="size-4 text-brand" />
+          <h2 className="text-[16px] font-semibold">Your data</h2>
+        </div>
+        <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-muted-foreground">Take a full copy any time, or delete it all.</p>
         <div className="mt-4">
           <YourData email={session.user.email} />
         </div>
       </section>
-
-      <p className="mt-6 text-[12.5px] text-muted-foreground">
-        Resume exports are generated from confirmed evidence. Review each document before using it, and keep applications and sent emails current in the tracker.
-      </p>
     </PageBody>
   );
 }

@@ -16,7 +16,7 @@ export function YourData({ email }: { email: string }) {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3.5">
         <div className="min-w-0">
           <p className="text-[13.5px] font-medium">Download everything</p>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">Your profile, every version of every fact, notes, resumes, applications, letters, and chat, as one JSON file.</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">Your profile, every version of every fact, jobs, resumes, applications, and feedback, as one JSON file.</p>
         </div>
         <Button variant="outline" size="sm" asChild>
           <a href="/api/account/export">
@@ -28,8 +28,8 @@ export function YourData({ email }: { email: string }) {
       <div className="rounded-lg border border-destructive/30 p-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[13.5px] font-medium">Delete your account</p>
-            <p className="mt-0.5 text-[12.5px] text-muted-foreground">Permanently removes your account and everything in it. This can&apos;t be undone.</p>
+            <p className="text-[13.5px] font-medium">Delete my account and all my data</p>
+            <p className="mt-0.5 text-[12.5px] text-muted-foreground">Permanently removes your account and everything in it: facts, jobs you pasted, resumes, applications, and feedback. This can&apos;t be undone.</p>
           </div>
           {!confirming && (
             <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>

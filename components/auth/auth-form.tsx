@@ -3,11 +3,12 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, signUp } from "@/lib/auth-client";
+import { PRIVATE_BETA_CODE } from "@/lib/beta-access";
 
 type Mode = "signup" | "login";
 
@@ -32,6 +33,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [closed, setClosed] = useState(false);
 
   // A plain submit handler, not a form action: React resets a form after its action
   // runs, which would wipe what the person typed whenever sign-up fails.
@@ -48,6 +50,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
         : await signIn.email({ email, password });
 
     if (result.error) {
+      if (result.error.code === PRIVATE_BETA_CODE) {
+        setClosed(true);
+        setPending(false);
+        return;
+      }
       setError(friendlyError(result.error.message, mode));
       setPending(false);
       return;
@@ -57,6 +64,29 @@ export function AuthForm({ mode }: { mode: Mode }) {
     router.refresh();
   }
 
+  if (closed) {
+    return (
+      <div role="status">
+        <span className="grid size-10 place-items-center rounded-xl bg-muted">
+          <LockKeyhole className="size-5 text-muted-foreground" />
+        </span>
+        <h1 className="mt-5 text-[28px] font-semibold tracking-[-0.03em]">Proofline is in private beta</h1>
+        <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+          Sign-up is open to invited testers only, and that email isn&apos;t on the list. If you were invited, use the exact address the
+          invite went to.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setClosed(false)}>
+            Try another email
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/contact">Ask to join</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 className="text-[28px] font-semibold tracking-[-0.03em]">
@@ -64,11 +94,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </h1>
       <p className="mt-2 text-[15px] text-muted-foreground">
         {mode === "signup"
-          ? "Free while in beta. Takes about a minute, then your agent gets to work."
-          : "Sign in to pick up where your agent left off."}
+          ? "Free during the private beta. For invited testers; use the email your invite went to."
+          : "Sign in to pick up where you left off."}
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-4" aria-describedby={error ? "auth-error" : undefined}>
+      <form method="post" onSubmit={onSubmit} className="mt-8 space-y-4" aria-describedby={error ? "auth-error" : undefined}>
         {mode === "signup" && (
           <div className="space-y-1.5">
             <Label htmlFor="name">Your name</Label>
@@ -91,10 +121,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
             aria-describedby={mode === "signup" ? "password-hint" : undefined}
             className="h-10"
           />
-          {mode === "signup" && (
+          {mode === "signup" ? (
             <p id="password-hint" className="text-[12.5px] text-subtle-foreground">
               At least 8 characters.
             </p>
+          ) : (
+            <Link href="/forgot-password" className="inline-block pt-1 text-[12.5px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              Forgot your password?
+            </Link>
           )}
         </div>
 

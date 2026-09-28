@@ -1,4 +1,5 @@
 import { familiesFor, ROLE_FAMILIES } from "@/lib/jobs/roles";
+import { matchKeywords } from "@/lib/jobs/keywords";
 import { isRemoteText, matchesPlace, resolvePlace } from "@/lib/jobs/locations";
 import type { JobLevel, JobMode } from "@/lib/jobs/types";
 import type { Requirements } from "./requirements";
@@ -33,9 +34,19 @@ export type JobForFit = {
   mode: JobMode;
   level: JobLevel;
   requirements: Requirements;
+  /** The posting's keyword phrases (lib/jobs/keywords.ts). Without them, skill terms stand in. */
+  keywords?: string[] | null;
 };
 
-export type ComponentDetail = { note: string; matched: string[]; missing: string[] };
+export type ComponentDetail = {
+  note: string;
+  matched: string[];
+  missing: string[];
+  /** The arithmetic behind the points, e.g. "30 × 3/4 = 23". */
+  math?: string;
+  /** One line of reasoning per matched or missing item. */
+  why?: Record<string, string>;
+};
 
 export type FitReport = FitResult & {
   points: FitPoints;
@@ -56,6 +67,29 @@ export function indexCandidate(c: CandidateProfile): CandidateIndex {
 }
 
 const round = (n: number) => Math.round(n);
+
+const quote = (text: string) => `"${text.length > 80 ? `${text.slice(0, 77).trimEnd()}...` : text}"`;
+
+/** The first confirmed line that shows a skill, for the one-line reason behind a match. */
+function evidenceFor(label: string, candidate: CandidateProfile): string | null {
+  const parts = label.split(/\s+or\s+/);
+  for (const text of candidate.confirmedText) {
+    const found = extractEvidenceSkills(text);
+    if (parts.some((p) => found.includes(p))) return text;
+  }
+  const titles = candidate.experienceTitles.find((t) => parts.some((p) => t.toLowerCase().includes(p.toLowerCase())));
+  return titles ?? null;
+}
+
+function skillReasons(matched: string[], missing: string[], candidate: CandidateProfile, kind: "required" | "preferred"): Record<string, string> {
+  const why: Record<string, string> = {};
+  for (const m of matched) {
+    const evidence = evidenceFor(m, candidate);
+    why[m] = evidence ? `Shown by your fact ${quote(evidence)}.` : "Shown in your confirmed facts.";
+  }
+  for (const m of missing) why[m] = `The posting lists it as ${kind}; none of your confirmed facts show it yet.`;
+  return why;
+}
 
 /** Coverage by requirement: a group is met when the person has any skill in it ("Excel or Google Sheets"). */
 function coverage(groups: string[][], have: Set<string>) {
@@ -83,7 +117,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const reqCov = coverage(reqGroups, index.skills);
   if (reqCov.ratio === null) {
     points.requiredSkills = 20;
-    details.requiredSkills = { note: "The posting doesn't list specific skills, so this is a neutral score.", matched: [], missing: [] };
+    details.requiredSkills = { note: "The posting doesn't list specific skills, so this is a neutral score.", matched: [], missing: [], math: "No listed skills: neutral 20 of 30" };
   } else {
     points.requiredSkills = round(30 * reqCov.ratio);
     const total = reqCov.matched.length + reqCov.missing.length;
@@ -91,6 +125,8 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
       note: `Covers ${reqCov.matched.length} of the ${total} ${req.requiredLines.length ? "listed skill requirements" : "skills mentioned in the posting"}.`,
       matched: reqCov.matched,
       missing: reqCov.missing,
+      math: `30 × ${reqCov.matched.length}/${total} = ${points.requiredSkills}`,
+      why: skillReasons(reqCov.matched, reqCov.missing, candidate, "required"),
     };
   }
 
@@ -125,7 +161,12 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     }
   }
   points.experience = Math.min(25, relevance + seniority);
+  const experienceWhy: Record<string, string> = {};
+  for (const t of titleHits.slice(0, 3)) experienceWhy[t] = `Your ${t} role is the same kind of work as "${job.title}".`;
+  for (const m of experienceMissing) experienceWhy[m] = seniorityNote;
   details.experience = {
+    math: `Relevance ${relevance} of 15 + level ${seniority} of 10 = ${points.experience}`,
+    why: experienceWhy,
     note: [
       titleHits.length
         ? `Your ${titleHits[0]} work lines up with this role.`
@@ -148,7 +189,14 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const gpaPoints = req.minGpa == null ? 4 : gpaOk ? 4 : gpaOk === false ? 0 : 1;
   const gradPoints = req.gradWindow ? (candidate.gradDate ? 3 : 1) : 3;
   points.education = Math.min(15, fieldPoints + gpaPoints + gradPoints);
+  const educationWhy: Record<string, string> = {};
+  for (const f of fieldMatch) educationWhy[f] = `Your ${candidate.major ?? candidate.degree ?? "degree"} matches a field they list.`;
+  if (gpaOk) educationWhy[`GPA ${candidate.gpa} (min ${req.minGpa})`] = `Your ${candidate.gpa} clears their ${req.minGpa} minimum.`;
+  if (req.degreeFields.length && !fieldMatch.length) educationWhy[`Degree in ${req.degreeFields.slice(0, 2).join(" or ")}`] = `They list ${req.degreeFields.slice(0, 3).join(", ")}; your ${candidate.major ?? "major"} isn't one of them.`;
+  if (gpaOk === false) educationWhy[`GPA ${req.minGpa}+`] = `Their minimum is ${req.minGpa}; yours is ${candidate.gpa}.`;
   details.education = {
+    math: `Field ${fieldPoints} of 8 + GPA ${gpaPoints} of 4 + graduation ${gradPoints} of 3 = ${points.education}`,
+    why: educationWhy,
     note: [
       req.degreeFields.length
         ? fieldMatch.length
@@ -167,25 +215,44 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const prefCov = coverage(req.preferredGroups?.length ? req.preferredGroups : req.preferred.map((sk) => [sk]), index.skills);
   if (prefCov.ratio === null) {
     points.preferredSkills = 10;
-    details.preferredSkills = { note: "No separate nice-to-have list.", matched: [], missing: [] };
+    details.preferredSkills = { note: "No separate nice-to-have list.", matched: [], missing: [], math: "No nice-to-have list: neutral 10 of 15" };
   } else {
     points.preferredSkills = round(15 * prefCov.ratio);
+    const total = prefCov.matched.length + prefCov.missing.length;
     details.preferredSkills = {
-      note: `${prefCov.matched.length} of ${prefCov.matched.length + prefCov.missing.length} nice-to-haves.`,
+      note: `${prefCov.matched.length} of ${total} nice-to-haves.`,
       matched: prefCov.matched,
       missing: prefCov.missing,
+      math: `15 × ${prefCov.matched.length}/${total} = ${points.preferredSkills}`,
+      why: skillReasons(prefCov.matched, prefCov.missing, candidate, "preferred"),
     };
   }
 
-  // ── Keyword and ATS overlap (10)
-  const keywords = [...new Set(req.mentioned.filter(isHardSkill))];
-  const kwMatched = keywords.filter((k) => index.skills.has(k));
-  points.keywords = keywords.length ? round(10 * (kwMatched.length / keywords.length)) : 6;
-  details.keywords = {
-    note: keywords.length ? `Your profile uses ${kwMatched.length} of the ${keywords.length} terms this posting repeats.` : "Few specific terms to match on.",
-    matched: kwMatched.slice(0, 6),
-    missing: keywords.filter((k) => !index.skills.has(k)).slice(0, 6),
-  };
+  // ── Posting keyword overlap (10): the posting's own keyword phrases found in the profile
+  if (job.keywords?.length) {
+    const found = matchKeywords(job.keywords, index.corpus);
+    points.keywords = round(10 * (found.matched.length / job.keywords.length));
+    const why: Record<string, string> = {};
+    for (const k of found.matched) why[k] = "The posting uses it, and so do your facts.";
+    for (const k of found.missing) why[k] = "The posting uses it; your facts don't. Only add it if it's true.";
+    details.keywords = {
+      note: `Your facts use ${found.matched.length} of the ${job.keywords.length} keywords in this posting.`,
+      matched: found.matched,
+      missing: found.missing,
+      math: `10 × ${found.matched.length}/${job.keywords.length} = ${points.keywords}`,
+      why,
+    };
+  } else {
+    const keywords = [...new Set(req.mentioned.filter(isHardSkill))];
+    const kwMatched = keywords.filter((k) => index.skills.has(k));
+    points.keywords = keywords.length ? round(10 * (kwMatched.length / keywords.length)) : 6;
+    details.keywords = {
+      note: keywords.length ? `Your profile uses ${kwMatched.length} of the ${keywords.length} terms this posting repeats.` : "Few specific terms to match on.",
+      matched: kwMatched.slice(0, 6),
+      missing: keywords.filter((k) => !index.skills.has(k)).slice(0, 6),
+      math: keywords.length ? `10 × ${kwMatched.length}/${keywords.length} = ${points.keywords}` : "Few terms: neutral 6 of 10",
+    };
+  }
 
   // ── Location and work mode (5)
   const places = candidate.targetLocations.filter((l) => !/^remote$/i.test(l)).map(resolvePlace).filter((p) => p !== null);
@@ -196,6 +263,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const locPoints = (remoteJob && wantsRemote) || placeHit ? 3 : places.length || wantsRemote ? 0 : 2;
   points.location = Math.min(5, locPoints + (modeOk ? 2 : 0));
   details.location = {
+    math: `Place ${locPoints} of 3 + work mode ${modeOk ? 2 : 0} of 2 = ${points.location}`,
     note:
       remoteJob && wantsRemote
         ? "Remote, which you said works for you."
@@ -225,7 +293,8 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
       gates.push({ reason: `Requires an active ${license}.`, cap: ELIGIBILITY_CAP });
     }
   }
-  const result = computeFit(points, gates);
+  // Eligibility problems are knockouts (lib/fit/knockouts.ts), shown on their own and never blended into the score.
+  const result = computeFit(points);
 
   const strengths = [
     ...reqCov.matched.slice(0, 2).map((s) => `${s}, which they ask for`),
@@ -233,8 +302,8 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     ...(fieldMatch.length ? [`Your field of study (${candidate.major ?? candidate.degree}) fits`] : []),
     ...(placeHit ? [`Location works: ${placeHit.label}`] : []),
   ].slice(0, 4);
+  // Eligibility problems are knockouts, listed on their own; gaps are what evidence could close.
   const gaps = [
-    ...gates.map((g) => g.reason),
     ...reqCov.missing.slice(0, 3),
     ...experienceMissing,
     ...prefCov.missing.filter((s) => !reqCov.missing.includes(s)).slice(0, 2).map((s) => `${s} (nice to have)`),

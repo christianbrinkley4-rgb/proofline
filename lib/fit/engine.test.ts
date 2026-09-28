@@ -205,15 +205,19 @@ describe("scoreFit", () => {
     expect(fit.details.requiredSkills.missing).toContain("Excel");
   });
 
-  it("caps the score when the graduation window doesn't fit", () => {
+  it("records a graduation-window problem without blending it into the score", () => {
+    const eligible = scoreFit(job, student);
     const fit = scoreFit(job, { ...student, gradDate: "2029-05" });
-    expect(fit.score).toBeLessThanOrEqual(40);
-    expect(fit.cappedBy?.reason).toMatch(/You graduate 2029-05/);
+    expect(fit.cappedBy).toBeNull();
+    expect(fit.score).toBe(fit.raw);
+    expect(fit.gates[0]?.reason).toMatch(/You graduate 2029-05/);
+    expect(fit.points.requiredSkills).toBe(eligible.points.requiredSkills);
   });
 
-  it("caps hard when they won't sponsor and the student needs it", () => {
+  it("records a sponsorship problem without capping the score", () => {
     const fit = scoreFit(job, { ...student, needsSponsorship: true });
-    expect(fit.score).toBeLessThanOrEqual(25);
+    expect(fit.cappedBy).toBeNull();
+    expect(fit.gates.some((g) => /sponsor/.test(g.reason))).toBe(true);
   });
 
   it("treats \"X or Y\" as one requirement either skill meets", () => {

@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { FitReport } from "@/lib/fit/engine";
 import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
+import { extractKeywords } from "./keywords";
 import { dedupeKey, slugify } from "./text";
 import type { NormalizedJob } from "./types";
 
@@ -32,6 +33,7 @@ function jobValues(j: NormalizedJob) {
     postedAt: j.postedAt && !Number.isNaN(j.postedAt.getTime()) ? j.postedAt : null,
     dedupeKey: dedupeKey(j.company, j.title, j.location),
     requirements: requirements as unknown as Record<string, unknown> | null,
+    keywords: j.description ? extractKeywords(j.description) : null,
     fetchedAt: new Date(),
   };
 }
@@ -67,6 +69,7 @@ export async function upsertJobs(jobs: NormalizedJob[]): Promise<Map<string, Job
           // Keep a description we already fetched if this listing came without one.
           description: sql`coalesce(excluded.description, ${schema.job.description})`,
           requirements: sql`coalesce(excluded.requirements, ${schema.job.requirements})`,
+          keywords: sql`coalesce(excluded.keywords, ${schema.job.keywords})`,
         },
       })
       .returning();
@@ -77,6 +80,11 @@ export async function upsertJobs(jobs: NormalizedJob[]): Promise<Map<string, Job
 
 export function requirementsOf(row: JobRow): Requirements {
   return (row.requirements as unknown as Requirements | null) ?? parseRequirements(row.description);
+}
+
+/** The posting's keyword phrases (stored at ingest; older rows are read on the fly). */
+export function keywordsOf(row: Pick<JobRow, "keywords" | "description">): string[] {
+  return row.keywords ?? extractKeywords(row.description);
 }
 
 export async function saveMatches(userId: string, scored: Array<{ job: JobRow; fit: FitReport }>, savedSearchId?: string) {

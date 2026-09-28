@@ -53,6 +53,17 @@ export async function snoozeFollowUpAction(id: string, days: number) {
 }
 
 
+/** "Mark as sent": the person sent their follow-up themselves. It leaves the due state for good. */
+export async function markFollowUpSentAction(id: string) {
+  const session = await requireSession();
+  Id.parse(id);
+  const app = await getApplication(session.user.id, id);
+  if (!app || !app.appliedAt) throw new Error("Apply before marking a follow-up sent.");
+  await updateApplication(session.user.id, id, { followUpSentAt: new Date() });
+  await db.insert(schema.agentEvent).values({ userId: session.user.id, type: "follow_up_recorded", data: { applicationId: id, recordedByUser: true, markedSent: true } });
+  refresh();
+}
+
 export async function recordFollowUpAction(id: string, draft: { subject: string; body: string }) {
   const session = await requireSession();
   Id.parse(id);
@@ -64,7 +75,7 @@ export async function recordFollowUpAction(id: string, draft: { subject: string;
       userId: session.user.id, type: "follow_up_recorded",
       data: { applicationId: id, subject: clean.subject, body: clean.body, recordedByUser: true },
     });
-    if (app.stage === "applied") await tx.update(schema.application).set({ nextFollowUpAt: new Date(Date.now() + 7 * 864e5), updatedAt: new Date() }).where(and(eq(schema.application.id, id), eq(schema.application.userId, session.user.id)));
+    await tx.update(schema.application).set({ followUpSentAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.application.id, id), eq(schema.application.userId, session.user.id)));
   });
   refresh();
 }

@@ -1,3 +1,4 @@
+import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Pencil } from "lucide-react";
@@ -25,6 +26,7 @@ export const metadata: Metadata = { title: "Profile" };
 const toView = (f: Fact) => ({ id: f.id, content: f.content, category: f.category, state: f.verificationState, source: f.source, sourceDetail: f.sourceDetail });
 
 export default async function ProfilePage() {
+  hiddenInBeta("/app/facts");
   const session = await requireSession();
   const userId = session.user.id;
   const [profile, experiences, facts, questions, bullets, storyNotes] = await Promise.all([

@@ -1,3 +1,4 @@
+import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,6 +14,7 @@ import { TEMPLATES } from "@/lib/resume/templates";
 
 export const metadata: Metadata = { title: "Compare tailored resumes" };
 export default async function ComparePage({ searchParams }: PageProps<"/app/resumes/compare">) {
+  hiddenInBeta("/app/jobs");
   const session = await requireSession();
   const { job: id, select } = await searchParams;
   if (typeof id !== "string") notFound();
@@ -27,7 +29,7 @@ export default async function ComparePage({ searchParams }: PageProps<"/app/resu
     <Link href={"/app/jobs/" + id} className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3.5" /> Back to job</Link>
     <PageHeader className="mt-4" title="Choose your best evidence" description={`${job.title} at ${job.company}. Compare the latest version of each strategy, built from your confirmed history.`} />
     <div className="mt-6"><VariantCompareActions jobId={id} selected={selected} /></div>
-    {resumes.length === 0 ? <div className="mt-8 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Build three versions to see how your experience, skills, and keywords tell different true stories for this posting.</div> :
+    {resumes.length === 0 ? <div className="mt-8 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Build versions to see how your experience, skills, and keywords tell different true stories for this posting.</div> :
       <div className="mt-7 grid gap-4 lg:grid-cols-3">{resumes.map((r) => {
         const isSelected = selected === r.row.id;
         const failed = r.checks.some((c) => c.blocking && c.status === "fail");

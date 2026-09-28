@@ -139,14 +139,17 @@ function parseEntry(section: ParsedEntry["section"], header: string[], bullets: 
     }
     return [p];
   });
-  const TITLE_NOUN = /\b(manager|assistant|analyst|accountant|cashier|clerk|coordinator|director|engineer|intern|receptionist|representative|specialist|supervisor|technician|server|stock(er)?|consultant|associate|lead|nurse|teacher|tutor)\b/i;
+  const TITLE_NOUN = /\b(manager|assistant|analyst|accountant|cashier|clerk|coordinator|director|engineer|intern|receptionist|representative|specialist|supervisor|technician|server|stock(er)?|consultant|associate|lead|nurse|teacher|tutor|member|volunteer|preparer|president|treasurer|secretary|officer|founder|captain|chair)\b/i;
   let roleParts = withoutLocation;
   if (roleParts.length === 1) {
     const comma = roleParts[0].match(/^(.+?),\s+(.+)$/);
     if (comma && TITLE_NOUN.test(comma[2])) roleParts = [comma[1], comma[2]];
   }
   let [org = header[0] ?? "Untitled", title = null] = roleParts;
+  // "Org | Title" and "Title | Org" (Proofline's own export) both occur; the role words decide.
+  const ORG_NOUN = /\b(program|university|college|inc|llc|llp|company|corp|bank|group|club|society|association|department|office|stores?|dental|clinic|hospital|center|foundation|partners|chapter)\b/i;
   if (title && TITLE_NOUN.test(org) && !TITLE_NOUN.test(title)) [org, title] = [title, org];
+  else if (title && ORG_NOUN.test(title) && !ORG_NOUN.test(org)) [org, title] = [title, org];
 
   return {
     section,

@@ -14,7 +14,7 @@ export function dailyModelCredits(): number {
   const configured = Number(process.env.PROOFLINE_DAILY_MODEL_CREDITS);
   return Number.isInteger(configured) && configured > 0
     ? Math.min(configured, 1000)
-    : 40;
+    : 50;
 }
 
 /** A shared ceiling prevents open signup from multiplying provider calls across accounts. */
@@ -22,7 +22,7 @@ export function platformDailyModelCredits(): number {
   const configured = Number(process.env.PROOFLINE_DAILY_PLATFORM_MODEL_CREDITS);
   return Number.isInteger(configured) && configured > 0
     ? Math.min(configured, 10_000)
-    : 80;
+    : 250;
 }
 
 export async function reserveModelCredits(

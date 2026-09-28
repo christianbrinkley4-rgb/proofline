@@ -1,40 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, eq } from "drizzle-orm";
-import { ArrowDown, ArrowLeft, ArrowUpRight, Check, Minus, PenLine, TriangleAlert } from "lucide-react";
-import { FitBreakdown } from "@/components/jobs/fit-breakdown";
-import { GapCoach } from "@/components/jobs/gap-coach";
-import { JobEvidenceMap } from "@/components/jobs/job-evidence-map";
-import { MeasureBullets, type Unmeasured } from "@/components/jobs/measure-bullets";
-import { JobActions } from "@/components/jobs/job-actions";
-import { ResumeTrio, type TrioResume } from "@/components/jobs/resume-trio";
+import { and, desc, eq } from "drizzle-orm";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Lightbulb, Lock, Minus, Sparkles } from "lucide-react";
 import { PageBody } from "@/components/app/page-header";
+import { GapQuestions, type GapQuestion } from "@/components/jobs/gap-questions";
+import { JobActions } from "@/components/jobs/job-actions";
+import { KnockoutPanel } from "@/components/jobs/knockout-panel";
+import { ScoreBreakdown } from "@/components/jobs/score-breakdown";
+import { TailorPanel, type TailorResumeView } from "@/components/jobs/tailor-panel";
 import { CompanyAvatar } from "@/components/shared/fit";
 import { Button } from "@/components/ui/button";
-import { latestFactAt, storyReady } from "@/lib/agent/coach";
+import { logEvent } from "@/lib/agent/events";
 import { declinedSkills } from "@/lib/agent/gap-store";
 import { requireSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
+import { scoringReady } from "@/lib/facts/base";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
-import { gapId, hardGaps, skillGaps } from "@/lib/fit/gaps";
-import { promptsForGaps } from "@/lib/fit/gap-prompts";
+import { gapId, skillGaps } from "@/lib/fit/gaps";
+import { extractSkills } from "@/lib/fit/skills";
+import { crossPostingInsight, roleRewards } from "@/lib/fit/insights";
+import { checkKnockouts, firstKnockout, knockoutCandidate } from "@/lib/fit/knockouts";
 import { FIT_BAND_LABEL, fitBand } from "@/lib/fit/rubric";
-import { applicationGuide } from "@/lib/jobs/guide";
 import { formatPay } from "@/lib/jobs/search";
-import { fetchBoardDetail } from "@/lib/jobs/sources/boards";
-import { workdayDetail } from "@/lib/jobs/sources/search-apis";
-import { getJobForUser, requirementsOf, saveMatches, upsertJobs } from "@/lib/jobs/store";
+import { normalizePhrase } from "@/lib/jobs/keywords";
+import { getJobForUser, keywordsOf, requirementsOf, saveMatches } from "@/lib/jobs/store";
 import { listExperiences } from "@/lib/kb/experiences";
-import { factCounts, listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
-import { VARIANT_BLURB, VARIANT_LABEL, type VariantId } from "@/lib/resume/document";
-import { listBullets } from "@/lib/resume/bullets/service";
-import { hasNumber } from "@/lib/resume/polish";
-import { screeningReport } from "@/lib/resume/screening";
-import { listResumes } from "@/lib/resume/store";
-import { STAGE_LABEL } from "@/lib/tracker/model";
+import { layoutResume } from "@/lib/resume/layout";
+import { getResume } from "@/lib/resume/store";
+import { gateStatus } from "@/lib/review/gate";
+import { reviewConfigured } from "@/lib/review/model";
 import { cn } from "@/lib/utils";
 
 export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]">): Promise<Metadata> {
@@ -43,322 +40,244 @@ export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]">):
   return { title: data ? `${data.job.title} at ${data.job.company}` : "Job" };
 }
 
-const VARIANT_ORDER: VariantId[] = ["experience", "skills", "ats"];
-
 export default async function JobPage({ params, searchParams }: PageProps<"/app/jobs/[id]">) {
   const session = await requireSession();
   const userId = session.user.id;
   const data = await getJobForUser(userId, (await params).id);
   if (!data) notFound();
-  const autoBuild = (await searchParams).build === "1";
-  let { job } = data;
+  const { job } = data;
+  const tab = (await searchParams).tab === "tailor" ? "tailor" : "score";
 
-  // Listings from some boards arrive without the full posting; read it now so the score is complete.
-  if (!job.description) {
-    const detail = await (job.source === "workday" ? workdayDetail(job.sourceId) : fetchBoardDetail(job.source, job.sourceId)).catch(() => null);
-    if (detail?.description) {
-      const rows = await upsertJobs([
-        {
-          source: job.source,
-          sourceId: job.sourceId,
-          company: job.company,
-          title: job.title,
-          location: job.location,
-          mode: detail.mode ?? job.mode,
-          level: job.level,
-          url: job.url,
-          description: detail.description,
-          department: detail.department ?? job.department,
-          employmentType: detail.employmentType ?? job.employmentType,
-          payMin: detail.payMin ?? job.payMin,
-          payMax: detail.payMax ?? job.payMax,
-          payPeriod: (detail.payPeriod ?? job.payPeriod) as "hour" | "year" | null,
-          postedAt: job.postedAt,
-        },
-      ]);
-      job = rows.values().next().value ?? job;
-    }
-  }
-
-  // Always score against the profile as it is now: confirming a fact should move the number.
   const requirements = requirementsOf(job);
-  const [candidate, profile, allResumes, application, facts, experiences, declined, factAt, liveBullets, confirmedStatements, rejectedTasks] = await Promise.all([
+  const keywords = keywordsOf(job);
+  const [candidate, profile, experiences, declined, readiness, application, latestResumeRow, cross, latestFact, latestRejection] = await Promise.all([
     loadCandidate(userId),
     getProfile(userId),
-    listResumes(userId),
-    db.query.application.findFirst({ where: and(eq(schema.application.userId, userId), eq(schema.application.jobId, job.id)) }),
-    factCounts(userId),
     listExperiences(userId),
     declinedSkills(userId),
-    latestFactAt(userId),
-    listBullets(userId),
-    listFacts(userId, { states: ["confirmed"] }),
-    db.query.bulletSuggestion.findMany({ where: and(eq(schema.bulletSuggestion.userId, userId), eq(schema.bulletSuggestion.status, "rejected")) }),
+    scoringReady(userId),
+    db.query.application.findFirst({ where: and(eq(schema.application.userId, userId), eq(schema.application.jobId, job.id)) }),
+    db.query.resume.findFirst({ where: and(eq(schema.resume.userId, userId), eq(schema.resume.jobId, job.id)), orderBy: [desc(schema.resume.createdAt)], columns: { id: true } }),
+    crossPostingInsight(userId),
+    db.query.fact.findFirst({ where: eq(schema.fact.userId, userId), orderBy: [desc(schema.fact.createdAt)], columns: { createdAt: true } }),
+    db.query.agentEvent.findFirst({ where: and(eq(schema.agentEvent.userId, userId), eq(schema.agentEvent.type, "fact_rejected")), orderBy: [desc(schema.agentEvent.createdAt)], columns: { createdAt: true } }),
   ]);
-  const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements }, candidate);
+
+  // Knockouts first, on their own. The score never includes them.
+  const knockouts = checkKnockouts({ title: job.title, location: job.location, mode: job.mode, description: job.description, requirements }, knockoutCandidate(profile));
+  const knockout = firstKnockout(knockouts);
+  const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements, keywords }, candidate);
   await saveMatches(userId, [{ job, fit }]);
+  if (tab === "score") await logEvent(userId, "score_viewed", { jobId: job.id, score: fit.score, knockout: knockout?.key ?? null });
   const band = fitBand(fit.score);
-  const guide = applicationGuide(job, requirements, profile?.school);
+  const rewards = roleRewards(job.description, requirements, keywords);
   const pay = formatPay(job);
-  const publicFeedName = job.source === "himalayas" ? "Himalayas" : job.source === "jobicy" ? "Jobicy" : null;
   const applyUrl = /^https?:\/\//.test(job.url) ? job.url : null;
-
-  // The newest version of each strategy, scored by how many requirements it visibly shows.
-  const forJob = allResumes.filter((r) => r.row.jobId === job.id);
-  const latest = VARIANT_ORDER.flatMap((v) => forJob.filter((r) => r.variant === v).slice(0, 1));
-  const trio: TrioResume[] = latest.map((r) => {
-    const report = screeningReport(r.document, requirements);
-    return {
-      id: r.row.id,
-      label: VARIANT_LABEL[r.variant],
-      blurb: VARIANT_BLURB[r.variant],
-      version: r.row.version,
-      covered: report.coveredRequired,
-      total: report.totalRequired,
-      checksOk: !r.checks.some((c) => c.blocking && c.status === "fail"),
-      passed: r.checks.filter((c) => c.status === "pass").length,
-      totalChecks: r.checks.length,
-      fixFirst: r.checks.find((c) => c.status !== "pass")?.detail ?? null,
-      top: r.why.slice(0, 2).map((w) => w.text),
-    };
-  });
-  const best = [...trio].sort((a, b) => b.covered - a.covered || Number(b.checksOk) - Number(a.checksOk) || b.passed - a.passed)[0] ?? null;
-  // A sparse profile can give each strategy the same examples. Show each distinct
-  // evidence selection once; keep layout variants available on the compare page.
-  const seenDocuments = new Set<string>();
-  const distinctTrio = (best ? [best, ...trio.filter((r) => r.id !== best.id)] : trio).filter((r) => {
-    const doc = forJob.find((stored) => stored.row.id === r.id)?.document;
-    const signature = JSON.stringify(doc?.sections.flatMap((section) => section.kind === "entries" ? section.entries.flatMap((entry) => entry.bullets.map((bullet) => bullet.text)) : []).sort() ?? []);
-    if (seenDocuments.has(signature)) return false;
-    seenDocuments.add(signature);
-    return true;
-  });
-  const hiddenStrategies = trio.filter((r) => !distinctTrio.some((shown) => shown.id === r.id)).map((r) => r.label);
-  // Bullets on the best version that don't carry a number yet, skipping any already rewritten.
-  const liveIds = new Set(liveBullets.filter((b) => b.status === "active").map((b) => b.id));
-  const bestDoc = best ? forJob.find((r) => r.row.id === best.id)?.document : undefined;
-  const evidenceMap = bestDoc ? screeningReport(bestDoc, requirements, candidate.confirmedText).requiredEvidence : [];
-  const limitedEvidence = (bestDoc?.sections.flatMap((section) => section.kind === "entries" ? section.entries.flatMap((entry) => entry.bullets) : []).length ?? 0) <= 2;
-  const unmeasured: Unmeasured[] = (bestDoc?.sections ?? [])
-    .flatMap((s) => (s.kind === "entries" ? s.entries.flatMap((e) => e.bullets.map((b) => ({ bulletId: b.id, text: b.text, org: e.org }))) : []))
-    .filter((b) => liveIds.has(b.bulletId) && !hasNumber(b.text))
-    .slice(0, 3);
-  const newestBuilt = forJob[0]?.row.createdAt ?? null;
-  const stale = Boolean(newestBuilt && factAt && factAt > newestBuilt);
-
-  const gaps = promptsForGaps(skillGaps(fit, declined), experiences, confirmedStatements, rejectedTasks, job.description);
-  const missingIds = new Set([...fit.details.requiredSkills.missing, ...fit.details.preferredSkills.missing, ...fit.details.keywords.missing].map(gapId));
-  const declinedHere = [...fit.details.requiredSkills.missing, ...fit.details.preferredSkills.missing, ...fit.details.keywords.missing].filter(
-    (s, i, all) => declined.has(gapId(s)) && all.findIndex((x) => gapId(x) === gapId(s)) === i,
-  );
-  const ready = storyReady({ confirmedFacts: facts.confirmed, experiences: experiences.length });
-  const blocked = ready ? null : "Your resumes are built only from facts you've confirmed, and there aren't enough yet. Add one experience and come back: your fit and resumes will be waiting.";
-
-  const status = !trio.length
-    ? { step: 3, text: "Next: your three tailored resumes.", href: "#resumes" }
-    : gaps.length
-      ? { step: 4, text: `Next: answer ${gaps.length} ${gaps.length === 1 ? "question" : "questions"} about what the posting asks for.`, href: "#strengthen" }
-      : stale
-        ? { step: 4, text: "Next: rebuild your resumes with what you just added.", href: "#resumes" }
-        : { step: 5, text: "Your resume is as strong as your evidence allows. Next: the cover letter.", href: "#next-heading" };
   const modeLabel = job.mode !== "unknown" ? job.mode[0].toUpperCase() + job.mode.slice(1) : null;
 
+  const tailorBlocked = knockout
+    ? `Knockout: ${knockout.reason} Tailoring is off for jobs you can't take.`
+    : !readiness.ready
+      ? "Add your education and one experience on My facts first. Your resume is built only from confirmed facts."
+      : null;
+
+  // The Tailor tab: the one resume, its review, and the questions that could make it stronger.
+  let resume: TailorResumeView | null = null;
+  if (tab === "tailor" && latestResumeRow) {
+    const stored = await getResume(userId, latestResumeRow.id);
+    if (stored) {
+      const layout = await layoutResume(stored.document, stored.template);
+      const gate = await gateStatus(userId, stored, layout);
+      const changedAt = [latestFact?.createdAt, latestRejection?.createdAt].filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0];
+      resume = {
+        resumeId: stored.row.id,
+        version: stored.row.version,
+        ops: layout.ops,
+        family: stored.template.family,
+        why: stored.why,
+        cuts: stored.cuts,
+        adjustments: stored.adjustments,
+        linter: gate.linter,
+        model: gate.review?.model ?? null,
+        reviewedAt: gate.review?.at ?? null,
+        stale: gate.stale,
+        canExport: gate.canExport,
+        reason: gate.reason,
+        lines: gate.lines.map((l) => ({ text: l.text, bulletId: l.bulletId, factIds: l.factIds })),
+        outdated: Boolean(changedAt && changedAt > stored.row.createdAt),
+        aiConfigured: reviewConfigured(),
+      };
+    }
+  }
+  // One question per thing: "Journal entries" (required) and "journal entry" (keyword) are the same ask.
+  // Keyword-only gaps must be real skills, not the job title or a place.
+  const asked = new Set<string>();
+  const gaps: GapQuestion[] = skillGaps(fit, declined, 8)
+    .filter((g) => g.kind !== "keyword" || extractSkills(g.skill).length > 0)
+    .filter((g) => {
+      const keys = [normalizePhrase(g.skill), ...extractSkills(g.skill).map(normalizePhrase)];
+      if (keys.some((k) => asked.has(k))) return false;
+      keys.forEach((k) => asked.add(k));
+      return true;
+    })
+    .slice(0, 6)
+    .map((g) => ({ id: g.id, skill: g.skill, kind: g.kind }));
+  const missingIds = new Set([...fit.details.requiredSkills.missing, ...fit.details.preferredSkills.missing, ...fit.details.keywords.missing].map(gapId));
+  const declinedHere = [...fit.details.requiredSkills.missing, ...fit.details.preferredSkills.missing].filter((s, i, all) => declined.has(gapId(s)) && missingIds.has(gapId(s)) && all.indexOf(s) === i);
+  const places = experiences.filter((e) => e.kind !== "education").map((e) => ({ id: e.id, name: [e.title, e.org].filter(Boolean).join(", ") }));
+
   return (
-    <PageBody className="max-w-5xl">
+    <PageBody className="max-w-6xl">
       <Link href="/app/jobs" className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-3.5" />
         All jobs
       </Link>
 
-      <header className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+      <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-4">
           <CompanyAvatar name={job.company} className="size-12 text-[14px]" />
           <div className="min-w-0">
-            <h1 className="font-display text-[26px] leading-tight font-semibold sm:text-[32px]">{job.title}</h1>
+            <h1 className="font-display text-[24px] leading-tight font-semibold sm:text-[30px]">{job.title}</h1>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
               {[job.company, job.location, modeLabel && !job.location?.toLowerCase().includes(job.mode) ? modeLabel : null, pay].filter(Boolean).join(" · ")}
             </p>
-            {/* The next step is a link straight to where it happens, not just a sentence. */}
-            <a
-              href={status.href}
-              className={cn(
-                "mt-3 inline-flex min-h-10 items-center gap-2 text-[13px] font-medium underline-offset-4 hover:underline",
-                status.step > 4 ? "text-brand-ink" : "text-foreground",
-              )}
-            >
-              <span className={cn("size-1.5 shrink-0 rounded-full", status.step > 4 ? "bg-brand" : "bg-ink")} />
-              {status.text}
-              <ArrowDown className="size-3.5 shrink-0" />
-            </a>
           </div>
         </div>
-        <div className="flex shrink-0 items-baseline gap-1 sm:flex-col sm:items-end">
-          <div className="flex items-baseline gap-0.5">
-            <span className="font-display text-[52px] leading-none font-semibold tabular-nums">{fit.score}</span>
-            <span className="text-[14px] text-subtle-foreground">/100</span>
-          </div>
-          <span className="ml-3 flex items-center gap-1.5 text-[13px] font-medium sm:mt-1.5 sm:ml-0">
-            <span className={cn("size-1.5 rounded-full", band === "strong" || band === "good" ? "bg-brand" : "bg-border-strong")} />
-            {FIT_BAND_LABEL[band]}
-          </span>
-          <span className="ml-3 max-w-44 text-[11.5px] leading-4 text-muted-foreground sm:mt-1 sm:ml-0 sm:text-right">Profile fit, not your chance of being hired</span>
-        </div>
-      </header>
-
-      {fit.cappedBy && (
-        <div className="mt-6 flex items-start gap-2 rounded-lg border border-pending/40 bg-pending-soft px-4 py-3 text-[13.5px] text-pending-ink">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>
-            <span className="font-medium">Capped at {fit.score} from {fit.raw}.</span> {fit.cappedBy.reason} Check this requirement before you apply.
-          </span>
-        </div>
-      )}
-
-      <section aria-labelledby="fit-heading" className="mt-8 grid gap-4 md:grid-cols-2">
-        <h2 id="fit-heading" className="sr-only">
-          Your fit
-        </h2>
-        <div className="rounded-2xl border bg-background p-5">
-          <h3 className="text-[13px] font-medium text-subtle-foreground">Where you&apos;re strong</h3>
-          <ul className="mt-2 space-y-1.5">
-            {fit.strengths.length === 0 && <li className="text-[13.5px] text-muted-foreground">Confirm more of what you&apos;ve done to see strengths here.</li>}
-            {fit.strengths.map((s) => (
-              <li key={s} className="flex gap-2 text-[14px]">
-                <Check className="mt-0.5 size-3.5 shrink-0 text-brand" strokeWidth={2.5} />
-                {s}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-2xl border bg-background p-5">
-          <h3 className="text-[13px] font-medium text-subtle-foreground">What they ask for that you haven&apos;t shown</h3>
-          <ul className="mt-2 space-y-1.5">
-            {fit.gaps.length === 0 && (
-              <li className="text-[13.5px] text-muted-foreground">
-                {gaps.length
-                  ? `Nothing major. The posting also mentions ${gaps.length === 1 ? "a term" : `${gaps.length} terms`} your resume doesn't show; see Make it stronger below.`
-                  : "Nothing obvious."}
-              </li>
-            )}
-            {fit.gaps.map((g) => (
-              <li key={g} className="flex gap-2 text-[14px] text-muted-foreground">
-                <Minus className="mt-0.5 size-3.5 shrink-0" strokeWidth={2.5} />
-                {g}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <details className="group rounded-2xl border bg-background md:col-span-2">
-          <summary className="cursor-pointer list-none px-5 py-3 text-[14px] font-medium">
-            How the score adds up <span className="font-normal text-muted-foreground group-open:hidden">(show)</span>
-          </summary>
-          <div className="border-t">
-            <FitBreakdown points={fit.points} details={fit.details} />
-          </div>
-        </details>
-      </section>
-
-      <section id="resumes" aria-labelledby="resumes-heading" className="mt-10 scroll-mt-20">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="resumes-heading" className="font-display text-[24px] font-semibold">
-            {distinctTrio.length === 1 && trio.length ? "Your tailored resume" : "Your tailored resumes"}
-          </h2>
-          {best && best.total > 0 && (
-            <p className="text-[13px] text-muted-foreground">
-              Current pick: <span className="font-medium text-foreground">{best.label}</span>, showing {best.covered} of {best.total} posting points.
-            </p>
-          )}
-        </div>
-        <ResumeTrio jobId={job.id} resumes={distinctTrio} bestId={best?.id ?? null} stale={stale} autoBuild={autoBuild && ready} blocked={blocked} limitedEvidence={limitedEvidence} hiddenStrategies={hiddenStrategies} />
-      </section>
-
-      <JobEvidenceMap items={evidenceMap} inferred={requirements.requiredLines.length === 0} profileFit={fit.score} />
-
-      <section id="strengthen" aria-labelledby="strengthen-heading" className="mt-10 scroll-mt-20">
-        <h2 id="strengthen-heading" className="font-display text-[24px] font-semibold">
-          Make it stronger
-        </h2>
-        <p className="mt-1 mb-4 max-w-2xl text-[14px] leading-6 text-muted-foreground">
-          {gaps.length || unmeasured.length
-            ? "The fastest way to a better resume is real evidence for what they ask. Tell me where you've done each one, in your own words. I'll write the bullet and rescore your fit. Nothing gets added that you didn't say."
-            : "Your confirmed facts cover every skill this posting names, and every bullet on your best version is measured."}
-        </p>
-        <GapCoach
-          jobId={job.id}
-          gaps={gaps}
-          declined={declinedHere.filter((s) => missingIds.has(gapId(s)))}
-          experiences={experiences.filter((e) => e.kind !== "education").map((e) => ({ id: e.id, org: e.org, title: e.title }))}
-          advice={hardGaps(fit)}
-        />
-        <MeasureBullets jobId={job.id} bullets={unmeasured} />
-      </section>
-
-      <section aria-labelledby="next-heading" className="mt-12 rounded-2xl border bg-muted/30 p-5 sm:p-6">
-        <h2 id="next-heading" className="text-[15px] font-semibold">When your resume is ready</h2>
-        <p className="mt-1 text-[13.5px] text-muted-foreground">
-          {application ? `In your tracker as ${STAGE_LABEL[application.stage]}.` : "Write the cover letter from the same facts, then apply on their site and track it."}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button size="lg" variant="outline" asChild className="bg-background">
-            <Link href={`/app/jobs/${job.id}/packet`}>
-              <PenLine data-icon="inline-start" />
-              Cover letter and interview prep
-            </Link>
-          </Button>
+        <div className="flex flex-wrap items-center gap-1">
           {applyUrl && (
             <Button size="lg" variant="ghost" asChild>
               <a href={applyUrl} target="_blank" rel="noreferrer">
-                {publicFeedName ? `View on ${publicFeedName}` : "Open the posting"}
+                Open the posting
                 <ArrowUpRight data-icon="inline-end" />
               </a>
             </Button>
           )}
           <JobActions jobId={job.id} saved={data.match?.status === "saved"} tracked={Boolean(application)} />
         </div>
-      </section>
+      </header>
 
-      <details className="group mt-6 rounded-2xl border bg-background">
-        <summary className="cursor-pointer list-none px-5 py-3 text-[14px] font-medium">
-          Exactly how to apply <span className="font-normal text-muted-foreground group-open:hidden">(show)</span>
-        </summary>
-        <ol className="divide-y border-t">
-          {guide.map((step, i) => (
-            <li key={step.id} className="flex gap-4 px-5 py-4">
-              <span className="font-mono text-[12px] text-subtle-foreground tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+      <div className="mt-6">
+        <KnockoutPanel knockouts={knockouts} jobId={job.id} />
+      </div>
+
+      <nav aria-label="Job sections" className="mt-6 flex gap-1 border-b">
+        <TabLink href={`/app/jobs/${job.id}`} active={tab === "score"}>
+          Fit score
+        </TabLink>
+        <TabLink href={`/app/jobs/${job.id}?tab=tailor`} active={tab === "tailor"} locked={Boolean(tailorBlocked)}>
+          Tailor
+        </TabLink>
+      </nav>
+
+      {tab === "score" ? (
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+          <section aria-labelledby="score-heading" className="min-w-0">
+            <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <div className="text-[14px] font-medium">
-                  {step.href ? (
-                    <a href={step.href} target="_blank" rel="noreferrer" className="underline-offset-4 hover:underline">
-                      {step.label}
-                    </a>
-                  ) : (
-                    step.label
-                  )}
+                <h2 id="score-heading" className="text-[13px] font-medium text-subtle-foreground">
+                  Fit score
+                </h2>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-display text-[52px] leading-none font-semibold tabular-nums">{fit.score}</span>
+                  <span className="text-[14px] text-subtle-foreground">/100</span>
+                  <span className="ml-3 flex items-center gap-1.5 text-[13px] font-medium">
+                    <span className={cn("size-1.5 rounded-full", band === "strong" || band === "good" ? "bg-brand" : "bg-border-strong")} />
+                    {FIT_BAND_LABEL[band]}
+                  </span>
                 </div>
-                <p className="mt-0.5 text-[13.5px] leading-6 text-muted-foreground">{step.detail}</p>
               </div>
-            </li>
-          ))}
-        </ol>
-      </details>
+              <p className="max-w-56 text-[12px] leading-4 text-muted-foreground sm:text-right">How your confirmed facts line up with this posting. Not your chance of being hired.</p>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-2xl border bg-background">
+              <ScoreBreakdown points={fit.points} details={fit.details} />
+            </div>
+          </section>
+
+          <aside className="space-y-4">
+            <Notes title="Strengths" icon="check" items={fit.strengths} empty="Confirm more of what you've done to see strengths here." />
+            <Notes title="Gaps" icon="minus" items={fit.gaps} empty="Nothing obvious." />
+            <Notes title="What this role rewards" icon="spark" items={rewards} />
+            <div className="rounded-2xl border bg-muted/40 p-4">
+              <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
+                <Lightbulb className="size-4" />
+                Across your saved roles
+              </h3>
+              <p className="mt-1.5 text-[13.5px] leading-6 text-muted-foreground">{cross.text}</p>
+            </div>
+            {tailorBlocked ? (
+              <p className="flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-5 text-muted-foreground">
+                <Lock className="mt-0.5 size-4 shrink-0" />
+                {tailorBlocked}
+              </p>
+            ) : (
+              <Button size="xl" className="w-full" asChild>
+                <Link href={`/app/jobs/${job.id}?tab=tailor`}>
+                  Tailor my resume for this job
+                  <ArrowRight data-icon="inline-end" />
+                </Link>
+              </Button>
+            )}
+          </aside>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-10">
+          <TailorPanel jobId={job.id} resume={resume} blocked={tailorBlocked} autoBuild={!latestResumeRow} />
+          {!tailorBlocked && (
+            <section aria-labelledby="gaps-heading">
+              <h2 id="gaps-heading" className="font-display text-[22px] font-semibold">
+                Make it stronger
+              </h2>
+              <p className="mt-1 mb-4 max-w-2xl text-[14px] leading-6 text-muted-foreground">
+                Things this posting asks for that your facts don&apos;t show yet. Answer only with what&apos;s true; nothing is added until you confirm it.
+              </p>
+              <GapQuestions jobId={job.id} gaps={gaps} declined={declinedHere} places={places} />
+            </section>
+          )}
+        </div>
+      )}
 
       {job.description && (
-        <details className="group mt-3 rounded-2xl border bg-background">
+        <details className="group mt-10 rounded-2xl border bg-background">
           <summary className="cursor-pointer list-none px-5 py-3 text-[14px] font-medium">
             Full posting <span className="font-normal text-muted-foreground group-open:hidden">(show)</span>
           </summary>
           <div className="border-t px-5 py-4 text-[14px] leading-7 whitespace-pre-line text-muted-foreground">{job.description}</div>
         </details>
       )}
-      {publicFeedName && (
-        <p className="mt-3 text-[12px] text-muted-foreground">
-          Job data from{" "}
-          <a className="underline underline-offset-2 hover:text-foreground" href={job.url} target="_blank" rel="noreferrer">
-            {publicFeedName}
-          </a>
-          . Check the original listing for application details.
-        </p>
-      )}
     </PageBody>
+  );
+}
+
+function TabLink({ href, active, locked, children }: { href: string; active: boolean; locked?: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "-mb-px flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-[14px] transition-colors",
+        active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {locked && <Lock className="size-3.5" />}
+      {children}
+    </Link>
+  );
+}
+
+function Notes({ title, items, empty, icon }: { title: string; items: string[]; empty?: string; icon: "check" | "minus" | "spark" }) {
+  const Icon = icon === "check" ? Check : icon === "minus" ? Minus : Sparkles;
+  return (
+    <div className="rounded-2xl border bg-background p-4">
+      <h3 className="text-[13px] font-semibold">{title}</h3>
+      <ul className="mt-2 space-y-1.5">
+        {items.length === 0 && empty && <li className="text-[13.5px] text-muted-foreground">{empty}</li>}
+        {items.map((s) => (
+          <li key={s} className="flex gap-2 text-[13.5px] leading-5">
+            <Icon className={cn("mt-0.5 size-3.5 shrink-0", icon === "check" ? "text-brand" : "text-muted-foreground")} strokeWidth={2.5} />
+            {s}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

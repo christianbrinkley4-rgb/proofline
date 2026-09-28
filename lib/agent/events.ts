@@ -29,7 +29,15 @@ export type AgentEventType =
   | "preference_learned"
   | "connector_call"
   | "gap_answered"
-  | "gap_declined";
+  | "gap_declined"
+  // The private-beta funnel (view event_log). The owner reads these to see where testers stall.
+  | "signup"
+  | "job_ingested"
+  | "score_viewed"
+  | "tailor_completed"
+  | "gate_passed"
+  | "gate_failed"
+  | "exported";
 
 export async function logEvent(userId: string, type: AgentEventType, data: Record<string, unknown> = {}) {
   await db.insert(schema.agentEvent).values({ userId, type, data });

@@ -1,3 +1,4 @@
+import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, CircleAlert, FileText, Plus } from "lucide-react";
@@ -11,6 +12,7 @@ import { TEMPLATES } from "@/lib/resume/templates";
 export const metadata: Metadata = { title: "Resumes" };
 
 export default async function ResumesPage() {
+  hiddenInBeta("/app/jobs");
   const session = await requireSession();
   const resumes = await listResumes(session.user.id);
 

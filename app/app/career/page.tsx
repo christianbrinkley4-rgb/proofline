@@ -1,3 +1,4 @@
+import { hiddenInBeta } from "@/lib/beta";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageBody, PageHeader } from "@/components/app/page-header";
@@ -20,6 +21,7 @@ function monthLabel(value: string) {
 }
 
 export default async function CareerPage() {
+  hiddenInBeta("/app");
   const userId = (await requireSession()).user.id;
   const [dashboard, profile] = await Promise.all([careerDashboard(userId), getProfile(userId)]);
   const { goal, archived, current, checkins, actions, benchmark, options } = dashboard;

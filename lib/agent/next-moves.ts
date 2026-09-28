@@ -197,7 +197,7 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
       {
         kind: "resume",
         title: `Build your resumes for ${app.company}`,
-        detail: `Three one-page versions for ${app.title}, built from your confirmed facts, with the best one picked.`,
+        detail: `One reviewed, one-page resume for ${app.title}, built from your confirmed facts.`,
         href: `/app/jobs/${app.jobId}?build=1#resumes`,
       },
       urgency("resume"),
@@ -212,7 +212,7 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
         {
           kind: "resume",
           title: `Build a resume for ${job.company}`,
-          detail: `Compare three one-page versions for ${job.title}, built from your confirmed facts.`,
+          detail: `One reviewed, one-page resume for ${job.title}, built from your confirmed facts.`,
           href: `/app/jobs/${job.jobId}?build=1#resumes`,
         },
         urgency("resume"),
@@ -235,7 +235,7 @@ export function buildNextMoves(input: NextMovesInput): NextMove[] {
 
   if (input.applications.length === 0 && !(input.jobs ?? []).length) {
     push(
-      { kind: "explore", title: "Paste a job you want", detail: "A link from anywhere, or the description. You get your fit and three tailored resumes.", href: "/app#paste" },
+      { kind: "explore", title: "Paste a job you want", detail: "A link from anywhere, or the description. You get your fit and one tailored resumes.", href: "/app#paste" },
       urgency("explore"),
     );
   }

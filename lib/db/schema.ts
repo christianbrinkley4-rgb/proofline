@@ -116,6 +116,10 @@ export const profile = pgTable("profile", {
   workAuthorization: text("work_authorization"),
   /** Which term the user is recruiting for, e.g. "Summer 2027". */
   targetTerm: text("target_term"),
+  /** Earliest month the person can start work, YYYY-MM. Used by the start-date knockout. */
+  availableFrom: text("available_from"),
+  /** Willing to move for a role outside targetLocations. Null means not asked yet. */
+  openToRelocate: boolean("open_to_relocate"),
   onboardingStep: text("onboarding_step"),
   onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   /** Basics read from the last uploaded resume. Proposals that prefill the form; the profile fields above are what the student confirmed. */
@@ -375,6 +379,8 @@ export const job = pgTable(
     dedupeKey: text("dedupe_key").notNull(),
     /** Parsed requirements, cached so every user reuses the work. */
     requirements: jsonb("requirements").$type<Record<string, unknown>>(),
+    /** Keyword phrases from the posting, lowercased and singular (lib/jobs/keywords.ts). */
+    keywords: jsonb("keywords").$type<string[]>(),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
     closedAt: timestamp("closed_at", { withTimezone: true }),
   },
@@ -483,6 +489,8 @@ export const resume = pgTable(
     why: jsonb("why").$type<Record<string, unknown>>(),
     cuts: jsonb("cuts").$type<Record<string, unknown>>(),
     checks: jsonb("checks").$type<Record<string, unknown>>(),
+    /** The review gate's last result (lib/review/gate.ts): linter checks, model verdict, fingerprint. */
+    review: jsonb("review").$type<Record<string, unknown>>(),
     version: integer("version").notNull().default(1),
     createdAt: createdAt(),
   },
@@ -514,6 +522,10 @@ export const application = pgTable(
     appliedAt: timestamp("applied_at", { withTimezone: true }),
     stageChangedAt: timestamp("stage_changed_at", { withTimezone: true }).notNull().defaultNow(),
     nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
+    /** When the person said they sent the follow-up. Clears the "due" state. */
+    followUpSentAt: timestamp("follow_up_sent_at", { withTimezone: true }),
+    /** The employer's confirmation number or email reference, typed by the person. */
+    confirmationRef: text("confirmation_ref"),
     deadline: text("deadline"),
     notes: text("notes"),
     contacts: jsonb("contacts").$type<Array<{ name: string; role?: string; email?: string }>>(),
@@ -604,6 +616,28 @@ export const apiToken = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("api_token_user_idx").on(t.userId)],
+);
+
+/**
+ * Messages for the owner to read directly: in-app feedback, the public contact
+ * form, and password-reset links when no email provider is configured.
+ */
+export const inboxMessage = pgTable(
+  "inbox_message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for the public contact form. Deleting the account deletes its messages. */
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    /** "feedback", "contact", or "password_reset". */
+    kind: text("kind").notNull(),
+    email: text("email"),
+    name: text("name"),
+    message: text("message").notNull(),
+    /** The page the person was on when they sent it. */
+    page: text("page"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("inbox_message_kind_idx").on(t.kind, t.createdAt)],
 );
 
 /** One atomic reservation counter shared by every beta account. */

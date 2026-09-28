@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FIT_COMPONENTS } from "@/lib/fit/rubric";
 import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
-import { DEMO_EXPERIENCE, DEMO_JOBS, DEMO_LEADERSHIP, FOLLOW_UP_DRAFT, cashReportText, jobFit } from "./sample-data";
+import { DEMO_EXPERIENCE, DEMO_JOBS, DEMO_LEADERSHIP, FOLLOW_UP_DRAFT, cashReportText, jobFit, jobKnockouts } from "./sample-data";
 
 // The landing page demo is the first thing people judge us by, so it must follow the product's own rules.
 
@@ -28,7 +28,7 @@ describe("demo resume bullets", () => {
   });
 
   it("explains every bullet for every job worth tailoring", () => {
-    const tailorable = DEMO_JOBS.filter((job) => jobFit(job).cappedBy === null);
+    const tailorable = DEMO_JOBS.filter((job) => !jobKnockouts(job).some((k) => k.status === "knockout"));
     for (const bullet of bullets) {
       for (const job of tailorable) {
         expect(bullet.addresses[job.id], `${bullet.id} for ${job.id}`).toBeTruthy();
@@ -46,14 +46,17 @@ describe("demo jobs", () => {
     }
   });
 
-  it("lists results best fit first", () => {
-    const scores = DEMO_JOBS.map((job) => jobFit(job).score);
-    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+  it("lists tailorable roles best fit first, knockouts last", () => {
+    const knocked = (job: (typeof DEMO_JOBS)[number]) => jobKnockouts(job).some((k) => k.status === "knockout");
+    const open = DEMO_JOBS.filter((job) => !knocked(job)).map((job) => jobFit(job).score);
+    expect(open).toEqual([...open].sort((a, b) => b - a));
+    expect(DEMO_JOBS.findIndex(knocked)).toBe(DEMO_JOBS.length - 1);
   });
 
-  it("shows the gated job capped, with the gate's reason", () => {
-    const pellham = DEMO_JOBS.find((j) => j.id === "pellham");
-    expect(pellham && jobFit(pellham)).toMatchObject({ score: 40, cappedBy: { cap: 40 } });
+  it("shows the knocked-out job with its reason, never blended into the score", () => {
+    const pellham = DEMO_JOBS.find((j) => j.id === "pellham")!;
+    expect(jobFit(pellham).cappedBy).toBeNull();
+    expect(jobKnockouts(pellham).find((k) => k.status === "knockout")?.reason).toMatch(/graduating/);
   });
 });
 

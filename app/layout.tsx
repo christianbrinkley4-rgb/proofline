@@ -23,12 +23,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.name}: find jobs, tailor resumes, get interviews`,
+    default: `${site.name}: the right resume for every job`,
     template: `%s · ${site.name}`,
   },
   description: site.description,
   openGraph: {
-    title: `${site.name}: stop sending the same resume to fifty jobs`,
+    title: `${site.name}: stop sending the same resume to every job`,
     description: site.description,
     siteName: site.name,
     type: "website",

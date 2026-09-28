@@ -1,7 +1,7 @@
 import { site } from "@/lib/site";
 
 /** Identifies us to job boards, with a contact, as polite crawlers do. */
-export const USER_AGENT = `ProoflineBot/0.1 (+${site.url}; ${site.contactEmail})`;
+export const USER_AGENT = `ProoflineBot/0.1 (+${site.url}/contact)`;
 
 export class SourceError extends Error {
   constructor(

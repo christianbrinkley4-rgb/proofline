@@ -13,17 +13,17 @@ export function ClosingCta() {
             Summer 2027 internships are posting now.
           </h2>
           <p className="mx-auto mt-5 max-w-md text-[17px] leading-7 text-muted-foreground">
-            Start with one story and one search. Your coach takes it from there.
+            Start with a few facts about you and one job you want. Proofline takes it from there.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="xl" asChild className="w-full px-6 sm:w-auto">
               <Link href={site.routes.signUp}>
-                Start free
+                Get started
                 <ArrowRight data-icon="inline-end" />
               </Link>
             </Button>
             <Button size="xl" variant="outline" asChild className="w-full bg-background/70 px-6 sm:w-auto">
-              <a href="#career-centers">For career centers</a>
+              <Link href="/contact">Talk to us</Link>
             </Button>
           </div>
         </div>

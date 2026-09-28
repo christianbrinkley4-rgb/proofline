@@ -8,15 +8,14 @@ const COLUMNS = [
     links: [
       { href: "#how", label: "How it works" },
       { href: "#proof", label: "How bullets are written" },
-      { href: "#pricing", label: "Pricing" },
       { href: "#faq", label: "FAQ" },
     ],
   },
   {
-    title: "Schools",
+    title: "Company",
     links: [
-      { href: "#career-centers", label: "Career centers" },
-      { href: `mailto:${site.contactEmail}`, label: "Contact" },
+      { href: "/contact", label: "Contact us" },
+      { href: "/privacy", label: "Privacy" },
     ],
   },
 ];
