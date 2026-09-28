@@ -197,3 +197,14 @@ A new competitive brief (`research/COMPETITORS.md`) found that the market is rac
 - **LinkedIn profile kit** (`/app/facts/linkedin`, `lib/linkedin/profile-kit.ts`): headline, About, role descriptions, skills, and certifications from confirmed facts only, with copy buttons and LinkedIn's limits. The goal line stays a prompt for the person to write.
 
 Next (Phase 2 in `COMPETE-PLAN.md`): the free public "Can you defend every line?" check, a review-first browser extension, spoken mock interviews grounded in the person's stories, and gap-to-project suggestions. Owner decisions still open: post-beta pricing, a paid job-search provider, and publishing an extension.
+
+## September 28 competitive plan, Phase 2
+
+All four Phase 2 items from `COMPETE-PLAN.md` are built, each checked in the browser and covered by tests:
+
+- **Free public check** (`/check`, `lib/check/defend.ts`, `app/api/check`): paste or upload a resume, optionally a job. It lists every line with a number and the question an interviewer would ask about it, flags words that promise a size without giving one, runs the linter's content checks, and shows which posting terms appear, in the posting's own wording. Rules only, no account, nothing stored, rate-limited per address. Linked from the site header and footer.
+- **Spoken mock interviews** (`lib/packet/practice.ts`): each prep question has a mic (browser dictation) and How did that sound? Rules-based feedback covers length for the kind of question, situation and result, I versus we, any number said that isn't a confirmed fact, whether the strongest story came up, honest gap answers, naming the company, and cliches. There's no live in-interview copilot, and the page says so.
+- **Gap to earned evidence** (`lib/fit/earn.ts`): a skill marked Not yet gets one small project with an honest time range and a free resource from the tool's maker or a long-standing public source (every link checked). I did it, ask me again reopens the question so the person's own answer becomes the fact. Soft skills, paid credentials, and enterprise systems get no suggestion.
+- **Browser extension** (`extension/`, `/app/extension`, `app/api/extension/*`): save the posting on the page, fill empty basic fields from the profile with every field outlined, and mark Applied. It never submits and skips sensitive questions. It connects through a scoped token handed over on the Connect page. Testers install it unpacked from `public/proofline-extension.zip` (`npm run extension:build`). See `extension/README.md`.
+
+Still the owner's call: post-beta pricing, a paid job-search provider, and publishing the extension to the Chrome Web Store.
