@@ -1,5 +1,6 @@
 import { extractSkills } from "@/lib/fit/skills";
 import { extractKeywords, matchKeywords } from "@/lib/jobs/keywords";
+import { toPastTense } from "@/lib/resume/polish";
 import { ACTION_VERBS } from "@/lib/resume/verbs";
 import { canonical, numbersIn } from "@/lib/resume/verify";
 
@@ -238,7 +239,8 @@ export function lintResume(input: LintInput): LintCheck[] {
       if (WEAK_PHRASES.some((p) => lower.startsWith(`${p} `) || lower === p)) return true;
       const { first } = firstWords(b);
       if (LEADING_FILLER.has(first)) return true;
-      return !VERBS.has(first) && !/^[a-z]+ed$/.test(first);
+      // Present tense is right for a current role or ongoing project ("Guide", "Build").
+      return !VERBS.has(first) && !/^[a-z]+ed$/.test(first) && !toPastTense(first);
     })
     .map((b) => firstWords(b).opening);
   add(

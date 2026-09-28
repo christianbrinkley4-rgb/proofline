@@ -21,13 +21,13 @@ export const ACTION_VERBS = {
   ],
   building: [
     "Built", "Created", "Designed", "Developed", "Drafted", "Engineered", "Established", "Implemented", "Introduced",
-    "Programmed", "Wrote", "Produced", "Prototyped", "Configured", "Automated", "Deployed", "Coded", "Authored",
+    "Programmed", "Wrote", "Produced", "Prototyped", "Configured", "Automated", "Deployed", "Coded", "Authored", "Architected",
   ],
   improvement: [
     "Cut", "Reduced", "Increased", "Improved", "Raised", "Grew", "Doubled", "Tripled", "Accelerated", "Expanded",
     "Lowered", "Shortened", "Simplified", "Standardized", "Streamlined", "Upgraded", "Modernized", "Consolidated",
     "Eliminated", "Recovered", "Saved", "Boosted", "Restructured", "Revamped", "Resolved", "Fixed", "Caught",
-    "Prevented",
+    "Prevented", "Converted", "Drove",
   ],
   communication: [
     "Presented", "Pitched", "Negotiated", "Persuaded", "Advised", "Briefed", "Explained", "Taught", "Tutored",
@@ -43,7 +43,7 @@ export const ACTION_VERBS = {
   ],
   organization: [
     "Arranged", "Cataloged", "Compiled", "Maintained", "Monitored", "Planned", "Prioritized", "Scheduled",
-    "Sorted", "Systematized", "Inventoried", "Organized", "Logged", "Documented", "Updated", "Counted", "Checked",
+    "Sorted", "Systematized", "Inventoried", "Organized", "Logged", "Documented", "Updated", "Counted", "Checked", "Booked",
   ],
 } as const;
 

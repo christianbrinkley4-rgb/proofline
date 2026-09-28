@@ -11,6 +11,7 @@ const IRREGULAR_PAST: Record<string, string> = {
   lead: "led",
   build: "built",
   write: "wrote",
+  drive: "drove",
   grow: "grew",
   teach: "taught",
   oversee: "oversaw",

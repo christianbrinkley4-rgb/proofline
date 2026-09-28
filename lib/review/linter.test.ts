@@ -129,3 +129,20 @@ describe("review linter", () => {
     expect(check.passed).toBe(true);
   });
 });
+
+describe("present-tense openers", () => {
+  it("accepts present tense for a current role or ongoing project, and still flags weak openers", () => {
+    const resumeText = [
+      "**Casey Morgan**",
+      "casey@example.com | 919-555-0101",
+      "EXPERIENCE",
+      "**Licensed Insurance Agent** | Bankers Life | June 2026 – Present",
+      "- Guide 50+ clients through tax implications of Roth conversions",
+      "- Convert about half of 25+ appointments into paying clients",
+      "- Architect a CRM that manages 15,000+ client records",
+      "- Responsible for various office tasks",
+    ].join("\n");
+    const check = lintResume({ resumeText, jobDescription: "", userFacts: [] }).find((c) => c.id === "bullets_start_with_verb")!;
+    expect(check.failures).toEqual(["Responsible for various"]);
+  });
+});
