@@ -17,11 +17,11 @@ export function Hero() {
         </p>
 
         <h1 className="mx-auto mt-7 max-w-[15ch] font-display text-[46px] leading-[0.98] font-semibold text-balance motion-safe:animate-rise motion-safe:[animation-delay:80ms] sm:text-[68px] lg:text-[84px]">
-          Turn what you&apos;ve done into the job you want.
+          The resume you can defend in the interview.
         </h1>
 
         <p className="mx-auto mt-6 max-w-[38rem] text-[17px] leading-7 text-pretty text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:160ms] sm:text-[19px] sm:leading-8">
-          {site.name} builds your resume from what you&apos;ve actually done. Paste any job and get your fit, one tailored
+          Every line comes from something you confirmed. Nothing is invented. Paste any job and get your fit, one tailored
           one-page resume, and exactly what would make it stronger.
         </p>
 

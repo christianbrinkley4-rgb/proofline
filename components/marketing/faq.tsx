@@ -7,6 +7,10 @@ const FAQS = [
     a: "No. Proofline only writes from facts you've confirmed. If it thinks a number would make a bullet stronger, it asks you first. Anything unconfirmed is flagged on screen and can't be exported.",
   },
   {
+    q: "How is this different from other resume builders or ChatGPT?",
+    a: "Most tools write whatever sounds strongest, including numbers you never gave them, and some send applications for you. Proofline writes only from facts you've confirmed, checks every number against them, and leaves applying to you. You get fewer, better applications, and you can answer any question about your own resume.",
+  },
+  {
     q: "Where do the jobs come from?",
     a: "Anywhere you find them. Paste a link from LinkedIn, Indeed, Handshake, or a company site, or paste the description itself when a site needs a sign-in.",
   },
