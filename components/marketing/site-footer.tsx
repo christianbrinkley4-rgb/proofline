@@ -6,9 +6,10 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { href: "#how", label: "How it works" },
-      { href: "#proof", label: "How bullets are written" },
-      { href: "#faq", label: "FAQ" },
+      { href: "/#how", label: "How it works" },
+      { href: "/#proof", label: "How bullets are written" },
+      { href: "/check", label: "Free resume check" },
+      { href: "/#faq", label: "FAQ" },
     ],
   },
   {

@@ -13,6 +13,10 @@ export const PRIVACY_POINTS = [
     text: "Before a resume can be downloaded, its text, the posting's requirements, and your confirmed facts may be sent to one AI model for a single review. That's the only time your data leaves our database.",
   },
   {
+    title: "Free resume check",
+    text: "A resume or job you paste into the public check is read once to build your report, then dropped. It isn't saved or sent to an AI model.",
+  },
+  {
     title: "Take it with you",
     text: "Download everything as one file from Settings at any time.",
   },

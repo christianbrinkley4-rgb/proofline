@@ -6,7 +6,7 @@ import { findVoiceIssues } from "@/lib/voice/rules";
 // Principle 3 applies to our own site too: no em dashes, no filler words, anywhere users can read.
 
 const ROOT = join(__dirname, "..");
-const COPY_DIRS = ["app", "components/marketing", "components/brand", "components/coach", "components/app", "lib/demo", "lib/site.ts", "lib/agent/coach.ts", "lib/agent/next-moves.ts", "lib/jobs/widen.ts"];
+const COPY_DIRS = ["app", "components/marketing", "components/brand", "components/coach", "components/check", "components/app", "lib/demo", "lib/site.ts", "lib/agent/coach.ts", "lib/agent/next-moves.ts", "lib/jobs/widen.ts"];
 
 function sourceFiles(path: string): string[] {
   const full = join(ROOT, path);

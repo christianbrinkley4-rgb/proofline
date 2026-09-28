@@ -166,7 +166,7 @@ function factNumbers(facts: string[]): Set<string> {
 }
 
 /** Numbers that are claims: skips years, dates, and a GPA scale like "/4.0". */
-function claimNumbers(line: string): Array<{ token: string; value: string }> {
+export function claimNumbers(line: string): Array<{ token: string; value: string }> {
   const text = line.replace(/\/\s*4(?:\.0+)?\b/g, "");
   const out: Array<{ token: string; value: string }> = [];
   for (const m of text.matchAll(/\$?\d[\d,]*(?:\.\d+)?\s?(?:%|k|m|x|\+)?/gi)) {

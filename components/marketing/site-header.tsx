@@ -5,9 +5,10 @@ import { site } from "@/lib/site";
 import { container } from "./section";
 
 const LINKS = [
-  { href: "#how", label: "How it works" },
-  { href: "#proof", label: "Proof, not guesses" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#how", label: "How it works" },
+  { href: "/#proof", label: "Proof, not guesses" },
+  { href: "/check", label: "Free resume check" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export function SiteHeader() {
