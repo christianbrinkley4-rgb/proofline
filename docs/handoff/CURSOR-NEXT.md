@@ -11,6 +11,8 @@ The live preview and server use the same composer. Every save must contain the e
 
 The full-bank regression audit covers 6,000 distinct usable templates and 24,000 compositions with method/result variants. Additional cases cover named units, passive-vs-active experience, singular counts, shorthand frequencies, percentage results, participation, preserved numbers, saved raw parts, and stale-preview rejection. Final checks passed: 741 tests in 82 files, typecheck, lint, and build. Local browser checks verified live wording, number changes clearing confirmation, exact preview/save text, next-card advancement, no console errors, and no phone overflow at 375px. Production credentials and accounts were not entered.
 
+Commit `b15542b` is live on https://proofline-beta.vercel.app as Ready production deployment `dpl_CGJqn3VNeaC5B74imhWpbtppMCZf`. The cloud build passed. Live route checks returned 200 for the home page and /check, redirected signed-out My facts visitors to login, and returned 404 for development login. Signed-in wording and save checks used localhost with synthetic data. Reload any previously open tab before confirming a new card so its preview uses the deployed composer.
+
 ## Continuing fact cards (September 28)
 
 The owner clarified that Proofline should help people recall work, build a large bullet bank, and select from it for each application. My facts now exposes Add some facts, with a role picker and continuing Yes/No cards; each role also has Suggest more facts. Onboarding shows the same questions immediately after a role is saved, even when no initial task lines were entered. This supersedes the old two-line minimum described below.
@@ -37,8 +39,8 @@ The owner reported replacing the review API key with Cursor. Vercel confirms the
 
 - **Live beta:** https://proofline-beta.vercel.app (Vercel project `proofline-beta`, Neon Postgres). Deploy with `npx vercel --prod --yes` from this folder; migrations run on the first request (latest is `drizzle/0016_contact_email.sql`).
 - **Sign-up is open to any email** (`BETA_EMAILS=*` in Vercel production; see `lib/beta-access.ts`). The owner wants a few more people trying it.
-- **Everything is committed on `main`** (no Git remote). The last app deploy includes `3fb7590` for continuing XYZ recall cards, plus `8623e2d` and `d75791f` for pasted job corrections and education/contact preservation.
-- Checks: `npm run typecheck`, `npm run lint`, `npm test` (681 tests passing at handoff), `npm run build`.
+- **Everything is committed on `main`** (no Git remote). The last app deploy includes `b15542b` for fluent confirmed XYZ wording and `3fb7590` for continuing recall cards, plus `8623e2d` and `d75791f` for pasted job corrections and education/contact preservation.
+- Checks: `npm run typecheck`, `npm run lint`, `npm test` (741 tests passing after the fluent XYZ update), `npm run build`.
 - The owner (Christian) tested with his real resume and a real posting. His account is on production; the job is `/app/jobs/6eafe6cc-e1bc-4a6f-8429-40c22443000a`. His verdict: the generated resume "is way off and just does not look correct". The fixes below come from that test.
 
 ## Fix next, in this order
