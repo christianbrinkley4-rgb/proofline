@@ -12,7 +12,7 @@ import { numbersIn } from "@/lib/resume/verify";
  */
 
 export const REVIEW_PROMPT_VERSION = "review-gate.v1";
-export const DEFAULT_REVIEW_MODEL = "gemini-2.5-flash-lite";
+export const DEFAULT_REVIEW_MODEL = "gemini-3.5-flash-lite";
 
 export const REVIEW_SYSTEM_PROMPT = `You are the last reviewer before a student downloads a resume for one specific job.
 

@@ -56,6 +56,19 @@ describe("review linter", () => {
     expect(invented).toContain(check.evidence_quote);
   });
 
+  it("reads merged skills without splitting inside parentheses", () => {
+    const text = STRONG.replace("Technical: Excel, QuickBooks", "Technical: Excel (pivot tables, XLOOKUP), QuickBooks");
+    const checks = lintResume({ resumeText: text, jobDescription: JD, userFacts: [...FACTS, "Built pivot tables and XLOOKUP formulas in Excel"], pageCount: 1 });
+    expect(byId(checks, "no_unconfirmed_claims").passed).toBe(true);
+    expect(byId(checks, "no_duplicate_words_in_skills").passed).toBe(true);
+  });
+
+  it("treats 3.50 and 3.5 as the same GPA", () => {
+    const facts = FACTS.map((f) => (f === "3.6" ? "3.50" : f));
+    const text = STRONG.replace("GPA: 3.6/4.0", "GPA: 3.5/4.0");
+    expect(byId(lintResume({ resumeText: text, jobDescription: JD, userFacts: facts, pageCount: 1 }), "no_unconfirmed_claims").passed).toBe(true);
+  });
+
   it("fails a skill and a role nobody confirmed", () => {
     const text = STRONG.replace("Technical: Excel, QuickBooks", "Technical: Excel, QuickBooks, SAP").replace("**Volunteer Tax Preparer**", "**Senior Tax Manager**");
     const check = byId(lintResume({ resumeText: text, jobDescription: JD, userFacts: FACTS, pageCount: 1 }), "no_unconfirmed_claims");

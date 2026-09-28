@@ -125,6 +125,8 @@ function parseLines(text: string): Line[] {
 }
 
 const bulletBody = (line: string) => line.replace(/^\s*-\s?/, "");
+/** "Technical: Excel (pivot tables, XLOOKUP), QuickBooks": commas inside parentheses don't split. */
+const skillItems = (line: string) => line.slice(line.indexOf(":") + 1).split(/,(?![^()]*\))/).map((s) => s.trim()).filter(Boolean);
 const stripBold = (text: string) => text.replace(/\*\*/g, "");
 
 /** Crude stem so "reconciled" and "reconcile" and "reconciliations" meet. */
@@ -149,10 +151,15 @@ const WORD_NUMBERS: Record<string, string> = {
   fifteen: "15", twenty: "20", thirty: "30", fifty: "50", hundred: "100", first: "1", second: "2", third: "3", half: "50%", double: "2x", doubled: "2x", triple: "3x", tripled: "3x",
 };
 
+/** "3.50" and "3.5" are the same number; so are "$3,200.00" and "$3,200". */
+function sameNumber(value: string): string {
+  return /^\d+\.\d+$/.test(value) ? String(Number(value)) : value;
+}
+
 function factNumbers(facts: string[]): Set<string> {
   const set = new Set<string>();
   for (const f of facts) {
-    for (const n of numbersIn(f)) set.add(n);
+    for (const n of numbersIn(f)) set.add(sameNumber(n));
     for (const w of f.toLowerCase().match(/[a-z]+/g) ?? []) if (WORD_NUMBERS[w]) set.add(canonical(WORD_NUMBERS[w]));
   }
   return set;
@@ -164,7 +171,7 @@ function claimNumbers(line: string): Array<{ token: string; value: string }> {
   const out: Array<{ token: string; value: string }> = [];
   for (const m of text.matchAll(/\$?\d[\d,]*(?:\.\d+)?\s?(?:%|k|m|x|\+)?/gi)) {
     const token = m[0].trim();
-    const value = canonical(token);
+    const value = sameNumber(canonical(token));
     if (!value || /^(19|20)\d{2}$/.test(value)) continue;
     out.push({ token, value });
   }
@@ -298,7 +305,7 @@ export function lintResume(input: LintInput): LintCheck[] {
       }
     }
     if (line.kind === "skills") {
-      const items = line.text.slice(line.text.indexOf(":") + 1).split(",").map((s) => s.trim()).filter(Boolean);
+      const items = skillItems(line.text);
       for (const item of items) {
         const base = item.replace(/\s*\(.*\)$/, "");
         const skills = extractSkills(base);
@@ -361,7 +368,7 @@ export function lintResume(input: LintInput): LintCheck[] {
 
   const dupes: string[] = [];
   for (const line of lines.filter((l) => l.kind === "skills")) {
-    const items = line.text.slice(line.text.indexOf(":") + 1).split(",").map((s) => s.trim()).filter(Boolean);
+    const items = skillItems(line.text);
     const seen = new Map<string, string>();
     for (const item of items) {
       const key = item.toLowerCase().replace(/\s*\(.*\)$/, "");

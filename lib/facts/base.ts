@@ -336,6 +336,7 @@ export async function ensureFactBase(userId: string) {
     const roleBase = { category: (PROJECT_KINDS.includes(experience.kind) ? "project" : "experience") as FactCategory, experienceId: experience.id, sourceDetail: "experience record" };
     await setFieldFact(userId, own, "org", experience.org, roleBase);
     if (experience.title) await setFieldFact(userId, own, "title", experience.title, roleBase);
+    if (experience.location) await setFieldFact(userId, own, "location", experience.location, roleBase);
     if (experience.startDate || experience.endDate) await setFieldFact(userId, own, "dates", datesText(experience.startDate, experience.endDate), roleBase);
   }
 }
