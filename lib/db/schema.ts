@@ -497,6 +497,27 @@ export const resume = pgTable(
   (t) => [index("resume_user_idx").on(t.userId)],
 );
 
+/**
+ * A link the person chose to share that shows how one resume was made: each line
+ * and the confirmed fact behind it. Public by its unguessable slug until revoked.
+ */
+export const resumeShare = pgTable(
+  "resume_share",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    resumeId: uuid("resume_id")
+      .notNull()
+      .references(() => resume.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull().unique(),
+    createdAt: createdAt(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("resume_share_user_idx").on(t.userId), index("resume_share_resume_idx").on(t.resumeId)],
+);
+
 export const applicationStageEnum = pgEnum("application_stage", [
   "saved",
   "applied",

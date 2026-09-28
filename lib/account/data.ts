@@ -28,6 +28,7 @@ export async function exportAccount(userId: string) {
       db.query.careerGoal.findMany({ where: eq(schema.careerGoal.userId, userId) }),
       db.query.careerCheckin.findMany({ where: eq(schema.careerCheckin.userId, userId) }),
     ]);
+  const proofLinks = await db.query.resumeShare.findMany({ where: eq(schema.resumeShare.userId, userId) });
   const feedback = await db.query.inboxMessage.findMany({ where: eq(schema.inboxMessage.userId, userId), columns: { id: true, kind: true, message: true, page: true, createdAt: true } });
   const jobIds = [...new Set([...matches.map((m) => m.jobId), ...applications.flatMap((a) => (a.jobId ? [a.jobId] : []))])];
   const jobs = jobIds.length
@@ -52,6 +53,7 @@ export async function exportAccount(userId: string) {
     chat,
     activity: events,
     connections: tokens,
+    proofLinks,
     careerGoals,
     careerCheckins,
     feedback: feedback.filter((f) => f.kind === "feedback"),

@@ -29,6 +29,7 @@ import { getJobForUser, keywordsOf, requirementsOf, saveMatches } from "@/lib/jo
 import { listExperiences } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
+import { activeShare } from "@/lib/proof/share";
 import { layoutResume } from "@/lib/resume/layout";
 import { getResume } from "@/lib/resume/store";
 import { gateStatus } from "@/lib/review/gate";
@@ -88,7 +89,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
     const stored = await getResume(userId, latestResumeRow.id);
     if (stored) {
       const layout = await layoutResume(stored.document, stored.template);
-      const [gate, confirmed] = await Promise.all([gateStatus(userId, stored, layout), listFacts(userId, { states: ["confirmed"] })]);
+      const [gate, confirmed, share] = await Promise.all([gateStatus(userId, stored, layout), listFacts(userId, { states: ["confirmed"] }), activeShare(userId, stored.row.id)]);
       // A bullet that stands on exactly one of the person's own bullet facts can be edited right on the page.
       const bulletFacts = new Map(confirmed.filter((f) => fieldOf(f) === "bullet").map((f) => [f.id, f.content]));
       const changedAt = [latestFact?.createdAt, latestRejection?.createdAt].filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0];
@@ -109,6 +110,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
         lines: gate.lines.map((l) => ({ text: l.text, bulletId: l.bulletId, factIds: l.factIds, factText: l.factIds?.length === 1 ? bulletFacts.get(l.factIds[0]) : undefined })),
         outdated: Boolean(changedAt && changedAt > stored.row.createdAt),
         aiConfigured: reviewConfigured(),
+        shareSlug: share?.slug ?? null,
       };
     }
   }

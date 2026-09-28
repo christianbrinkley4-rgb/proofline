@@ -11,6 +11,7 @@ import { skillFromAnswer } from "@/lib/fit/gaps";
 import { getJobForUser } from "@/lib/jobs/store";
 import { createExperience, getExperience } from "@/lib/kb/experiences";
 import { listFacts } from "@/lib/kb/facts";
+import { shareResume, ShareNotReady, stopSharing } from "@/lib/proof/share";
 import { editBullet } from "@/lib/resume/bullets/service";
 import { getResume } from "@/lib/resume/store";
 import { tailorBestResume } from "@/lib/resume/tailor-best";
@@ -123,4 +124,24 @@ export async function answerGapQuestionAction(input: z.input<typeof GapSchema>):
   await addListFacts(userId, "skill", [used], `gap:${jobId}`);
   await logEvent(userId, "gap_answered", { jobId, skill, used, experienceId: experience.id });
   return buildAndReview(userId, session.user.email, jobId);
+}
+
+/** A proof link for a resume that passed review: the same link if it's already shared. */
+export async function shareResumeAction(resumeId: string): Promise<{ ok: true; slug: string } | { ok: false; error: string }> {
+  const session = await requireSession();
+  const id = z.uuid().safeParse(resumeId);
+  if (!id.success) return { ok: false, error: "That resume link isn't valid." };
+  try {
+    const share = await shareResume(session.user.id, id.data);
+    await logEvent(session.user.id, "proof_shared", { resumeId: id.data });
+    return { ok: true, slug: share.slug };
+  } catch (error) {
+    return { ok: false, error: error instanceof ShareNotReady ? error.message : "Couldn't create the link. Try again." };
+  }
+}
+
+/** The link stops working at once. */
+export async function stopSharingAction(resumeId: string): Promise<void> {
+  const session = await requireSession();
+  await stopSharing(session.user.id, z.uuid().parse(resumeId));
 }

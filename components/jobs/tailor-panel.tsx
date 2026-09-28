@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, CircleAlert, Download, Info, LoaderCircle, Lock, Minus, Pencil, RefreshCw, Scissors, SquareKanban } from "lucide-react";
 import { toast } from "sonner";
-import { editLineAction, rerunReviewAction, tailorJobAction } from "@/app/app/jobs/[id]/tailor-actions";
+import { editLineAction, rerunReviewAction, shareResumeAction, stopSharingAction, tailorJobAction } from "@/app/app/jobs/[id]/tailor-actions";
 import { trackJobAction } from "@/app/app/tracker/actions";
 import { ConfirmBox } from "@/components/facts/confirm-box";
 import { PagePreview } from "@/components/resume/page-preview";
@@ -41,6 +41,8 @@ export type TailorResumeView = {
   /** Facts changed after this version was built. */
   outdated: boolean;
   aiConfigured: boolean;
+  /** The active proof link for this resume, if the person shared one. */
+  shareSlug: string | null;
 };
 
 type Panel = "review" | "why" | "cut";
@@ -239,6 +241,7 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
           </Button>
         </div>
       )}
+      {resume.canExport && <ProofLink resumeId={resume.resumeId} slug={resume.shareSlug} />}
       {!resume.canExport && resume.reason && (
         <p id="export-lock" className="mt-2 flex items-start gap-1.5 text-[13px] text-pending-ink">
           <Lock className="mt-0.5 size-3.5 shrink-0" />
@@ -535,5 +538,73 @@ function EditLine({ jobId, line, onClose }: { jobId: string; line: TailorResumeV
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * An optional link for recruiters that shows the confirmed fact behind every line.
+ * Offered only once the review passes; stopping it takes effect at once.
+ */
+function ProofLink({ resumeId, slug }: { resumeId: string; slug: string | null }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [origin, setOrigin] = useState("");
+  // Known only in the browser; set after mount so server and client markup match.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setOrigin(window.location.origin), []);
+  const url = slug && origin ? `${origin}/proof/${slug}` : "";
+
+  const create = () =>
+    start(async () => {
+      const result = await shareResumeAction(resumeId).catch(() => ({ ok: false as const, error: "Couldn't reach the server. Try again." }));
+      if (!result.ok) toast.error(result.error);
+      router.refresh();
+    });
+  const stop = () =>
+    start(async () => {
+      await stopSharingAction(resumeId);
+      toast("The link no longer works.");
+      router.refresh();
+    });
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Copied. Paste it into an application's website field or your cover letter.");
+    } catch {
+      toast.error("Couldn't copy. Select the link and copy it instead.");
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border px-4 py-3 text-[13.5px] leading-5">
+      {slug ? (
+        <>
+          <p>
+            <span className="font-medium">Proof link on.</span>{" "}
+            <span className="text-muted-foreground">Anyone with it can see each line and the fact you confirmed behind it. Your email and phone stay off it.</span>
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <input readOnly value={url} aria-label="Proof link" onFocus={(e) => e.currentTarget.select()} className="h-8 min-w-0 flex-1 rounded-md border bg-muted/40 px-2.5 font-mono text-[12px]" />
+            <Button size="sm" variant="outline" onClick={copy} disabled={!url}>
+              Copy
+            </Button>
+            <Button size="sm" variant="ghost" onClick={stop} disabled={pending}>
+              Stop sharing
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span>
+            <span className="font-medium">Show your work.</span>{" "}
+            <span className="text-muted-foreground">A link for recruiters with the confirmed fact behind every line. Optional.</span>
+          </span>
+          <Button size="sm" variant="outline" onClick={create} disabled={pending}>
+            {pending ? <LoaderCircle className="animate-spin" /> : null}
+            Create a proof link
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
