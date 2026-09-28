@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CircleAlert, Download, Info, LoaderCircle, Lock, Minus, RefreshCw, Scissors, SquareKanban } from "lucide-react";
+import { Check, CircleAlert, Download, Info, LoaderCircle, Lock, Minus, Pencil, RefreshCw, Scissors, SquareKanban } from "lucide-react";
 import { toast } from "sonner";
-import { rerunReviewAction, tailorJobAction } from "@/app/app/jobs/[id]/tailor-actions";
+import { editLineAction, rerunReviewAction, tailorJobAction } from "@/app/app/jobs/[id]/tailor-actions";
 import { trackJobAction } from "@/app/app/tracker/actions";
+import { ConfirmBox } from "@/components/facts/confirm-box";
 import { PagePreview } from "@/components/resume/page-preview";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { downloadExport } from "@/lib/export-download";
 import type { DrawOp } from "@/lib/resume/layout";
 import type { CutItem, WhyItem } from "@/lib/resume/tailor";
@@ -31,8 +33,11 @@ export type TailorResumeView = {
   stale: boolean;
   canExport: boolean;
   reason: string | null;
-  /** Resume lines with the bullet and facts behind each, to send a flagged quote back to its fact. */
-  lines: Array<{ text: string; bulletId?: string; factIds?: string[] }>;
+  /**
+   * Resume lines with the bullet and facts behind each, to send a flagged quote back to its fact.
+   * factText is the person's own words when the line is exactly one of their bullet facts.
+   */
+  lines: Array<{ text: string; bulletId?: string; factIds?: string[]; factText?: string }>;
   /** Facts changed after this version was built. */
   outdated: boolean;
   aiConfigured: boolean;
@@ -115,7 +120,17 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
   const [reviewing, startReview] = useTransition();
   const [tracking, startTrack] = useTransition();
   const [downloading, setDownloading] = useState<"pdf" | "docx" | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const preview = useRef<HTMLDivElement>(null);
+  const editingLine = editing ? resume.lines.find((l) => l.bulletId === editing) : undefined;
+
+  const startEdit = (bulletId: string | null | undefined) => {
+    if (!bulletId) return;
+    setEditing(bulletId);
+    setFocus(bulletId);
+    setHovered(bulletId);
+    preview.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   /** The line (and its facts) a quote came from. */
   const lineFor = useMemo(() => (quote: string) => resume.lines.find((l) => l.text.includes(quote)), [resume.lines]);
@@ -220,17 +235,19 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div ref={preview} className="scroll-mt-24 rounded-xl border bg-muted/60 p-3 sm:p-6" onMouseLeave={() => setHovered(focus)}>
+          {editing && <EditLine key={editing} jobId={jobId} line={editingLine} onClose={() => setEditing(null)} />}
           <div
-            className="mx-auto max-w-[680px] shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_32px_-16px_rgb(0_0_0/0.18)]"
+            className="mx-auto max-w-[680px] shadow-[0_1px_3px_rgb(0_0_0/0.08),0_12px_32px_-16px_rgb(0_0_0/0.18)] [&_text[data-ref]]:cursor-pointer"
             onMouseOver={(e) => {
               const ref = (e.target as Element).getAttribute?.("data-ref");
               if (ref) setHovered(ref);
             }}
+            onClick={(e) => startEdit((e.target as Element).getAttribute?.("data-ref"))}
           >
             <PagePreview ops={resume.ops} family={resume.family} hovered={hovered} flagged={flagged} />
           </div>
           <p className="mt-3 text-center text-[12px] text-subtle-foreground">
-            The exact page, same line breaks as the PDF. Version {resume.version}.{flagged.size > 0 && " Highlighted lines need a fix."}
+            The exact page, same line breaks as the PDF. Version {resume.version}.{flagged.size > 0 && " Highlighted lines need a fix."} Select any bullet to edit it.
             <span className="sm:hidden"> To read it full size on a phone, download it once the review passes.</span>
           </p>
         </div>
@@ -258,7 +275,9 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
             ))}
           </div>
           <div id="tailor-panel" role="tabpanel" className="scroll-thin space-y-2.5 overflow-y-auto p-3">
-            {panel === "review" && <ReviewList resume={resume} showOnPage={showOnPage} fixHref={fixHref} reviewing={reviewing} />}
+            {panel === "review" && (
+              <ReviewList resume={resume} showOnPage={showOnPage} fixHref={fixHref} editHere={(q) => startEdit(lineFor(q)?.bulletId)} canEditHere={(q) => Boolean(lineFor(q)?.bulletId)} reviewing={reviewing} />
+            )}
             {panel === "why" &&
               resume.why.map((w) => (
                 <div
@@ -279,6 +298,10 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
                     </div>
                   )}
                   <p className="mt-2 text-[12.5px] leading-5 text-muted-foreground">{w.reason}</p>
+                  <button type="button" className="mt-1.5 inline-flex items-center gap-1 text-[12.5px] font-medium underline-offset-2 hover:underline" onClick={() => startEdit(w.bulletId)}>
+                    <Pencil className="size-3" aria-hidden="true" />
+                    Edit this line
+                  </button>
                 </div>
               ))}
             {panel === "cut" && (
@@ -310,7 +333,21 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
 
 const SEVERITY_ORDER = { BLOCKING: 0, WARN: 1, INFO: 2 } as const;
 
-function ReviewList({ resume, showOnPage, fixHref, reviewing }: { resume: TailorResumeView; showOnPage: (q: string) => void; fixHref: (q: string) => string; reviewing: boolean }) {
+function ReviewList({
+  resume,
+  showOnPage,
+  fixHref,
+  editHere,
+  canEditHere,
+  reviewing,
+}: {
+  resume: TailorResumeView;
+  showOnPage: (q: string) => void;
+  fixHref: (q: string) => string;
+  editHere: (q: string) => void;
+  canEditHere: (q: string) => boolean;
+  reviewing: boolean;
+}) {
   const checks = [...resume.linter].sort((a, b) => Number(a.passed) - Number(b.passed) || SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
   const model = resume.model;
   return (
@@ -353,9 +390,7 @@ function ReviewList({ resume, showOnPage, fixHref, reviewing }: { resume: Tailor
               <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => showOnPage(issue.quote)}>
                 Show on page
               </button>
-              <Link href={fixHref(issue.quote)} className="font-medium underline-offset-2 hover:underline">
-                Fix in My facts
-              </Link>
+              <FixLink quote={issue.quote} fixHref={fixHref} editHere={editHere} canEditHere={canEditHere} />
             </div>
           </div>
         ))}
@@ -388,9 +423,7 @@ function ReviewList({ resume, showOnPage, fixHref, reviewing }: { resume: Tailor
                         <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => showOnPage(quote)}>
                           Show on page
                         </button>
-                        <Link href={fixHref(quote)} className="font-medium underline-offset-2 hover:underline">
-                          Fix in My facts
-                        </Link>
+                        <FixLink quote={quote} fixHref={fixHref} editHere={editHere} canEditHere={canEditHere} />
                       </div>
                     </div>
                   ))}
@@ -413,5 +446,81 @@ function Dot({ tone }: { tone: "pass" | "fail" }) {
     <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-destructive text-white">
       <Minus className="size-2.5" strokeWidth={3.5} />
     </span>
+  );
+}
+
+/** Edit a flagged line right here when it stands on one fact; otherwise send the person to My facts. */
+function FixLink({ quote, fixHref, editHere, canEditHere }: { quote: string; fixHref: (q: string) => string; editHere: (q: string) => void; canEditHere: (q: string) => boolean }) {
+  return canEditHere(quote) ? (
+    <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => editHere(quote)}>
+      Edit here
+    </button>
+  ) : (
+    <Link href={fixHref(quote)} className="font-medium underline-offset-2 hover:underline">
+      Fix in My facts
+    </Link>
+  );
+}
+
+/**
+ * The inline editor. It edits the fact behind the line, in the person's words, and
+ * only on an explicit "this is true". Saving rebuilds the page and reruns the review.
+ */
+function EditLine({ jobId, line, onClose }: { jobId: string; line: TailorResumeView["lines"][number] | undefined; onClose: () => void }) {
+  const router = useRouter();
+  // Start from the person's own words when the line is one of their facts; otherwise from the line itself.
+  const original = line?.factText ?? line?.text.replace(/^- /, "") ?? "";
+  const [text, setText] = useState(original);
+  const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, startSave] = useTransition();
+  const bulletId = line?.bulletId;
+  if (!bulletId) return null;
+
+  const save = () =>
+    startSave(async () => {
+      setError(null);
+      if (!confirmed) return;
+      const result = await editLineAction({ jobId, bulletId, text, confirmed }).catch(() => ({ ok: false as const, error: "Couldn't reach the server. Try again." }));
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      toast(result.gate.passed ? "Saved and rebuilt. Review passed." : "Saved and rebuilt. See the review for what's left.");
+      onClose();
+      router.refresh();
+    });
+
+  return (
+    <form
+      className="mx-auto mb-4 max-w-[680px] rounded-xl border bg-background p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <label htmlFor="edit-line" className="text-[13.5px] font-medium">
+        Edit this line
+      </label>
+      <p className="mt-0.5 text-[12.5px] leading-5 text-muted-foreground">
+        Your edit is saved to My facts in your words and used on every resume from now on. Add a number only if you could explain it in an interview.
+      </p>
+      <Textarea id="edit-line" value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={400} autoFocus className="mt-2 text-[14px] leading-6" />
+      <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-2" />
+      {error && (
+        <p role="alert" className="mt-2 text-[13px] text-pending-ink">
+          {error}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="submit" size="sm" disabled={saving || !confirmed || text.trim().length < 3 || text.trim() === original}>
+          {saving ? <LoaderCircle className="animate-spin" /> : <Check data-icon="inline-start" />}
+          Save and rebuild
+        </Button>
+        <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }

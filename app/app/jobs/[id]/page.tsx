@@ -15,7 +15,7 @@ import { logEvent } from "@/lib/agent/events";
 import { declinedSkills } from "@/lib/agent/gap-store";
 import { requireSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
-import { scoringReady } from "@/lib/facts/base";
+import { fieldOf, scoringReady } from "@/lib/facts/base";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { gapId, skillGaps } from "@/lib/fit/gaps";
@@ -27,6 +27,7 @@ import { formatPay } from "@/lib/jobs/search";
 import { normalizePhrase } from "@/lib/jobs/keywords";
 import { getJobForUser, keywordsOf, requirementsOf, saveMatches } from "@/lib/jobs/store";
 import { listExperiences } from "@/lib/kb/experiences";
+import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { layoutResume } from "@/lib/resume/layout";
 import { getResume } from "@/lib/resume/store";
@@ -87,7 +88,9 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
     const stored = await getResume(userId, latestResumeRow.id);
     if (stored) {
       const layout = await layoutResume(stored.document, stored.template);
-      const gate = await gateStatus(userId, stored, layout);
+      const [gate, confirmed] = await Promise.all([gateStatus(userId, stored, layout), listFacts(userId, { states: ["confirmed"] })]);
+      // A bullet that stands on exactly one of the person's own bullet facts can be edited right on the page.
+      const bulletFacts = new Map(confirmed.filter((f) => fieldOf(f) === "bullet").map((f) => [f.id, f.content]));
       const changedAt = [latestFact?.createdAt, latestRejection?.createdAt].filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0];
       resume = {
         resumeId: stored.row.id,
@@ -103,7 +106,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
         stale: gate.stale,
         canExport: gate.canExport,
         reason: gate.reason,
-        lines: gate.lines.map((l) => ({ text: l.text, bulletId: l.bulletId, factIds: l.factIds })),
+        lines: gate.lines.map((l) => ({ text: l.text, bulletId: l.bulletId, factIds: l.factIds, factText: l.factIds?.length === 1 ? bulletFacts.get(l.factIds[0]) : undefined })),
         outdated: Boolean(changedAt && changedAt > stored.row.createdAt),
         aiConfigured: reviewConfigured(),
       };

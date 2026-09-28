@@ -1,16 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { logEvent } from "@/lib/agent/events";
 import { requireSession } from "@/lib/auth";
-import { addBulletFact, addListFacts, saveRole } from "@/lib/facts/base";
+import { db, schema } from "@/lib/db";
+import { addBulletFact, addListFacts, editFact, fieldOf, saveRole } from "@/lib/facts/base";
 import { skillFromAnswer } from "@/lib/fit/gaps";
 import { getJobForUser } from "@/lib/jobs/store";
 import { createExperience, getExperience } from "@/lib/kb/experiences";
-import { runGate, type GateResult } from "@/lib/review/gate";
+import { listFacts } from "@/lib/kb/facts";
+import { editBullet } from "@/lib/resume/bullets/service";
 import { getResume } from "@/lib/resume/store";
 import { tailorBestResume } from "@/lib/resume/tailor-best";
+import { runGate, type GateResult } from "@/lib/review/gate";
 
 export type TailorActionResult = { ok: true; resumeId: string; gate: Pick<GateResult, "passed"> } | { ok: false; error: string };
 
@@ -45,6 +49,44 @@ export async function rerunReviewAction(resumeId: string): Promise<{ ok: true; p
   const gate = await runGate(session.user.id, stored);
   if (stored.row.jobId) revalidatePath(`/app/jobs/${stored.row.jobId}`);
   return { ok: true, passed: gate.passed };
+}
+
+const LineSchema = z.object({
+  jobId: z.uuid(),
+  bulletId: z.uuid(),
+  text: z.string().trim().min(3, "Write the line first.").max(400, "Keep it to one resume line, under 400 characters."),
+  confirmed: z.literal(true, "Tick the box to confirm this is true and in your own words."),
+});
+
+/**
+ * A line edited right on the resume, confirmed as true and in the person's words.
+ * A line that is one of their own bullet facts re-confirms that fact. Any other
+ * line (written from several facts, or from an imported resume) becomes a new
+ * confirmed fact with the full revision, and the old line is retired. Then the
+ * resume rebuilds and the review runs again.
+ */
+export async function editLineAction(input: z.input<typeof LineSchema>): Promise<TailorActionResult> {
+  const parsed = LineSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check your edit." };
+  const { jobId, bulletId, text } = parsed.data;
+  const session = await requireSession();
+  const userId = session.user.id;
+  if (!(await getJobForUser(userId, jobId))) return { ok: false, error: "This job isn't available anymore." };
+  const bullet = await db.query.bullet.findFirst({ where: and(eq(schema.bullet.id, bulletId), eq(schema.bullet.userId, userId)) });
+  if (!bullet || bullet.status !== "active") return { ok: false, error: "That line changed since this page loaded. Rebuild and try again." };
+  try {
+    const [only] = bullet.factIds.length === 1 ? await listFacts(userId, { states: ["confirmed"] }).then((facts) => facts.filter((f) => f.id === bullet.factIds[0])) : [];
+    if (only && fieldOf(only) === "bullet") {
+      const next = await editFact(userId, only.id, text);
+      await logEvent(userId, "bullet_edited", { jobId, from: bullet.id, factId: only.id, newFactId: next.id, where: "resume" });
+    } else {
+      await editBullet(userId, bullet.id, text);
+    }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Couldn't save that edit. Try again." };
+  }
+  revalidatePath("/app", "layout");
+  return buildAndReview(userId, session.user.email, jobId);
 }
 
 const GapSchema = z.object({
