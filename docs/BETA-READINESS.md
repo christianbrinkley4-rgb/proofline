@@ -10,9 +10,9 @@ The standard is a person being able to understand their experience, compare plau
 
 | Area | Observed evidence | Limit |
 | --- | --- | --- |
-| Latest code | Commit 94dee68; 754 passing tests in 83 files; typecheck, lint, local build and Vercel production build passed | Automated coverage cannot establish every wording or user journey |
+| Latest code | Commit 1162262; 768 passing tests in 84 files; typecheck, lint, local build and Vercel production build passed | Automated coverage cannot establish every wording or user journey |
 | Deployment | Ready deployment dpl_C5H3UjsEhou6aB4XZAHnkSQFaJtU at https://proofline-beta.vercel.app | Public route checks do not prove authenticated model requests |
-| Recall bank | 6,000 distinct usable templates, 24,000 local compositions audited; a 121-line bank retained and selected late relevant evidence | Synthetic checks do not establish relevance or satisfaction for every role |
+| Recall bank | 6,020 distinct usable cues; full-bank duplicate audit and 24 careers across four experience kinds; existing 121-line selection regression | Synthetic checks do not establish relevance or satisfaction for every role |
 | Sentence review | Synthetic local browser flow verified metric choices, changed-wording confirmation, exact saved text, next card and 375px layout | Provider response was a local test double; real Gemini quality remains unverified |
 | Resume details | Automated and synthetic checks preserve multiple degrees, coursework, honors and contact details, including exports and evidence revocation | The owner's original resume versus corrected live output comparison remains unfinished |
 | Career planning | Goals, one-posting benchmarks, check-ins and evidence counts exist | Career page and agent chat are hidden; exploratory actions are four general steps |
@@ -56,3 +56,7 @@ Live recall logs from September 29 show HTTP 402. The real provider gate is now 
 ## Next order of work
 
 First close the real provider and owner-document checks, then recovery and capacity. Continue observed sessions as the direction-comparison journey is built. Keep this checklist open until each gate has recorded evidence; update it after each finished slice. Current assessment: tested application beta with explicit verification gaps, and substantial career-guidance work remaining.
+
+## Follow-up: varied-career discovery verification
+
+Add some facts now offers different sourced tasks rather than saved-line follow-ups. Synthetic browser checks cover skip, exact reviewed save, next card, pause/resume, project matching and phone layout. Shared tests span trades, healthcare, service, education, office work and technology. Employment arrangement labels are ignored for occupation matching. Unsupported or exhausted coverage asks for detail. This is broader regression evidence, not a claim that every career, language or semantic paraphrase is covered. All earlier real-provider, original-document and career-guidance gates remain open.
