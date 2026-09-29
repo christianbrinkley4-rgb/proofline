@@ -1,3 +1,4 @@
+import { workWords } from "./recall-work";
 import { recallWording } from "./recall-wording";
 import catalogData from "./onet-catalog.json";
 import { extractSkills } from "@/lib/fit/skills";
@@ -16,13 +17,16 @@ function tokens(text: string): string[] {
     .filter((word) => word.length > 2 && !generic.has(word));
 }
 
+const titleSignatures = new Map(catalog.occupations.map((occupation) => [occupation.code,
+  [occupation.title, ...occupation.aliases].map((choice) => new Set(tokens(choice))),
+]));
+
 function occupationScore(title: string, occupation: Occupation): number {
   const query = tokens(title);
   if (!query.length) return 0;
-  const choices = [occupation.title, ...occupation.aliases];
+  const choices = titleSignatures.get(occupation.code) ?? [];
   let best = 0;
-  for (const choice of choices) {
-    const words = new Set(tokens(choice));
+  for (const words of choices) {
     const common = query.filter((word) => words.has(word)).length;
     const score = common / Math.max(query.length, words.size);
     if (score > best) best = score;
@@ -124,11 +128,13 @@ export function onetTasksForTitle(title: string | null, limit = 80, commonOnly =
   const key = `${commonOnly ? "common:" : "all:"}${title.trim().toLowerCase()}:${commonOnly ? context.toLowerCase() : ""}`;
   const cached = titleCache.get(key);
   if (cached) return cached.slice(0, limit);
+  // Employment labels describe the arrangement, not a different occupation.
+  const matchTitle = commonOnly ? title.replace(/\b(?:part[ -]time|full[ -]time|temporary|contract|seasonal|freelance)\b/gi, " ") : title;
   const scored = catalog.occupations
     .map((occupation) => {
-      const score = occupationScore(title, occupation);
+      const score = occupationScore(matchTitle, occupation);
       const occupationWords = new Set(tokens([occupation.title, ...occupation.aliases].join(" ")));
-      const titleWords = new Set(tokens(title));
+      const titleWords = new Set(tokens(matchTitle));
       const contextMatches = commonOnly && score >= 0.65 ? [...new Set(tokens(context))].filter((word) => !titleWords.has(word) && occupationWords.has(word)).length : 0;
       const officialWords = new Set(tokens(occupation.title));
       const officialMatch = commonOnly && score >= 0.65 && officialWords.size === titleWords.size && [...titleWords].every((word) => officialWords.has(word));
@@ -163,4 +169,35 @@ export function occupationLabelForTask(taskId: string | null): string | null {
   if (!taskId?.startsWith("onet:")) return null;
   const code = taskId.split(":")[1];
   return catalog.occupations.find((occupation) => occupation.code === code)?.title ?? null;
+}
+
+
+const broadRoleWords = new Set(["assist", "associat", "intern", "lead", "manag", "senior", "junior", "specialist", "staff", "worker", "work", "own", "member", "volunteer", "profession", "general"]);
+let contextSignatures: Array<{ occupation: Occupation; aliases: Set<string>[]; tasks: Set<string>[] }> | undefined;
+let aliasFrequency: Map<string, number> | undefined;
+
+/** General fallback for unfamiliar titles and non-job activities with specific work clues. */
+export function onetTasksForContext(context: string): RoleTask[] {
+  const query = new Set(workWords(context).split(" ").filter(Boolean));
+  if (query.size < 3) return [];
+  if (!contextSignatures) {
+    contextSignatures = catalog.occupations.filter((occupation) => occupation.tasks.some((task) => task.core)).map((occupation) => ({
+      occupation,
+      aliases: [occupation.title, ...occupation.aliases].map((alias) => new Set(workWords(alias).split(" ").filter((word) => word && !broadRoleWords.has(word)))),
+      tasks: occupation.tasks.filter((task) => task.core).map((task) => new Set(workWords(task.text).split(" ").filter(Boolean))),
+    }));
+    aliasFrequency = new Map();
+    for (const item of contextSignatures) for (const word of new Set(item.aliases.flatMap((alias) => [...alias]))) aliasFrequency.set(word, (aliasFrequency.get(word) ?? 0) + 1);
+  }
+  const matches = contextSignatures.flatMap(({ occupation, aliases, tasks }) => {
+    const alias = aliases.find((terms) => terms.size > 0 && [...terms].every((term) => query.has(term)) &&
+      (terms.size >= 2 || (aliasFrequency?.get([...terms][0]) ?? 1000) <= 8));
+    if (!alias) return [];
+    // A title word alone is not enough: the person's activity must also connect
+    // to a rated duty. This prevents broad interests or one tool from selecting a role.
+    const proof = Math.max(0, ...tasks.map((terms) => [...terms].filter((term) => query.has(term) && !alias.has(term) && !broadRoleWords.has(term)).length));
+    if (proof < 2) return [];
+    return [{ occupation, score: alias.size + Math.min(proof, 5) * 0.25 }];
+  }).sort((a, b) => b.score - a.score);
+  return [...new Map(matches.slice(0, 2).flatMap(({ occupation }) => onetTasksForTitle(occupation.title, 180, true, context)).map((task) => [task.id, task])).values()];
 }

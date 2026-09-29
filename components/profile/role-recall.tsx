@@ -102,7 +102,7 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
       </div>
       {saved > 0 && <p role="status" className="mt-1 text-[12px] text-brand-ink">{saved} new {saved === 1 ? "line" : "lines"} saved for this role.</p>}
       {!paused && <>
-        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">Each card is a memory cue. Only the lines you confirm go into your bank.</p>
+        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">These are different tasks related to this experience. Confirm the ones you also did; your saved lines stay in your bank.</p>
         {error && <div role="alert" className="mt-3 space-y-2 text-[13px] text-destructive">
           <p>{error}</p>
           {editing ? <div className="flex flex-wrap gap-2">
@@ -112,8 +112,8 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
         </div>}
         {loading ? <p role="status" className="mt-3 flex items-center gap-2 text-[13px]"><LoaderCircle className="size-4 animate-spin" /> Finding a question for this role...</p> : card ? <div key={card.id} className="mt-3 space-y-3">
           <div className="rounded-xl border bg-background p-4 shadow-sm">
-            <p className="mb-3 inline-flex rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">{card.taskId?.startsWith("fact:") ? "Build on a confirmed line" : "Common role duty"}</p>
-            <p className="text-[12px] font-medium text-muted-foreground">{wording ? wording.method === "rules" ? "Review this draft" : "Did you mean this?" : editing ? "Your draft bullet" : card.slot ? "What detail can you add?" : "Does this match what you did?"}</p>
+            <p className="mb-3 inline-flex rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">New task to consider</p>
+            <p className="text-[12px] font-medium text-muted-foreground">{wording ? wording.method === "rules" ? "Review this draft" : "Did you mean this?" : editing ? "Your draft bullet" : card.slot ? "What detail can you add?" : "Have you also done this?"}</p>
             <p className="mt-1 break-words text-[17px] font-medium leading-7 tracking-tight">{wording?.text ?? preview}{!editing && card.slot === "what changed?" ? ", resulting in [what changed?]" : ""}</p>
             {!wording && previewError && preview !== previewError && <p role="alert" className="mt-2 text-[12px] text-destructive">{previewError}</p>}
             <p className="mt-3 text-[11px] text-muted-foreground">{editing ? wording ? wording.message : "Save reviews this sentence with AI. You can confirm any suggested revision." : "X: accomplishment · Y: measure · Z: method. The blanks are yours to fill."}</p>
@@ -147,10 +147,10 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
           </div>}
           <details className="text-[12px] leading-5 text-muted-foreground">
             <summary className="cursor-pointer font-medium">Why this card?</summary>
-            {card.occupation ? <p className="mt-2">A common duty for {card.occupation.toLowerCase()}, matched to this role. Confirm only the parts you did.</p> : <p className="mt-2">You already confirmed this activity. A tool, method, or result can make the line more specific.</p>}
+            {card.occupation ? <p className="mt-2">This task is common in {card.occupation.toLowerCase()} work and is related to this experience. Your saved work helps us choose relevant tasks. Confirm only the parts you did.</p> : <p className="mt-2">This is another task to consider for this experience. It becomes a fact only if you confirm it.</p>}
             {card.generator === "onet-31.0" && <p className="mt-2 text-[11px]">Adapted from the <a className="underline" href="https://www.onetcenter.org/database.html" target="_blank" rel="noreferrer">O*NET 31.0 Database</a>, USDOL/ETA, under <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. Proofline changed the wording; USDOL/ETA has not approved these changes.</p>}
           </details>
-        </div> : <div className="mt-3 text-[13px] leading-5 text-muted-foreground"><p>You have worked through the current questions. Add another line or edit your title to find more angles.</p><Button type="button" size="sm" variant="outline" className="mt-2" disabled={pending} onClick={reload}>Check for more questions</Button></div>}
+        </div> : <div className="mt-3 text-[13px] leading-5 text-muted-foreground"><p>No different tasks are available for this experience right now. Add a specific example of your work or a clearer role title to help us find related tasks.</p><Button type="button" size="sm" variant="outline" className="mt-2" disabled={pending} onClick={reload}>Check for more questions</Button></div>}
       </>}
     </section>
   );

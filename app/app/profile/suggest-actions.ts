@@ -34,7 +34,7 @@ export async function answerSuggestionAction(id: string, input: z.infer<typeof A
     return { ok: true as const, ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not save your answer.";
-    const expected = /number|Fill in|Finish the bullet|clear action|preview changed|wording review changed|Review the finished|Confirm that|out of date|expired|verify the bullet/i.test(message);
+    const expected = /number|Fill in|Finish the bullet|clear action|preview changed|wording review changed|Review the finished|Confirm that|out of date|repeats saved work|expired|verify the bullet/i.test(message);
     return { ok: false as const, error: expected ? message : "Could not save your answer. Please try again." };
   }
 }

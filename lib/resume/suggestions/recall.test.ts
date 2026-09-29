@@ -6,6 +6,7 @@ import { listFacts } from "@/lib/kb/facts";
 import { listBullets } from "@/lib/resume/bullets/service";
 import { onetTasksForTitle, recallCatalogSize } from "@/lib/resume/onet-tasks";
 import catalog from "@/lib/resume/onet-catalog.json";
+import { sameRecallWork } from "@/lib/resume/recall-discovery";
 import { composeRecallXyz } from "@/lib/resume/recall-xyz";
 import { answerSuggestion, nextSuggestions, reviewSuggestion, type AnswerInput } from "./service";
 import { tailorResume } from "@/lib/resume/tailor";
@@ -44,7 +45,7 @@ describe("common-duty recall", () => {
     const exp = await role(userId);
     const [legacy] = await nextSuggestions(userId, exp.id, 1, "bank");
     const [recall] = await nextSuggestions(userId, exp.id, 1, "recall");
-    expect(recall.promptVersion).toBe("role-recall.v2");
+    expect(recall.promptVersion).toBe("role-recall.v3");
     expect(recall.id).not.toBe(legacy.id);
     const legacyCards = await nextSuggestions(userId, exp.id, 10, "bank");
     expect(legacyCards.some((item) => item.id === recall.id)).toBe(false);
@@ -105,7 +106,7 @@ describe("common-duty recall", () => {
     await expect(nextSuggestions(await student(), exp.id, 1, "recall")).rejects.toThrow(/not found/i);
   });
 
-  it("keeps edited numbers, stores a usable sourced line, then asks about methods or results", async () => {
+  it("keeps edited numbers, stores a usable sourced line, then discovers another task", async () => {
     const userId = await student();
     const exp = await role(userId);
     const [first] = await nextSuggestions(userId, exp.id, 1, "recall");
@@ -116,27 +117,40 @@ describe("common-duty recall", () => {
     const base = await loadFactBase(userId);
     expect(base.roles[0].bullets.map((fact) => fact.text)).toContain(line);
     expect((await listBullets(userId, [exp.id])).find((bullet) => bullet.id === result.bulletId)?.text).toBe(line);
-    const [followup] = await nextSuggestions(userId, exp.id, 1, "recall");
-    expect(followup.text).toContain(line);
-    expect(followup.xyzDefaults).toEqual({ action, ...xyz, result: "" });
-    expect(followup.slot).toMatch(/what changed|tool or method/);
-    await answerSuggestion(userId, followup.id, { answer: "no", reason: "not_true" });
-    expect((await nextSuggestions(userId, exp.id, 1, "recall"))[0].id).not.toBe(followup.id);
-    expect((await nextSuggestions(userId, exp.id, 10, "recall")).some((item) => item.id === first.id || item.id === followup.id)).toBe(false);
+    const [next] = await nextSuggestions(userId, exp.id, 1, "recall");
+    expect(next.taskId).toMatch(/^onet:/);
+    expect(next.text).not.toContain(line);
+    expect(sameRecallWork(next.text, action)).toBe(false);
+    expect(next.xyzDefaults).toBeUndefined();
+    expect(next.sourceFactIds).toEqual([]);
+    expect((await nextSuggestions(userId, exp.id, 10, "recall")).some((item) => item.id === first.id || item.taskId?.startsWith("fact:"))).toBe(false);
   });
 
-  it("asks for details of an existing imported line without inventing a number", async () => {
+  it("excludes existing imported tasks and old pending follow-ups without deleting the facts", async () => {
     const userId = await student();
     const exp = await role(userId, ["Scheduled appointments for 3 dentists"]);
-    const [followup] = await nextSuggestions(userId, exp.id, 1, "recall");
-    expect(followup.taskId).toMatch(/^fact:/);
-    expect(followup.text).toContain("3 dentists");
-    expect(followup.text).toMatch(/\[what changed\?\]|\[which tool or method\?\]/);
-    const filled = followup.slot === "what changed?" ? "fewer scheduling errors" : "the clinic calendar";
-    await reviewedAnswer(userId, followup.id, { answer: "yes", confirmed: true, editedText: "Scheduled appointments for 3 dentists", xyz: { measure: "weekly", method: "using the clinic calendar", result: followup.slot === "what changed?" ? filled : "" } });
-    const lines = (await loadFactBase(userId)).roles[0].bullets.map((fact) => fact.text);
-    expect(lines.some((text) => text.includes(filled) && text.includes("3 dentists"))).toBe(true);
-    expect(lines.some((text) => /\[[^\]]+\]/.test(text))).toBe(false);
+    const saved = (await listFacts(userId, { experienceId: exp.id })).find((fact) => fact.content.includes("3 dentists"))!;
+    const [old] = await db.insert(schema.bulletSuggestion).values({
+      userId, experienceId: exp.id, text: saved.content + ", resulting in [what changed?]",
+      taskId: `fact:${saved.id}:result`, kind: "reframe", sourceFactIds: [saved.id], slot: "what changed?",
+      batch: 1, generator: "offline", promptVersion: "role-recall.v2",
+    }).returning();
+    const before = (await listFacts(userId)).length;
+    const cards = await nextSuggestions(userId, exp.id, 10, "recall");
+    expect(cards.length).toBeGreaterThan(2);
+    expect(cards.every((card) => card.taskId?.startsWith("onet:") && card.id !== old.id && !sameRecallWork(card.text, saved.content))).toBe(true);
+    expect((await listFacts(userId)).length).toBe(before);
+    expect(await reviewSuggestion(userId, old.id, { editedText: saved.content, xyz: { measure: "weekly", method: "calendar", result: "fewer errors" } })).toMatchObject({ ok: false, error: expect.stringContaining("out of date") });
+    await expect(answerSuggestion(userId, old.id, { answer: "yes", confirmed: true, editedText: saved.content, xyz: { measure: "weekly", method: "calendar", result: "fewer errors" } })).rejects.toThrow(/repeats saved work/);
+    expect((await listFacts(userId)).length).toBe(before);
+  });
+
+  it("uses confirmed project work to discover related tasks and excludes the saved activity", async () => {
+    const userId = await student();
+    const exp = await saveRole(userId, { kind: "project", org: "Command Center CRM", title: "", startDate: "", endDate: "", bullets: ["Built a CRM application using Python to track client follow-ups"] });
+    const cards = await nextSuggestions(userId, exp.id, 10, "recall");
+    expect(cards.length).toBeGreaterThan(2);
+    expect(cards.every((card) => card.taskId?.startsWith("onet:") && card.sourceFactIds.length === 0 && !sameRecallWork(card.text, "Built a CRM application using Python to track client follow-ups"))).toBe(true);
   });
 
   it("stores the fluent preview with raw parts and does not ask again for a supplied result", async () => {

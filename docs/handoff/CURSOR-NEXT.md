@@ -1,5 +1,17 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 29 new-task discovery across careers
+
+The owner clarified that Add some facts should uncover different work, not repeat existing bullets, and must serve people beyond the owner's profile. Recall previously offered saved-fact method/result follow-ups with a ranking boost; those could dominate fresh duties. Recall now offers only new core occupational tasks. Confirmed facts and active bullets provide relevance context and exclusion evidence, never reframe cards. Old pending fact follow-ups are omitted and cannot be saved through stale tabs. Legacy bank behavior remains compatible.
+
+Matching uses the shared O*NET catalog across occupations and work, volunteering, leadership and projects. Unfamiliar titles can use specific activity and occupation clues; selected software/web/reporting project clues supplement the general matcher. Tools or broad interests alone do not establish an occupation. Part-time/full-time/contract/seasonal/freelance labels no longer distort common-duty title matching. If no supported different tasks remain, the page requests more specific work or title details instead of recycling the bank. No owner's name, account or career is hardcoded; discovery makes no model request and sends no profile to Gemini.
+
+Duplicate checks normalize tense, quantities and common synonyms, compare the subject of broad cues against specific saved work, and exclude accepted/rejected activities. This reduces repetition but is not an exhaustive semantic-paraphrase guarantee. The shared bank currently has 6,020 distinct usable common-duty cues; occupational core relevance remains population survey evidence, not an individual's probability. Occupational wording adapters remain proposals requiring confirmation. The XYZ composer, review receipts and explicit confirmation still govern every save.
+
+Validation: 768 tests across 84 files, typecheck, lint and production build passed. Discovery checks cover the full 6,020-cue bank, 24 careers across four experience kinds, decorated titles, unfamiliar projects and specific gardening context, rejection, exhaustion and old pending cards. Synthetic localhost browser checks verified a new task replacing saved-line follow-ups, the correct part-time bookkeeping occupation, skip advancement, basic wording review with fresh confirmation, exact saved text, a different next card, pause/resume, project discovery and no console errors. At 375px the page and dialog had no horizontal overflow. Production credentials and real accounts were not used.
+
+The known Gemini HTTP 402 billing blocker and broader career-product readiness gates remain open; these discovery checks do not prove real model recovery or universal coverage of every career and language.
+
 ## September 29 provider billing outage and recall recovery
 
 The owner reported "The wording review could not finish safely" while saving a card. Bounded live logs show two recall requests returning HTTP 402. Google's current Gemini billing documentation says a zero prepaid balance stops requests with 402; the billing account itself has not been inspected. Gemini 3.5 Flash-Lite has a free tier, but a key on a paid/prepaid project does not automatically switch to it. See https://ai.google.dev/gemini-api/docs/billing and https://ai.google.dev/gemini-api/docs/pricing. The owner must inspect the key's project in AI Studio Billing and resolve its plan/balance; no payment, key or billing setting was changed by the agent.

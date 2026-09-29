@@ -7,15 +7,16 @@ import { scoreBullet } from "@/lib/resume/bullet-score";
 import { listBullets } from "@/lib/resume/bullets/service";
 import { onetFollowupsForAccepted, onetTasksForTitle } from "@/lib/resume/onet-tasks";
 import { ROLE_TASKS, tasksForExperience } from "@/lib/resume/role-tasks";
-import { candidates, nearDuplicate, rankSuggestions, type SuggestionCandidate } from "@/lib/resume/suggest";
+import { candidates, nearDuplicate, rankSuggestions } from "@/lib/resume/suggest";
 import { verifyBullet } from "@/lib/resume/verify";
 import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
 
 export type BulletSuggestion = typeof schema.bulletSuggestion.$inferSelect & { xyzDefaults?: RecallParts };
-import { isActionVerb, OVERUSED_VERBS } from "@/lib/resume/verbs";
 import { type RecallXyz, type RecallParts } from "@/lib/resume/recall-xyz";
 
 import { recallParts, RECALL_REVIEW_VERSION, reviewRecallWording, validateRecallWording, type RecallReviewMode } from "@/lib/review/recall";
+
+import { discoverRecall, discoveryTasks } from "@/lib/resume/recall-discovery";
 
 export type AnswerInput = { reviewId?: string; reviewedText?: string; confirmed?: boolean; xyz?: RecallXyz; answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
 
@@ -32,46 +33,34 @@ export async function nextSuggestions(userId: string, experienceId: string, coun
     getProfile(userId),
     listBullets(userId, [experienceId]),
   ]);
-  // Recall uses common occupational duties, not an invented personal likelihood.
-  // O*NET core tasks meet >=67% relevance and importance >=3.0. Unrated
-  // curated guesses remain in the older bank, outside this stricter flow.
-  const baseOnet = onetTasksForTitle(experience.title, 180, mode === "recall", [experience.org, ...facts.map((fact) => fact.content)].join(" "));
-  const acceptedIds = new Set(allHistory.filter((item) => item.status === "accepted").map((item) => item.taskId).filter((id): id is string => Boolean(id)));
-  const tasks = [...(mode === "recall" ? [] : tasksForExperience(experience)), ...baseOnet, ...(mode === "recall" ? [] : onetFollowupsForAccepted(baseOnet, acceptedIds))];
   if (mode === "recall") {
     const roleFacts = facts.filter((fact) => ["experience", "project", "metric", "leadership"].includes(fact.category) &&
       !["org", "title", "location", "dates"].includes(String(fact.data?.field ?? "")));
-    const sourceCandidates = candidates(experience, roleFacts, []).filter((item) => item.kind === "reframe" && isActionVerb(item.text.split(/\s+/)[0]) && !OVERUSED_VERBS.has(item.text.split(/\s+/)[0].toLowerCase()));
-    const followups: SuggestionCandidate[] = sourceCandidates.flatMap((item) => {
-      if (item.text.length > 160) return [];
-      const prompts: SuggestionCandidate[] = [];
-      const saved = facts.find((fact) => fact.id === item.sourceFactIds[0])?.data?.recallXyz;
-      const suppliedResult = saved && typeof saved === "object" && typeof (saved as Record<string, unknown>).result === "string" && Boolean(String((saved as Record<string, unknown>).result).trim());
-      if (!suppliedResult && !/\b(resulting in|which led to|so that)\b/i.test(item.text)) prompts.push({ ...item, taskId: `fact:${item.sourceFactIds[0]}:result`, text: `${item.text}, resulting in [what changed?]`, slot: "what changed?" });
-      if (!/\b(using|through|with| by )\b/i.test(item.text)) prompts.push({ ...item, taskId: `fact:${item.sourceFactIds[0]}:method`, text: `${item.text} using [which tool or method?]`, slot: "which tool or method?" });
-      return prompts;
-    });
-    const offered = [...candidates(experience, [], tasks), ...followups];
-    const known = [...bullets.filter((bullet) => bullet.status === "active").map((bullet) => bullet.text), ...sourceCandidates.map((item) => item.text)];
-    // Re-rank pending cards too, so a newly confirmed task gets its follow-up
-    // next rather than sitting behind a batch of unrelated old questions.
-    const ranked = rankSuggestions(offered, allHistory.filter((item) => item.status !== "pending"), tasks, known).slice(0, safeCount);
+    const knownWork = [
+      ...roleFacts.map((fact) => fact.content),
+      ...roleFacts.flatMap((fact) => {
+        const raw = fact.data?.recallXyz;
+        return raw && typeof raw === "object" && typeof (raw as Record<string, unknown>).action === "string" ? [String((raw as Record<string, unknown>).action)] : [];
+      }),
+      ...bullets.filter((bullet) => bullet.status === "active").map((bullet) => bullet.text),
+    ];
+    const relatedTasks = discoveryTasks(experience, roleFacts.map((fact) => fact.content));
+    // Old pending fact follow-ups remain in history but are never offered by discovery.
+    const ranked = discoverRecall(experience, relatedTasks, allHistory, knownWork).slice(0, safeCount);
     const batch = Math.max(0, ...allHistory.map((item) => item.batch)) + 1;
     const out: BulletSuggestion[] = [];
     for (const item of ranked) {
       const pending = allHistory.find((old) => old.status === "pending" && old.promptVersion?.startsWith("role-recall.") && old.taskId === item.taskId && old.text === item.text);
       if (pending) { out.push(pending); continue; }
-      const [created] = await db.insert(schema.bulletSuggestion).values({ userId, experienceId, text: item.text, taskId: item.taskId, kind: item.kind, skills: item.skills, sourceFactIds: item.sourceFactIds, slot: item.slot, batch, generator: item.taskId?.startsWith("onet:") ? "onet-31.0" : "offline", promptVersion: "role-recall.v2" }).returning();
+      const [created] = await db.insert(schema.bulletSuggestion).values({ userId, experienceId, text: item.text, taskId: item.taskId, kind: item.kind, skills: item.skills, sourceFactIds: item.sourceFactIds, slot: item.slot, batch, generator: item.taskId?.startsWith("onet:") ? "onet-31.0" : "offline", promptVersion: "role-recall.v3" }).returning();
       out.push(created);
     }
-    return out.map((card) => {
-      const saved = facts.find((fact) => card.sourceFactIds.includes(fact.id))?.data?.recallXyz;
-      if (!saved || typeof saved !== "object") return card;
-      const parts = saved as Record<string, unknown>;
-      if (![parts.action, parts.measure, parts.method].every((value) => typeof value === "string")) return card;
-      return { ...card, xyzDefaults: { action: parts.action as string, measure: parts.measure as string, method: parts.method as string, result: typeof parts.result === "string" ? parts.result : "" } };
-    });
+    return out;
   }
+  // The older bank keeps its existing reframe and follow-up behavior.
+  const baseOnet = onetTasksForTitle(experience.title, 180);
+  const acceptedIds = new Set(allHistory.filter((item) => item.status === "accepted").map((item) => item.taskId).filter((id): id is string => Boolean(id)));
+  const tasks = [...tasksForExperience(experience), ...baseOnet, ...onetFollowupsForAccepted(baseOnet, acceptedIds)];
   const validTaskIds = new Set(tasks.map((task) => task.id));
   const confirmedFactIds = new Set(facts.map((fact) => fact.id));
   const excluded = new Set(allHistory.filter((item) => item.status === "rejected" && item.reason === "not_true").map((item) => item.taskId));
@@ -113,7 +102,7 @@ function sameRecallParts(stored: unknown, parts: RecallParts): boolean {
 /** Review never creates evidence; the finished line still needs explicit confirmation. */
 export async function reviewSuggestion(userId: string, id: string, input: { editedText: string; xyz: RecallXyz; mode?: RecallReviewMode }) {
   const item = await db.query.bulletSuggestion.findFirst({ where: and(eq(schema.bulletSuggestion.id, id), eq(schema.bulletSuggestion.userId, userId)) });
-  if (!item || item.status !== "pending" || !item.promptVersion?.startsWith("role-recall.")) return { ok: false as const, error: "This question is out of date. Load the next question." };
+  if (!item || item.status !== "pending" || !item.promptVersion?.startsWith("role-recall.") || item.taskId?.startsWith("fact:")) return { ok: false as const, error: "This question is out of date. Load the next question." };
   const parts = recallParts(input.editedText, { ...input.xyz, result: input.xyz.result ?? "" });
   if (item.slot === "what changed?" && !parts.result) return { ok: false as const, error: "Fill in what changed, or skip this result question" };
   const cached = await db.query.agentEvent.findMany({ where: and(eq(schema.agentEvent.userId, userId), eq(schema.agentEvent.type, "recall_wording_reviewed")), orderBy: [desc(schema.agentEvent.createdAt)], limit: 20 });
@@ -146,6 +135,7 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
 
   const slotValue = input.slotValue?.trim() ?? "";
   const xyzRecall = item.promptVersion?.startsWith("role-recall.");
+  if (xyzRecall && item.taskId?.startsWith("fact:")) throw new Error("This old question repeats saved work. Load the next question for a new task.");
   if (xyzRecall && input.confirmed !== true) throw new Error("Confirm that this line is true and in your own words");
   if (xyzRecall && !input.xyz) throw new Error("Fill in the accomplishment, measure, and method before saving");
   if (!xyzRecall && item.slot && (!slotValue || slotValue.length > 40 || /[\[\]\n\r]/.test(slotValue) || (item.slot === "how many?" && !/\d/.test(slotValue)))) {
