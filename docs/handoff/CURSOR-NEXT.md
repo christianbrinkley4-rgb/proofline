@@ -13,6 +13,8 @@ If the reviewed sentence matches the confirmed preview, it saves. If wording cha
 
 Local browser verification used synthetic insurance work and a local model test double, not a real provider key or production account. It reproduced the owner's free-text example, exercised count/frequency/percentage controls, verified the unchecked revision before save, returned to edit answers, saved exactly the reviewed sentence, advanced to the next card, and found no console errors. At 375px the dialog was 343.2px with every field inside the viewport; desktop also passed. The saved line was: "Booked 50 percent more appointments by developing insurance marketing strategies using an automation system I designed". This test double verifies the flow, not real model quality; a real signed-in provider request remains to be verified on beta. The privacy note and save guidance now disclose wording review through Gemini. Final validation passed: 754 tests in 83 files, typecheck, lint, and production build.
 
+Commit `94dee68` is live on https://proofline-beta.vercel.app as Ready production deployment `dpl_C5H3UjsEhou6aB4XZAHnkSQFaJtU`. The cloud build and live public-route/login-boundary checks passed; the deployed privacy note includes Gemini wording review. CLI 61.0.0 returned Not authorized, but the prior CLI 60.1.3 recognized the existing account and deployed successfully without changing credentials. Use `npx vercel@60.1.3 --prod --yes` for this checkout until the CLI authentication difference is resolved. Reload old tabs before saving recall cards. Signed-in flow verification used synthetic local data and a model test double; a live signed-in Gemini request remains unverified.
+
 ## September 28 fluent XYZ bullets
 
 The owner asked that filled X/Y/Z answers read as one polished bullet on every card. The shared composer now integrates quantities with the correct noun, uses real frequencies without parentheses, turns first-person/present-tense notes into past-tense actions, distinguishes tools from action methods, fixes parallel method tense, and leads with supplied outcomes when clear. Estimates, ranges, money, percentages, and original denominator values remain unchanged. An unexplained percentage or an uncountable task with a bare count asks for clarification; nothing is inferred. Supporting work stays supporting work.
@@ -47,10 +49,10 @@ The owner reported replacing the review API key with Cursor. Vercel confirms the
 
 ## State right now
 
-- **Live beta:** https://proofline-beta.vercel.app (Vercel project `proofline-beta`, Neon Postgres). Deploy with `npx vercel --prod --yes` from this folder; migrations run on the first request (latest is `drizzle/0016_contact_email.sql`).
+- **Live beta:** https://proofline-beta.vercel.app (Vercel project `proofline-beta`, Neon Postgres). Deploy with `npx vercel@60.1.3 --prod --yes` from this folder; migrations run on the first request (latest is `drizzle/0016_contact_email.sql`).
 - **Sign-up is open to any email** (`BETA_EMAILS=*` in Vercel production; see `lib/beta-access.ts`). The owner wants a few more people trying it.
-- **Everything is committed on `main`** (no Git remote). The last app deploy includes `b15542b` for fluent confirmed XYZ wording and `3fb7590` for continuing recall cards, plus `8623e2d` and `d75791f` for pasted job corrections and education/contact preservation.
-- Checks: `npm run typecheck`, `npm run lint`, `npm test` (741 tests passing after the fluent XYZ update), `npm run build`.
+- **Everything is committed on `main`** (no Git remote). The last app deploy includes `94dee68` for whole-sentence review and metric choices, `b15542b` for fluent confirmed XYZ wording and `3fb7590` for continuing recall cards, plus `8623e2d` and `d75791f` for pasted job corrections and education/contact preservation.
+- Checks: `npm run typecheck`, `npm run lint`, `npm test` (754 tests passing after the whole-sentence review update), `npm run build`.
 - The owner (Christian) tested with his real resume and a real posting. His account is on production; the job is `/app/jobs/6eafe6cc-e1bc-4a6f-8429-40c22443000a`. His verdict: the generated resume "is way off and just does not look correct". The fixes below come from that test.
 
 ## Fix next, in this order
