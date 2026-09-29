@@ -55,12 +55,41 @@ describe("whole-sentence recall wording review", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(modelResponse("", "What does the 50 percent measure?")));
     expect(await reviewRecallWording("synthetic-user", parts)).toEqual({ ok: false, error: "What does the 50 percent measure?" });
   });
-  it("does not silently accept unsafe output or provider failures", async () => {
+  it("distinguishes rejected wording from service outages without accepting either", async () => {
     vi.stubEnv("PROOFLINE_REVIEW_KEY", "synthetic-key");
     vi.spyOn(console, "error").mockImplementation(() => {});
     const fetch = vi.fn().mockResolvedValueOnce(modelResponse(finished.replace("50", "90"))).mockResolvedValueOnce(new Response("provider details", { status: 401 })).mockRejectedValueOnce(new Error("timeout"));
     vi.stubGlobal("fetch", fetch);
-    for (let i = 0; i < 3; i++) expect(await reviewRecallWording("synthetic-user", parts)).toMatchObject({ ok: false, error: expect.stringContaining("could not finish safely") });
+    const unsafe = await reviewRecallWording("synthetic-user", parts);
+    expect(unsafe).toMatchObject({ ok: false, error: expect.stringContaining("supplied number") });
+    expect(unsafe).not.toHaveProperty("fallbackAvailable", true);
+    for (let i = 0; i < 2; i++) expect(await reviewRecallWording("synthetic-user", parts)).toMatchObject({ ok: false, fallbackAvailable: true, error: expect.stringContaining("unavailable") });
+  });
+  it("recognizes the production 402 and permits only an explicit basic review", async () => {
+    vi.stubEnv("PROOFLINE_REVIEW_KEY", "synthetic-key");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetch = vi.fn().mockResolvedValue(new Response("private provider billing details", { status: 402 }));
+    vi.stubGlobal("fetch", fetch);
+    expect(await reviewRecallWording("synthetic-user", parts)).toMatchObject({ ok: false, fallbackAvailable: true, error: expect.stringContaining("Your answers are unchanged") });
+    expect(log).toHaveBeenCalledWith("[recall.wording] provider HTTP 402");
+    const { reserveModelCredits } = await import("@/lib/llm/quota");
+    vi.mocked(reserveModelCredits).mockClear();
+    const basic = await reviewRecallWording("synthetic-user", parts, "rules");
+    expect(basic).toMatchObject({ ok: true, method: "rules", message: expect.stringContaining("AI has not reviewed") });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(reserveModelCredits).not.toHaveBeenCalled();
+    expect(basic.ok && basic.text).toContain("50 percent more appointments");
+  });
+  it("still rejects incomplete output and clarification without offering an outage fallback", async () => {
+    vi.stubEnv("PROOFLINE_REVIEW_KEY", "synthetic-key");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [] }))).mockResolvedValueOnce(modelResponse("", "What did the percentage measure?"));
+    vi.stubGlobal("fetch", fetch);
+    for (let i = 0; i < 2; i++) {
+      const review = await reviewRecallWording("synthetic-user", parts);
+      expect(review.ok).toBe(false);
+      expect(review).not.toHaveProperty("fallbackAvailable", true);
+    }
   });
   it("labels the local-only fallback and makes no external call", async () => {
     vi.stubEnv("PROOFLINE_REVIEW_KEY", "");

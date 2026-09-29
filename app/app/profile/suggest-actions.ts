@@ -39,10 +39,10 @@ export async function answerSuggestionAction(id: string, input: z.infer<typeof A
   }
 }
 
-export async function reviewSuggestionAction(id: string, input: { editedText: string; xyz: NonNullable<z.infer<typeof AnswerSchema>["xyz"]> }) {
+export async function reviewSuggestionAction(id: string, input: { editedText: string; xyz: NonNullable<z.infer<typeof AnswerSchema>["xyz"]>; mode?: "model" | "rules" }) {
   const userId = (await requireSession()).user.id;
   const parsedId = z.uuid().safeParse(id);
-  const parsed = AnswerSchema.pick({ editedText: true, xyz: true }).required().safeParse(input);
+  const parsed = AnswerSchema.pick({ editedText: true, xyz: true }).required().extend({ mode: z.enum(["model", "rules"]).optional() }).safeParse(input);
   if (!parsedId.success || !parsed.success) return { ok: false as const, error: "Fill in the accomplishment, measure, and method before reviewing." };
   try { return await reviewSuggestion(userId, parsedId.data, parsed.data); }
   catch { return { ok: false as const, error: "The wording review could not finish. Check the answers and try again." }; }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { db, dbReady, schema } from "@/lib/db";
 import { saveRole, loadFactBase } from "@/lib/facts/base";
 import { listFacts } from "@/lib/kb/facts";
@@ -10,6 +10,8 @@ import { composeRecallXyz } from "@/lib/resume/recall-xyz";
 import { answerSuggestion, nextSuggestions, reviewSuggestion, type AnswerInput } from "./service";
 import { tailorResume } from "@/lib/resume/tailor";
 import { parseRequirements } from "@/lib/fit/requirements";
+
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 beforeAll(async () => { await dbReady; }, 60_000);
 async function student() {
@@ -192,6 +194,49 @@ describe("common-duty recall", () => {
     await db.update(schema.agentEvent).set({ createdAt: new Date(Date.now() - 31 * 60_000) }).where(eq(schema.agentEvent.id, review.reviewId));
     await expect(answerSuggestion(userId, card.id, accepted)).rejects.toThrow(/wording review changed/);
     expect((await listFacts(userId)).length).toBe(before + (await listFacts(userId, { experienceId: secondExp.id })).length);
+  });
+
+  it("preserves the pending card on 402 and saves basic wording only after exact confirmation", async () => {
+    const userId = await student();
+    const exp = await role(userId);
+    const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
+    const input = { editedText: "Scheduled appointments", xyz: { measure: "25 each week", method: "the calendar" } };
+    const before = (await listFacts(userId)).length;
+    vi.stubEnv("PROOFLINE_REVIEW_KEY", "synthetic-key");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetch = vi.fn().mockResolvedValue(new Response("billing unavailable", { status: 402 }));
+    vi.stubGlobal("fetch", fetch);
+    expect(await reviewSuggestion(userId, card.id, input)).toMatchObject({ ok: false, fallbackAvailable: true });
+    expect((await listFacts(userId)).length).toBe(before);
+    expect(await listBullets(userId, [exp.id])).toHaveLength(0);
+    expect((await nextSuggestions(userId, exp.id, 1, "recall"))[0].id).toBe(card.id);
+    const review = await reviewSuggestion(userId, card.id, { ...input, mode: "rules" });
+    if (!review.ok) throw new Error(review.error);
+    expect(review.method).toBe("rules");
+    expect((await listFacts(userId)).length).toBe(before);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const accepted = { ...input, answer: "yes" as const, reviewId: review.reviewId, reviewedText: review.text };
+    await expect(answerSuggestion(userId, card.id, { ...accepted, confirmed: false })).rejects.toThrow(/Confirm/);
+    await expect(answerSuggestion(userId, card.id, { ...accepted, confirmed: true, reviewedText: "Different text" })).rejects.toThrow(/preview changed/);
+    const result = await answerSuggestion(userId, card.id, { ...accepted, confirmed: true });
+    expect((await listBullets(userId, [exp.id])).find((line) => line.id === result.bulletId)?.text).toBe(review.text);
+  });
+
+  it("does not reuse a cached basic check as a successful AI review", async () => {
+    const userId = await student();
+    const exp = await role(userId);
+    const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
+    const input = { editedText: "Scheduled appointments", xyz: { measure: "25 each week", method: "the calendar" } };
+    vi.stubEnv("PROOFLINE_REVIEW_KEY", "synthetic-key");
+    const basic = await reviewSuggestion(userId, card.id, { ...input, mode: "rules" });
+    if (!basic.ok) throw new Error(basic.error);
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ text: basic.text, clarification: "" }) }] } }] })));
+    vi.stubGlobal("fetch", fetch);
+    const model = await reviewSuggestion(userId, card.id, input);
+    expect(model).toMatchObject({ ok: true, method: "model" });
+    expect(model.ok && model.reviewId).not.toBe(basic.reviewId);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await reviewSuggestion(userId, card.id, { ...input, mode: "rules" })).toMatchObject({ reviewId: basic.reviewId, method: "rules" });
   });
 
   it("keeps a bank over 100 lines and selects a late-added relevant line for the job", async () => {

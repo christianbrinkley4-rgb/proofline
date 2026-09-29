@@ -15,7 +15,7 @@ export type BulletSuggestion = typeof schema.bulletSuggestion.$inferSelect & { x
 import { isActionVerb, OVERUSED_VERBS } from "@/lib/resume/verbs";
 import { type RecallXyz, type RecallParts } from "@/lib/resume/recall-xyz";
 
-import { recallParts, RECALL_REVIEW_VERSION, reviewRecallWording, validateRecallWording } from "@/lib/review/recall";
+import { recallParts, RECALL_REVIEW_VERSION, reviewRecallWording, validateRecallWording, type RecallReviewMode } from "@/lib/review/recall";
 
 export type AnswerInput = { reviewId?: string; reviewedText?: string; confirmed?: boolean; xyz?: RecallXyz; answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
 
@@ -111,15 +111,16 @@ function sameRecallParts(stored: unknown, parts: RecallParts): boolean {
 }
 
 /** Review never creates evidence; the finished line still needs explicit confirmation. */
-export async function reviewSuggestion(userId: string, id: string, input: { editedText: string; xyz: RecallXyz }) {
+export async function reviewSuggestion(userId: string, id: string, input: { editedText: string; xyz: RecallXyz; mode?: RecallReviewMode }) {
   const item = await db.query.bulletSuggestion.findFirst({ where: and(eq(schema.bulletSuggestion.id, id), eq(schema.bulletSuggestion.userId, userId)) });
   if (!item || item.status !== "pending" || !item.promptVersion?.startsWith("role-recall.")) return { ok: false as const, error: "This question is out of date. Load the next question." };
   const parts = recallParts(input.editedText, { ...input.xyz, result: input.xyz.result ?? "" });
   if (item.slot === "what changed?" && !parts.result) return { ok: false as const, error: "Fill in what changed, or skip this result question" };
   const cached = await db.query.agentEvent.findMany({ where: and(eq(schema.agentEvent.userId, userId), eq(schema.agentEvent.type, "recall_wording_reviewed")), orderBy: [desc(schema.agentEvent.createdAt)], limit: 20 });
-  const previous = cached.find((event) => event.createdAt.getTime() > Date.now() - 30 * 60_000 && event.data.version === RECALL_REVIEW_VERSION && event.data.suggestionId === id && sameRecallParts(event.data.parts, parts));
+  const expectedMethod = input.mode === "rules" || !process.env.PROOFLINE_REVIEW_KEY?.trim() ? "rules" : "model";
+  const previous = cached.find((event) => event.data.method === expectedMethod && event.createdAt.getTime() > Date.now() - 30 * 60_000 && event.data.version === RECALL_REVIEW_VERSION && event.data.suggestionId === id && sameRecallParts(event.data.parts, parts));
   if (previous) return { ok: true as const, reviewId: previous.id, text: String(previous.data.text), method: previous.data.method as "model" | "rules", message: String(previous.data.message) };
-  const result = await reviewRecallWording(userId, parts);
+  const result = await reviewRecallWording(userId, parts, input.mode);
   if (!result.ok) return result;
   const [event] = await db.insert(schema.agentEvent).values({ userId, type: "recall_wording_reviewed", data: { suggestionId: id, parts, text: result.text, method: result.method, message: result.message, version: RECALL_REVIEW_VERSION } }).returning();
   return { ...result, reviewId: event.id };

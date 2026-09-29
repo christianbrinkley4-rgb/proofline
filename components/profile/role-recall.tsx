@@ -29,6 +29,7 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
   const [wording, setWording] = useState<Wording | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [saved, setSaved] = useState(0);
+  const [fallbackAvailable, setFallbackAvailable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -45,23 +46,23 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
   const next = async () => {
     const cards = await nextSuggestionsAction(experienceId, 1, "recall");
     setCard(cards[0] ?? null);
-    setEditing(false); setText(""); setMeasure(""); setMethod(""); setResult(""); setConfirmed(false); setWording(null);
+    setEditing(false); setText(""); setMeasure(""); setMethod(""); setResult(""); setConfirmed(false); setWording(null); setFallbackAvailable(false);
   };
   const reload = () => start(async () => {
     setError(null);
     try { await next(); } catch { setError("Could not load the next question. Try again."); }
   });
-  const answer = (reply: "yes" | "no") => {
+  const answer = (reply: "yes" | "no", mode: "model" | "rules" = "model") => {
     if (!card || pending) return;
     start(async () => {
-      setError(null);
+      setError(null); setFallbackAvailable(false);
       try {
         let checked = wording;
         if (reply === "yes" && !checked) {
-          const review = await reviewSuggestionAction(card.id, { editedText: text, xyz: { measure, method, result } });
-          if (!review.ok) { setError(review.error); return; }
+          const review = await reviewSuggestionAction(card.id, { editedText: text, xyz: { measure, method, result }, mode });
+          if (!review.ok) { setError(review.error); setFallbackAvailable("fallbackAvailable" in review && review.fallbackAvailable === true); return; }
           checked = review;
-          if (review.text !== preview) { setWording(review); setConfirmed(false); return; }
+          if (review.text !== preview || review.method === "rules") { setWording(review); setConfirmed(false); return; }
         }
         const response = await answerSuggestionAction(card.id, {
           answer: reply, reason: reply === "no" ? "not_true" : undefined,
@@ -75,7 +76,7 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
         // Refresh saved facts even if fetching the next prompt fails.
         router.refresh();
         await next();
-      } catch { setError("Could not finish this question. Try loading the next question."); }
+      } catch { setError("Could not finish this question. Your answers are still here. Try again."); }
     });
   };
 
@@ -102,11 +103,17 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
       {saved > 0 && <p role="status" className="mt-1 text-[12px] text-brand-ink">{saved} new {saved === 1 ? "line" : "lines"} saved for this role.</p>}
       {!paused && <>
         <p className="mt-1 text-[13px] leading-5 text-muted-foreground">Each card is a memory cue. Only the lines you confirm go into your bank.</p>
-        {error && <p role="alert" className="mt-3 text-[13px] text-destructive">{error} <button type="button" className="underline" disabled={pending} onClick={reload}>Load next question</button></p>}
+        {error && <div role="alert" className="mt-3 space-y-2 text-[13px] text-destructive">
+          <p>{error}</p>
+          {editing ? <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" disabled={pending || !canSave || !confirmed} onClick={() => answer("yes")}>Try again</Button>
+            {fallbackAvailable && !wording && <Button type="button" size="sm" variant="outline" disabled={pending || !canSave} onClick={() => answer("yes", "rules")}>Use basic wording check</Button>}
+          </div> : <button type="button" className="underline" disabled={pending} onClick={reload}>Load next question</button>}
+        </div>}
         {loading ? <p role="status" className="mt-3 flex items-center gap-2 text-[13px]"><LoaderCircle className="size-4 animate-spin" /> Finding a question for this role...</p> : card ? <div key={card.id} className="mt-3 space-y-3">
           <div className="rounded-xl border bg-background p-4 shadow-sm">
             <p className="mb-3 inline-flex rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">{card.taskId?.startsWith("fact:") ? "Build on a confirmed line" : "Common role duty"}</p>
-            <p className="text-[12px] font-medium text-muted-foreground">{wording ? "Did you mean this?" : editing ? "Your draft bullet" : card.slot ? "What detail can you add?" : "Does this match what you did?"}</p>
+            <p className="text-[12px] font-medium text-muted-foreground">{wording ? wording.method === "rules" ? "Review this draft" : "Did you mean this?" : editing ? "Your draft bullet" : card.slot ? "What detail can you add?" : "Does this match what you did?"}</p>
             <p className="mt-1 break-words text-[17px] font-medium leading-7 tracking-tight">{wording?.text ?? preview}{!editing && card.slot === "what changed?" ? ", resulting in [what changed?]" : ""}</p>
             {!wording && previewError && preview !== previewError && <p role="alert" className="mt-2 text-[12px] text-destructive">{previewError}</p>}
             <p className="mt-3 text-[11px] text-muted-foreground">{editing ? wording ? wording.message : "Save reviews this sentence with AI. You can confirm any suggested revision." : "X: accomplishment · Y: measure · Z: method. The blanks are yours to fill."}</p>
