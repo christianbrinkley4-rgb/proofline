@@ -12,6 +12,9 @@ Validation: 768 tests across 84 files, typecheck, lint and production build pass
 
 The known Gemini HTTP 402 billing blocker and broader career-product readiness gates remain open; these discovery checks do not prove real model recovery or universal coverage of every career and language.
 
+
+Commit `1162262` is live at https://proofline-beta.vercel.app as Ready production deployment `dpl_Cvnuqhgt8jQqKoqYb3Qt2vCnd8ma`. The Vercel cloud build passed; public checks returned home 200, signed-out My facts 307 to login, and development login 404. Reload old tabs to use new-task discovery. Signed-in checks used synthetic local data; real provider recovery remains unverified.
+
 ## September 29 provider billing outage and recall recovery
 
 The owner reported "The wording review could not finish safely" while saving a card. Bounded live logs show two recall requests returning HTTP 402. Google's current Gemini billing documentation says a zero prepaid balance stops requests with 402; the billing account itself has not been inspected. Gemini 3.5 Flash-Lite has a free tier, but a key on a paid/prepaid project does not automatically switch to it. See https://ai.google.dev/gemini-api/docs/billing and https://ai.google.dev/gemini-api/docs/pricing. The owner must inspect the key's project in AI Studio Billing and resolve its plan/balance; no payment, key or billing setting was changed by the agent.

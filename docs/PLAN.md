@@ -16,6 +16,9 @@ Validation: 768 tests across 84 files, typecheck, lint and production build pass
 
 The known Gemini HTTP 402 billing blocker and broader career-product readiness gates remain open; these discovery checks do not prove real model recovery or universal coverage of every career and language.
 
+
+Commit `1162262` is live at https://proofline-beta.vercel.app as Ready production deployment `dpl_Cvnuqhgt8jQqKoqYb3Qt2vCnd8ma`. The Vercel cloud build passed; public checks returned home 200, signed-out My facts 307 to login, and development login 404. Reload old tabs to use new-task discovery. Signed-in checks used synthetic local data; real provider recovery remains unverified.
+
 ## Direction (from the founder, September 2026)
 
 1. **Every account gets a personal agent** that learns and grows with the user.

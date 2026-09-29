@@ -11,7 +11,7 @@ The standard is a person being able to understand their experience, compare plau
 | Area | Observed evidence | Limit |
 | --- | --- | --- |
 | Latest code | Commit 1162262; 768 passing tests in 84 files; typecheck, lint, local build and Vercel production build passed | Automated coverage cannot establish every wording or user journey |
-| Deployment | Ready deployment dpl_C5H3UjsEhou6aB4XZAHnkSQFaJtU at https://proofline-beta.vercel.app | Public route checks do not prove authenticated model requests |
+| Deployment | Ready deployment dpl_Cvnuqhgt8jQqKoqYb3Qt2vCnd8ma at https://proofline-beta.vercel.app | Public route checks do not prove authenticated model requests |
 | Recall bank | 6,020 distinct usable cues; full-bank duplicate audit and 24 careers across four experience kinds; existing 121-line selection regression | Synthetic checks do not establish relevance or satisfaction for every role |
 | Sentence review | Synthetic local browser flow verified metric choices, changed-wording confirmation, exact saved text, next card and 375px layout | Provider response was a local test double; real Gemini quality remains unverified |
 | Resume details | Automated and synthetic checks preserve multiple degrees, coursework, honors and contact details, including exports and evidence revocation | The owner's original resume versus corrected live output comparison remains unfinished |
