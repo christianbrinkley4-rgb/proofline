@@ -109,8 +109,8 @@ let cached: LlmProvider | null | undefined;
 
 /** The configured provider, or null in offline mode. */
 export function getLlm(): LlmProvider | null {
-  // The private beta makes exactly one kind of model call, the resume review
-  // (lib/review/model.ts, keyed by PROOFLINE_REVIEW_KEY). Legacy drafting stays off
+  // Resume and recall wording reviews use PROOFLINE_REVIEW_KEY in lib/review.
+  // Legacy Anthropic drafting stays off
   // unless someone opts in explicitly.
   if (process.env.PROOFLINE_AI_MODE !== "anthropic") return null;
   if (cached !== undefined) return cached;

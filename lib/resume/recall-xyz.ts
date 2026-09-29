@@ -94,6 +94,9 @@ function measuredAction(action: string, measure: string): string {
 function outcomePhrase(value: string): string | null {
   const normalized = actionPhrase(clean(value).replace(/^(?:it|this|that)\s+/i, ""));
   if (CHANGE_VERBS.test(normalized)) return normalized;
+  if (isActionVerb(normalized.split(" ")[0]) && /\d/.test(normalized)) return normalized;
+  const more = clean(value).match(/^((?:(?:about|approximately|around|roughly|at least|up to|over|under)\s+)?\d[\d,.]*(?:%| percent)) more (.+)$/i);
+  if (more) return `Increased ${more[2]} by ${more[1]}`;
   const reduction = clean(value).match(/^((?:(?:about|approximately|around|roughly|at least|up to|over|under)\s+)?\d[\d,.]*(?:%| percent)) fewer (.+)$/i);
   if (reduction) return `Reduced ${reduction[2]} by ${reduction[1]}`;
   const change = clean(value).match(/^((?:(?:about|approximately|around|roughly|at least|up to|over|under)\s+)?\d[\d,.]*(?:%| percent)) (improvement|increase|decrease|reduction) in (.+)$/i);

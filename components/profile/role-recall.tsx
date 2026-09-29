@@ -3,13 +3,16 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
-import { answerSuggestionAction, nextSuggestionsAction } from "@/app/app/profile/suggest-actions";
+import { answerSuggestionAction, nextSuggestionsAction, reviewSuggestionAction } from "@/app/app/profile/suggest-actions";
+import { RecallMeasure } from "./recall-measure";
 import { ConfirmBox } from "@/components/facts/confirm-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { composeRecallXyz, recallXyzDefaults } from "@/lib/resume/recall-xyz";
+
+type Wording = Extract<Awaited<ReturnType<typeof reviewSuggestionAction>>, { ok: true }>;
 
 type Suggestion = Awaited<ReturnType<typeof nextSuggestionsAction>>[number];
 
@@ -23,6 +26,7 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
   const [measure, setMeasure] = useState("");
   const [method, setMethod] = useState("");
   const [result, setResult] = useState("");
+  const [wording, setWording] = useState<Wording | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [saved, setSaved] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +45,7 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
   const next = async () => {
     const cards = await nextSuggestionsAction(experienceId, 1, "recall");
     setCard(cards[0] ?? null);
-    setEditing(false); setText(""); setMeasure(""); setMethod(""); setResult(""); setConfirmed(false);
+    setEditing(false); setText(""); setMeasure(""); setMethod(""); setResult(""); setConfirmed(false); setWording(null);
   };
   const reload = () => start(async () => {
     setError(null);
@@ -52,10 +56,18 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
     start(async () => {
       setError(null);
       try {
+        let checked = wording;
+        if (reply === "yes" && !checked) {
+          const review = await reviewSuggestionAction(card.id, { editedText: text, xyz: { measure, method, result } });
+          if (!review.ok) { setError(review.error); return; }
+          checked = review;
+          if (review.text !== preview) { setWording(review); setConfirmed(false); return; }
+        }
         const response = await answerSuggestionAction(card.id, {
           answer: reply, reason: reply === "no" ? "not_true" : undefined,
           editedText: reply === "yes" ? text : undefined,
-          reviewedText: reply === "yes" ? preview : undefined,
+          reviewedText: reply === "yes" ? checked?.text : undefined,
+          reviewId: reply === "yes" ? checked?.reviewId : undefined,
           xyz: reply === "yes" ? { measure, method, result } : undefined, confirmed: reply === "yes" ? confirmed : undefined,
         });
         if (!response.ok) { setError(response.error); return; }
@@ -69,14 +81,14 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
 
   const defaults = card ? card.xyzDefaults ?? recallXyzDefaults(card.text) : null;
   let preview = "";
-  let canSave = false;
+  const canSave = Boolean(text.trim() && measure.trim() && method.trim() && ![text, measure, method, result].some((part) => /[\[\]\n\r]/.test(part)) && measure.length <= 80);
   let previewError: string | null = null;
   try {
     if (defaults) preview = composeRecallXyz(editing ? text : defaults.action, editing ? { measure, method, result } : defaults, true);
-    if (editing && text.trim() && measure.trim() && method.trim()) { composeRecallXyz(text, { measure, method, result }); canSave = true; }
+
   } catch (error) {
     previewError = error instanceof Error ? error.message : "Finish the bullet before saving it.";
-    if (!preview) preview = previewError;
+    if (!preview) preview = editing ? [text, measure, method, result].filter(Boolean).join(" · ") : previewError;
   }
 
   return (
@@ -94,30 +106,32 @@ export function RoleRecall({ experienceId, name }: { experienceId: string; name:
         {loading ? <p role="status" className="mt-3 flex items-center gap-2 text-[13px]"><LoaderCircle className="size-4 animate-spin" /> Finding a question for this role...</p> : card ? <div key={card.id} className="mt-3 space-y-3">
           <div className="rounded-xl border bg-background p-4 shadow-sm">
             <p className="mb-3 inline-flex rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">{card.taskId?.startsWith("fact:") ? "Build on a confirmed line" : "Common role duty"}</p>
-            <p className="text-[12px] font-medium text-muted-foreground">{editing ? "Your finished bullet" : card.slot ? "What detail can you add?" : "Does this match what you did?"}</p>
-            <p className="mt-1 break-words text-[17px] font-medium leading-7 tracking-tight">{preview}{!editing && card.slot === "what changed?" ? ", resulting in [what changed?]" : ""}</p>
-            {previewError && preview !== previewError && <p role="alert" className="mt-2 text-[12px] text-destructive">{previewError}</p>}
-            <p className="mt-3 text-[11px] text-muted-foreground">{editing ? "Wording updates as you type. Review this complete line before confirming it." : "X: accomplishment · Y: measure · Z: method. The blanks are yours to fill."}</p>
+            <p className="text-[12px] font-medium text-muted-foreground">{wording ? "Did you mean this?" : editing ? "Your draft bullet" : card.slot ? "What detail can you add?" : "Does this match what you did?"}</p>
+            <p className="mt-1 break-words text-[17px] font-medium leading-7 tracking-tight">{wording?.text ?? preview}{!editing && card.slot === "what changed?" ? ", resulting in [what changed?]" : ""}</p>
+            {!wording && previewError && preview !== previewError && <p role="alert" className="mt-2 text-[12px] text-destructive">{previewError}</p>}
+            <p className="mt-3 text-[11px] text-muted-foreground">{editing ? wording ? wording.message : "Save reviews this sentence with AI. You can confirm any suggested revision." : "X: accomplishment · Y: measure · Z: method. The blanks are yours to fill."}</p>
           </div>
           {editing ? <>
+            {!wording && <>
             <label className="block text-[13px]">X · What you accomplished
-              <Textarea disabled={pending} className="mt-1 min-h-24" value={text} maxLength={300} onChange={(event) => { setText(event.target.value); setConfirmed(false); }} />
+              <Textarea disabled={pending} className="mt-1 min-h-24" value={text} maxLength={300} onChange={(event) => { setText(event.target.value); setConfirmed(false); setWording(null); }} />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-[13px]">Y · Count, frequency, or change
-                <Input disabled={pending} className="mt-1" value={measure} maxLength={80} placeholder="Your actual amount, frequency, or % change" onChange={(event) => { setMeasure(event.target.value); setConfirmed(false); }} />
-              </label>
+              <RecallMeasure disabled={pending} value={measure} onChange={(value) => { setMeasure(value); setConfirmed(false); setWording(null); }} />
               <label className="block text-[13px]">Z · How you did it
-                <Input disabled={pending} className="mt-1" value={method} maxLength={120} placeholder="Using a tool, or doing a specific action" onChange={(event) => { setMethod(event.target.value); setConfirmed(false); }} />
+                <Input disabled={pending} className="mt-1" value={method} maxLength={120} placeholder="Using a tool, or doing a specific action" onChange={(event) => { setMethod(event.target.value); setConfirmed(false); setWording(null); }} />
               </label>
             </div>
             <label className="block text-[13px]">What changed{card.slot === "what changed?" ? "" : " (optional)"}
-              <Input disabled={pending} className="mt-1" value={result} maxLength={100} placeholder="A result you can support, including a % if known" onChange={(event) => { setResult(event.target.value); setConfirmed(false); }} />
+              <Input disabled={pending} className="mt-1" value={result} maxLength={100} placeholder="A result you can support, including a % if known" onChange={(event) => { setResult(event.target.value); setConfirmed(false); setWording(null); }} />
             </label>
-            <p className="text-[12px] leading-5 text-muted-foreground">No percentage needed if you do not know one. A real count or frequency works too. Check the completed line above before saving.</p>
-            <ConfirmBox checked={confirmed} onChange={setConfirmed} />
+            <p className="text-[12px] leading-5 text-muted-foreground">Use a real count or frequency if you do not know a percentage. Check the line above before saving.</p>
+            </>}
+            {wording && <p className="text-[12px] leading-5 text-muted-foreground">The revised line has not been saved. Confirm it only if it still describes your work.</p>}
+            <fieldset disabled={pending}><ConfirmBox checked={confirmed} onChange={setConfirmed} /></fieldset>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" disabled={pending || !canSave || !confirmed || !text.trim() || !measure.trim() || !method.trim() || Boolean(card.slot === "what changed?" && !result.trim())} onClick={() => answer("yes")}>{pending && <LoaderCircle className="animate-spin" />} Save and next question</Button>
+              <Button type="button" size="sm" disabled={pending || !canSave || !confirmed || !text.trim() || !measure.trim() || !method.trim() || Boolean(card.slot === "what changed?" && !result.trim())} onClick={() => answer("yes")}>{pending && <LoaderCircle className="animate-spin" />} {pending ? "Checking and saving..." : wording ? "Use this wording and save" : "Save and next question"}</Button>
+              {wording && <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => { setWording(null); setConfirmed(false); setError(null); }}>Edit my answers</Button>}
               <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => answer("no")}>No, next question</Button>
             </div>
           </> : <div className="flex flex-wrap gap-2">

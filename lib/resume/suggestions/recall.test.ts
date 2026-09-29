@@ -7,7 +7,7 @@ import { listBullets } from "@/lib/resume/bullets/service";
 import { onetTasksForTitle, recallCatalogSize } from "@/lib/resume/onet-tasks";
 import catalog from "@/lib/resume/onet-catalog.json";
 import { composeRecallXyz } from "@/lib/resume/recall-xyz";
-import { answerSuggestion, nextSuggestions, type AnswerInput } from "./service";
+import { answerSuggestion, nextSuggestions, reviewSuggestion, type AnswerInput } from "./service";
 import { tailorResume } from "@/lib/resume/tailor";
 import { parseRequirements } from "@/lib/fit/requirements";
 
@@ -22,7 +22,10 @@ async function role(userId: string, bullets: string[] = []) {
 }
 
 async function reviewedAnswer(userId: string, id: string, input: AnswerInput) {
-  return answerSuggestion(userId, id, { ...input, reviewedText: input.xyz && input.editedText ? composeRecallXyz(input.editedText, input.xyz) : undefined });
+  if (!input.xyz || !input.editedText) return answerSuggestion(userId, id, input);
+  const review = await reviewSuggestion(userId, id, { editedText: input.editedText, xyz: input.xyz });
+  if (!review.ok) throw new Error(review.error);
+  return answerSuggestion(userId, id, { ...input, reviewId: review.reviewId, reviewedText: review.text });
 }
 
 describe("common-duty recall", () => {
@@ -156,9 +159,39 @@ describe("common-duty recall", () => {
     const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
     const before = (await listFacts(userId)).length;
     const input = { answer: "yes" as const, confirmed: true, editedText: "Scheduled appointments", xyz: { measure: "25 each week", method: "the calendar" } };
-    for (const reviewedText of [undefined, "Scheduled 50 appointments each week using the calendar"]) await expect(answerSuggestion(userId, card.id, { ...input, reviewedText })).rejects.toThrow(/preview changed/);
+    await expect(answerSuggestion(userId, card.id, { ...input, reviewedText: composeRecallXyz(input.editedText, input.xyz) })).rejects.toThrow(/wording review changed/);
+    const review = await reviewSuggestion(userId, card.id, input);
+    if (!review.ok) throw new Error(review.error);
+    for (const reviewedText of [undefined, "Scheduled 50 appointments each week using the calendar"]) await expect(answerSuggestion(userId, card.id, { ...input, reviewId: review.reviewId, reviewedText })).rejects.toThrow(/preview changed/);
     expect((await listFacts(userId)).length).toBe(before);
     expect((await nextSuggestions(userId, exp.id, 1, "recall"))[0].id).toBe(card.id);
+  });
+
+  it("reviews without saving evidence, caches unchanged answers, and rejects changed, expired, or cross-account receipts", async () => {
+    const userId = await student();
+    const exp = await role(userId);
+    const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
+    const input = { answer: "yes" as const, confirmed: true, editedText: "Scheduled appointments", xyz: { measure: "25 each week", method: "the calendar" } };
+    const before = (await listFacts(userId)).length;
+    const review = await reviewSuggestion(userId, card.id, input);
+    if (!review.ok) throw new Error(review.error);
+    expect((await listFacts(userId)).length).toBe(before);
+    expect(await listBullets(userId, [exp.id])).toHaveLength(0);
+    expect(await reviewSuggestion(userId, card.id, input)).toMatchObject({ ok: true, reviewId: review.reviewId });
+    const accepted = { ...input, reviewId: review.reviewId, reviewedText: review.text };
+    await expect(answerSuggestion(userId, card.id, { ...accepted, xyz: { ...input.xyz, measure: "35 each week" } })).rejects.toThrow(/wording review changed/);
+    await expect(answerSuggestion(userId, card.id, { ...accepted, confirmed: false })).rejects.toThrow(/Confirm/);
+    const otherId = await student();
+    const otherExp = await role(otherId);
+    const [otherCard] = await nextSuggestions(otherId, otherExp.id, 1, "recall");
+    await expect(answerSuggestion(otherId, otherCard.id, accepted)).rejects.toThrow(/wording review changed/);
+    const secondExp = await role(userId);
+    const [secondCard] = await nextSuggestions(userId, secondExp.id, 1, "recall");
+    await expect(answerSuggestion(userId, secondCard.id, accepted)).rejects.toThrow(/wording review changed/);
+    const { eq } = await import("drizzle-orm");
+    await db.update(schema.agentEvent).set({ createdAt: new Date(Date.now() - 31 * 60_000) }).where(eq(schema.agentEvent.id, review.reviewId));
+    await expect(answerSuggestion(userId, card.id, accepted)).rejects.toThrow(/wording review changed/);
+    expect((await listFacts(userId)).length).toBe(before + (await listFacts(userId, { experienceId: secondExp.id })).length);
   });
 
   it("keeps a bank over 100 lines and selects a late-added relevant line for the job", async () => {

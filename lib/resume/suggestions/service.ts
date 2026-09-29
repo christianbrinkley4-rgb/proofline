@@ -13,9 +13,11 @@ import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
 
 export type BulletSuggestion = typeof schema.bulletSuggestion.$inferSelect & { xyzDefaults?: RecallParts };
 import { isActionVerb, OVERUSED_VERBS } from "@/lib/resume/verbs";
-import { composeRecallXyz, type RecallXyz, type RecallParts } from "@/lib/resume/recall-xyz";
+import { type RecallXyz, type RecallParts } from "@/lib/resume/recall-xyz";
 
-export type AnswerInput = { reviewedText?: string; confirmed?: boolean; xyz?: RecallXyz; answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
+import { recallParts, RECALL_REVIEW_VERSION, reviewRecallWording, validateRecallWording } from "@/lib/review/recall";
+
+export type AnswerInput = { reviewId?: string; reviewedText?: string; confirmed?: boolean; xyz?: RecallXyz; answer: "yes" | "no"; reason?: "not_true" | "true_but_weak" | "wording"; slotValue?: string; editedText?: string };
 
 export async function nextSuggestions(userId: string, experienceId: string, count = 5, mode: "bank" | "recall" = "bank"): Promise<BulletSuggestion[]> {
   const experience = await getExperience(userId, experienceId);
@@ -103,6 +105,26 @@ export async function nextSuggestions(userId: string, experienceId: string, coun
   return [...pending, ...created];
 }
 
+function sameRecallParts(stored: unknown, parts: RecallParts): boolean {
+  if (!stored || typeof stored !== "object") return false;
+  return (["action", "measure", "method", "result"] as const).every((key) => (stored as Record<string, unknown>)[key] === parts[key]);
+}
+
+/** Review never creates evidence; the finished line still needs explicit confirmation. */
+export async function reviewSuggestion(userId: string, id: string, input: { editedText: string; xyz: RecallXyz }) {
+  const item = await db.query.bulletSuggestion.findFirst({ where: and(eq(schema.bulletSuggestion.id, id), eq(schema.bulletSuggestion.userId, userId)) });
+  if (!item || item.status !== "pending" || !item.promptVersion?.startsWith("role-recall.")) return { ok: false as const, error: "This question is out of date. Load the next question." };
+  const parts = recallParts(input.editedText, { ...input.xyz, result: input.xyz.result ?? "" });
+  if (item.slot === "what changed?" && !parts.result) return { ok: false as const, error: "Fill in what changed, or skip this result question" };
+  const cached = await db.query.agentEvent.findMany({ where: and(eq(schema.agentEvent.userId, userId), eq(schema.agentEvent.type, "recall_wording_reviewed")), orderBy: [desc(schema.agentEvent.createdAt)], limit: 20 });
+  const previous = cached.find((event) => event.createdAt.getTime() > Date.now() - 30 * 60_000 && event.data.version === RECALL_REVIEW_VERSION && event.data.suggestionId === id && sameRecallParts(event.data.parts, parts));
+  if (previous) return { ok: true as const, reviewId: previous.id, text: String(previous.data.text), method: previous.data.method as "model" | "rules", message: String(previous.data.message) };
+  const result = await reviewRecallWording(userId, parts);
+  if (!result.ok) return result;
+  const [event] = await db.insert(schema.agentEvent).values({ userId, type: "recall_wording_reviewed", data: { suggestionId: id, parts, text: result.text, method: result.method, message: result.message, version: RECALL_REVIEW_VERSION } }).returning();
+  return { ...result, reviewId: event.id };
+}
+
 export async function answerSuggestion(userId: string, id: string, input: AnswerInput) {
   const item = await db.query.bulletSuggestion.findFirst({ where: and(eq(schema.bulletSuggestion.id, id), eq(schema.bulletSuggestion.userId, userId)) });
   if (!item) throw new Error("This suggestion expired. Reopen your bullet bank.");
@@ -129,11 +151,15 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
     throw new Error(item.slot === "how many?" ? "Enter a real number you can explain" : "Fill in what happened in your own words");
   }
   const suggested = item.slot ? item.text.replace(`[${item.slot}]`, slotValue) : item.text;
-  const text = xyzRecall
-    ? composeRecallXyz(input.editedText ?? "", input.xyz!)
-    : (input.editedText?.trim().replace(item.slot ? `[${item.slot}]` : "\u0000", slotValue) || suggested).replace(/[.\s]+$/, "");
+  let text = (input.editedText?.trim().replace(item.slot ? `[${item.slot}]` : "\u0000", slotValue) || suggested).replace(/[.\s]+$/, "");
+  if (xyzRecall) {
+    const parts = recallParts(input.editedText ?? "", { ...input.xyz!, result: input.xyz?.result ?? "" });
+    const review = input.reviewId ? await db.query.agentEvent.findFirst({ where: and(eq(schema.agentEvent.id, input.reviewId), eq(schema.agentEvent.userId, userId), eq(schema.agentEvent.type, "recall_wording_reviewed")) }) : null;
+    if (!review || review.data.version !== RECALL_REVIEW_VERSION || review.data.suggestionId !== id || review.createdAt.getTime() <= Date.now() - 30 * 60_000 || !sameRecallParts(review.data.parts, parts)) throw new Error("Review the finished wording again before saving. The answers or wording review changed.");
+    text = validateRecallWording(parts, String(review.data.text));
+  }
   if (xyzRecall && item.slot === "what changed?" && !input.xyz?.result?.trim()) throw new Error("Fill in what changed, or skip this result question");
-  if (xyzRecall && input.reviewedText !== text) throw new Error("The bullet preview changed. Reload the questions and review the finished line before saving.");
+  if (xyzRecall && input.reviewedText !== text) throw new Error("The bullet preview changed. Review the finished wording again before saving.");
   if (!text || text.length > 300 || /\[[^\]]+\]/.test(text)) throw new Error("Finish the bullet before saving it");
   if (findVoiceIssues(text).length || findWeakOpener(text)) throw new Error("Use a clear action verb and plain wording");
 

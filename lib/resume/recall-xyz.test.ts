@@ -85,6 +85,13 @@ describe("fill-in XYZ cards", () => {
     expect(() => composeRecallXyz("Provided information", { measure: "25", method: "a service guide" })).toThrow(/what is counted/);
     expect(() => composeRecallXyz("Reviewed forms", { measure: "weekly", method: "using " + "a long checklist ".repeat(30) })).toThrow(/300 characters/);
   });
+  it("recognizes a complete outcome in Y instead of appending it as a counted unit", () => {
+    const text = composeRecallXyz("Developed marketing strategies to compete with other agents who sell insurance", { measure: "booked 50 percent more appointments", method: "my automation system I designed" });
+    expect(text).toMatch(/^Booked 50 percent more appointments by developing/);
+    expect(text).not.toContain("for booked");
+    expect(composeRecallXyz("Developed marketing strategies", { measure: "50 percent more appointments", method: "an automation system" })).toBe("Increased appointments 50 percent by developing marketing strategies using an automation system");
+    expect(composeRecallXyz("Reviewed forms", { measure: "20 percent fewer incomplete records", method: "a checklist" })).toBe("Reduced incomplete records 20 percent by reviewing forms using a checklist");
+  });
   it("audits every usable duty in the full bank with several method and result forms", () => {
     const duties = recallDutyTemplates();
     expect(duties.length).toBeGreaterThan(5000);
