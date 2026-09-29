@@ -1,5 +1,17 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 29 provider billing outage and recall recovery
+
+The owner reported "The wording review could not finish safely" while saving a card. Bounded live logs show two recall requests returning HTTP 402. Google's current Gemini billing documentation says a zero prepaid balance stops requests with 402; the billing account itself has not been inspected. Gemini 3.5 Flash-Lite has a free tier, but a key on a paid/prepaid project does not automatically switch to it. See https://ai.google.dev/gemini-api/docs/billing and https://ai.google.dev/gemini-api/docs/pricing. The owner must inspect the key's project in AI Studio Billing and resolve its plan/balance; no payment, key or billing setting was changed by the agent.
+
+Recall now distinguishes an unavailable provider from a rejected sentence or incomplete response. Errors no longer imply that the person's answers were unsafe. In an edited card, retry keeps all answers and no longer offers a destructive Load next question shortcut. Provider/quota outages offer an explicit basic wording check, which runs the shared composer and all number/timeframe/estimate/ownership/voice validation without an external call or model credit. Its draft is visibly labeled as not AI-reviewed, always clears confirmation, and cannot save until the person confirms that exact sentence. Unsafe model output and clarification do not silently fall back. Model and basic review receipts are cached separately; the receipt version is recall-wording.v2. The resume export review gate is unchanged and still needs the provider.
+
+Verification: focused provider/service tests cover the production 402, no evidence on failure or basic review, no provider call/credit for explicit basic review, exact confirmation, and separate caches. The full suite passed 758 tests in 83 files; typecheck and lint passed. A local synthetic 402 provider reproduced the failure in the browser: retry kept X/Y/Z/result, basic review left the bank unchanged and confirmation unchecked, edit returned original answers, and explicit confirmation saved one exact line, advanced the card and persisted after reload. At 375px the page width remained 375px and no inputs or controls overflowed; browser console errors were empty. Production AI review remains blocked until the billing issue is resolved; local tests do not prove it recovered.
+
+## September 29 readiness decision
+
+Read [BETA-READINESS.md](../BETA-READINESS.md) before claiming the beta is fully ready. The owner wants career direction and follow-through, beyond resume generation. The audit records live-provider and real-document verification gaps, manual password recovery, capacity/usability gates, and the substantive career comparison/adaptation work still needed. Career plans and agent chat remain hidden; do not simply unhide them as a substitute for completing that journey. This audit changes documentation only.
+
 Claude Code worked on Proofline through September 28 and is handing off here. Start with this file, then `docs/PLAN.md` (roadmap and what shipped), `docs/COMPETE-PLAN.md` (the approved competitive plan), and `docs/research/COMPETITORS.md` (the brief behind it).
 
 
@@ -105,3 +117,6 @@ The landing page leads with "The resume you can defend in the interview"; inline
 ## Slice done: tense within one entry (September 28)
 
 An entry with no dates is past tense. A current role or ongoing project (a start date and no end date, so the line says Present) is present tense. `polishBullet` changes only the opening verb, so "Architect" and "Track" no longer sit next to "Drove", "Booked", and "Built" in the same block.
+
+
+Commit `9aa8953` is live at https://proofline-beta.vercel.app as Ready production deployment `dpl_8btrqyfTD94H1ub3NTqzoHBUecKY`. The Vercel cloud build passed. Post-deployment checks returned 200 for home, 307 for signed-out My facts, and 404 for development login. Signed-in recovery behavior was verified locally with a synthetic 402 provider; actual Gemini billing recovery has not been verified. No billing settings or credentials were changed.
