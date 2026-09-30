@@ -64,3 +64,21 @@ describe("internships only for PhD or MBA students", () => {
     expect(phd?.status).toBe("ok");
   });
 });
+
+describe("a student's major counts as background", () => {
+  const withMarketing = { ...accountant, confirmedText: [...accountant.confirmedText, "Developed marketing strategies for new clients", "Excel"] };
+  const accountingIntern = job("Accounting Intern", "Requirements\n- Pursuing a degree in accounting\n- Experience with GAAP, NetSuite, and account reconciliation\n- Proficient in Excel");
+  const socialIntern = job("Social Media Intern", "Requirements\n- Passion for marketing and social media content");
+
+  it("credits an accounting major's studies on an accounting internship, and not on a marketing one", () => {
+    const accounting = scoreFit(accountingIntern, withMarketing);
+    const social = scoreFit(socialIntern, withMarketing);
+    expect(accounting.details.experience.note).toContain("Your Accounting studies line up with this kind of work.");
+    expect(accounting.details.experience.math).toMatch(/^Relevance 12 of 15/);
+    expect(social.details.experience.math).toMatch(/^Relevance [0-5] of 15/);
+  });
+
+  it("keeps work outside the person's field from earning relevance", () => {
+    expect(scoreFit(job("Mechanical Simulation Engineer"), accountant).details.experience.math).toMatch(/^Relevance [0-5] of 15/);
+  });
+});

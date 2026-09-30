@@ -97,6 +97,8 @@ export function isUSLocation(location: string | null | undefined): boolean {
 export function tidyLocation(location: string | null | undefined): string | null {
   if (!location?.trim()) return null;
   return location
+    // "New York, New York, United States, Stamford, Connecticut" is two places.
+    .replace(/,\s*(?:united states(?: of america)?|usa)\s*,\s*(?=\S)/gi, " • ")
     .split(/\s*(•|;|\|)\s*/)
     .map((part) => {
       if (/^(•|;|\|)$/.test(part)) return part === "•" ? " • " : `${part} `;

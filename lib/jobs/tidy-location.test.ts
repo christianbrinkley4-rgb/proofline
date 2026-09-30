@@ -9,6 +9,7 @@ describe("tidyLocation", () => {
     expect(tidyLocation("San Francisco, CA • New York, NY")).toBe("San Francisco, CA • New York, NY");
     expect(tidyLocation("Hybrid - New York, NY")).toBe("Hybrid - New York, NY");
     expect(tidyLocation("Mountain View, California (HQ)")).toBe("Mountain View, California (HQ)");
+    expect(tidyLocation("New York, New York, United States, Stamford, Connecticut")).toBe("New York, NY • Stamford, CT");
     expect(tidyLocation("  ")).toBeNull();
   });
 });

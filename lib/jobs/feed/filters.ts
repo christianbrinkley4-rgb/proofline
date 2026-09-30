@@ -36,8 +36,17 @@ type ProfileForFilters = {
   targetLocations: string[];
   workModes: string[];
   gradDate: string | null;
+  /** Latest major, for a first feed when no target roles are saved. */
+  major?: string | null;
   feedFilters?: Record<string, unknown> | null;
 } | null | undefined;
+
+/** "Accounting" becomes the accounting role family, so an accounting student starts on accounting, audit, and tax work. */
+function rolesFromMajor(major: string | null | undefined): string {
+  if (!major?.trim()) return "";
+  const families = familiesFor(major.toLowerCase().split(/[^a-z&]+/).filter(Boolean));
+  return families.length ? families.slice(0, 2).map((f) => f.triggers[0]).join(", ") : "";
+}
 
 /** Still in school, or graduating within the next year: lead with internships. */
 function studentLike(gradDate: string | null, now: Date): boolean {
@@ -53,7 +62,7 @@ export function defaultFilters(profile: ProfileForFilters, now = new Date()): Fe
   const modes = profile?.workModes ?? [];
   const remote = !modes.length || modes.includes("remote") || (profile?.targetLocations ?? []).some((l) => /^remote$/i.test(l.trim()));
   return {
-    keywords: (profile?.targetRoles ?? []).join(", ").slice(0, 200),
+    keywords: ((profile?.targetRoles ?? []).length ? (profile?.targetRoles ?? []).join(", ") : rolesFromMajor(profile?.major)).slice(0, 200),
     places: places.join("; ").slice(0, 200),
     remote,
     types: studentLike(profile?.gradDate ?? null, now) ? ["internship", "entry"] : ["entry", "fulltime"],

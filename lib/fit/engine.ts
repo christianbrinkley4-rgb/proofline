@@ -198,7 +198,14 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const familyWords = titleFamilies.flatMap((f) => f.titleWords);
   const titleHits = candidate.experienceTitles.filter((t) => familyWords.some((w) => t.toLowerCase().includes(w)));
   const textHits = familyWords.filter((w) => index.corpus.includes(w));
-  const relevance = titleHits.length ? 15 : textHits.length >= 2 ? 11 : textHits.length ? 7 : titleFamilies.length ? 3 : 8;
+  const evidenceRelevance = titleHits.length ? 15 : textHits.length >= 2 ? 11 : textHits.length ? 7 : titleFamilies.length ? 3 : 8;
+  // A student's major is background too: an accounting major fits an accounting internship
+  // before holding an accounting job. Work outside what they study and have done earns less.
+  const studyFit = job.level !== "experienced" && candidate.major
+    ? fieldFit(job.title, titleFamilies.map((f) => f.id), { major: candidate.major, minor: candidate.minor, experienceTitles: [] })
+    : "unknown";
+  const studiesCount = !titleHits.length && studyFit === "near" && evidenceRelevance < 12;
+  const relevance = field === "far" ? Math.min(evidenceRelevance, 5) : studiesCount ? 12 : evidenceRelevance;
   let seniority = 6;
   let seniorityNote = "";
   const documentedYears = candidate.documentedYearsExperience ?? null;
@@ -233,9 +240,13 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     note: [
       titleHits.length
         ? `Your ${titleHits[0]} work lines up with this role.`
-        : textHits.length
-          ? "Some of your experience touches this kind of work."
-          : "Your experience so far is in a different area.",
+        : studiesCount
+          ? `Your ${candidate.major} studies line up with this kind of work.`
+          : field === "far"
+            ? "This work is outside what you study and have done so far."
+            : textHits.length
+              ? "Some of your experience touches this kind of work."
+              : "Your experience so far is in a different area.",
       seniorityNote,
     ]
       .filter(Boolean)
