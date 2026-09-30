@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { DraftResponse } from "@/app/api/onboarding/resume-draft/route";
 import { Textarea } from "@/components/ui/textarea";
-import { confirmedEducationDetails, type ResumeDraft, type RoleDraft } from "@/lib/onboarding/draft";
+import { confirmedEducationDetails, newToAccount, type ResumeDraft, type RoleDraft } from "@/lib/onboarding/draft";
 import { ChipInput, Field, PillChoice } from "./parts";
 
 export type BetaOnboardingData = {
@@ -32,11 +32,13 @@ export type BetaOnboardingData = {
   firstName: string;
   basics: { fullName: string; phone: string; city: string; region: string; contactEmail: string; linkedinUrl: string; portfolioUrl: string; school: string; degree: string; major: string; gradDate: string; gpa: string };
   education: Array<{ entryId: string; school: string; degree: string; major: string; gradDate: string; gpa: string; honors: string; coursework: string }>;
-  roles: Array<{ id: string; kind: string; name: string; lines: number }>;
+  roles: Array<{ id: string; kind: string; org: string; title: string; name: string; lines: number }>;
   skills: string[];
   licenses: string[];
   logistics: { workAuthorization: string; targetLocations: string[]; workModes: Array<"remote" | "hybrid" | "onsite">; openToRelocate: "" | "yes" | "no"; availableFrom: string };
   hasEducation: boolean;
+  /** Came from My facts to import a resume into an account that already has facts. */
+  importing: boolean;
   /** Came from a knockout or Settings to fix one thing: go back there after it. */
   returnTo: string | null;
 };
@@ -81,7 +83,17 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
   const aboutIndex = (ABOUT_SCREENS as readonly string[]).indexOf(step);
   const progress = step === "job" ? 1 : 0;
 
+  // A resume adds only the schools and roles this account doesn't have yet.
+  const readDraft = (next: ResumeDraft) =>
+    setDraft(newToAccount(next, { schools: data.education, roles: data.roles }));
+
   const go = (next: OnboardingStep) => {
+    if (data.importing && next === "job") {
+      setDraft(null);
+      router.push("/app/facts");
+      router.refresh();
+      return;
+    }
     if (data.returnTo) {
       router.push(data.returnTo);
       router.refresh();
@@ -116,7 +128,7 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
             Step 1 · {SCREEN_TITLE[step as (typeof ABOUT_SCREENS)[number]]} <span className="font-normal text-subtle-foreground">({aboutIndex + 1} of {ABOUT_SCREENS.length})</span>
           </p>
         )}
-        {step === "education" && <EducationScreen key={draft ? "draft" : "blank"} data={data} draft={draft} onDraft={setDraft} onDone={() => go("experience")} />}
+        {step === "education" && <EducationScreen key={draft ? "draft" : "blank"} data={data} draft={draft} onDraft={readDraft} onDone={() => go("experience")} />}
         {step === "experience" && (
           <RoleScreen
             key="experience"
@@ -239,8 +251,12 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
         );
       }}
     >
-      <Heading title={`Hi ${data.firstName}. Tell us about yourself.`} hint="Add each school you want on your resume. Honors and coursework are optional. Only what you type here is saved." />
-      {!data.hasEducation && data.roles.length === 0 && <ResumeImport draft={draft} onDraft={onDraft} />}
+      {data.importing ? (
+        <Heading title="Import from your resume" hint="We add the schools, roles, and skills you haven't saved yet, for you to check on each screen. What's already on My facts stays as it is." />
+      ) : (
+        <Heading title={`Hi ${data.firstName}. Tell us about yourself.`} hint="Add each school you want on your resume. Honors and coursework are optional. Only what you type here is saved." />
+      )}
+      {((!data.hasEducation && data.roles.length === 0) || data.importing) && <ResumeImport draft={draft} onDraft={onDraft} importing={data.importing} />}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Name on your resume" htmlFor="fullName">
           <Input id="fullName" value={v.fullName} onChange={(e) => set("fullName")(e.target.value)} required maxLength={120} className="h-10" />
@@ -324,7 +340,7 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
       </div>
       <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-6" />
       <ErrorLine error={error} />
-      <Nav backHref="/app">
+      <Nav backHref={data.importing ? "/app/facts" : "/app"}>
         <Button type="submit" size="lg" disabled={pending || !confirmed}>
           {pending ? <LoaderCircle className="animate-spin" /> : null}
           Continue
@@ -343,9 +359,10 @@ function blankEdu(): EduForm {
 }
 
 function initialSchools(data: BetaOnboardingData, draft: ResumeDraft | null): EduForm[] {
-  if (data.education.length) return data.education.map((entry) => ({ ...entry, details: [] }));
-  const imported = (draft?.education ?? []).filter((entry) => entry.school.trim());
-  if (imported.length) return imported.map((entry) => ({ entryId: "", ...entry, details: entry.details.map((text) => ({ text, confirmed: false })) }));
+  // Schools from a resume are already limited to ones this account doesn't have.
+  const imported = (draft?.education ?? []).filter((entry) => entry.school.trim()).map((entry) => ({ entryId: "", ...entry, details: entry.details.map((text) => ({ text, confirmed: false })) }));
+  if (data.education.length) return [...data.education.map((entry) => ({ ...entry, details: [] })), ...imported];
+  if (imported.length) return imported;
   const school = data.basics.school || draft?.basics.school || "";
   if (!school) return [blankEdu()];
   return [{
@@ -704,7 +721,7 @@ const DRAFT_KEY = "proofline:resume-draft";
  * "Start from your resume": reads a PDF, DOCX, or pasted text into these screens.
  * Nothing is saved until the person checks each screen and confirms it.
  */
-function ResumeImport({ draft, onDraft }: { draft: ResumeDraft | null; onDraft: (d: ResumeDraft) => void }) {
+function ResumeImport({ draft, onDraft, importing = false }: { draft: ResumeDraft | null; onDraft: (d: ResumeDraft) => void; importing?: boolean }) {
   const [mode, setMode] = useState<"file" | "paste">("file");
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
@@ -731,10 +748,14 @@ function ResumeImport({ draft, onDraft }: { draft: ResumeDraft | null; onDraft: 
       <div className="mt-6 rounded-xl border border-brand/30 bg-brand-soft/40 px-4 py-3 text-[13.5px] leading-6">
         <p className="flex items-center gap-2 font-medium">
           <Check className="size-4 text-brand" strokeWidth={3} aria-hidden="true" />
-          Read your resume: {draft.roles.length} {draft.roles.length === 1 ? "role or project" : "roles and projects"}, {draft.skills.length} skills.
+          {importing
+            ? `Read your resume. New to your account: ${draft.education.length} ${draft.education.length === 1 ? "school" : "schools"}, ${draft.roles.length} ${draft.roles.length === 1 ? "role or project" : "roles and projects"}.`
+            : `Read your resume: ${draft.roles.length} ${draft.roles.length === 1 ? "role or project" : "roles and projects"}, ${draft.skills.length} skills.`}
         </p>
         <p className="text-muted-foreground">
-          We filled in what we found. Check each screen and fix anything that&apos;s off; nothing is saved until you confirm it.
+          {importing
+            ? "Roles and schools you already saved are left alone. Check each screen, add what's new, and confirm it; skills you don't have yet are added on the skills screen."
+            : "We filled in what we found. Check each screen and fix anything that's off; nothing is saved until you confirm it."}
         </p>
       </div>
     );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { FileUp, ShieldCheck } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { AddFact, AddRole, DeleteEducationButton, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
 import { FactRecall } from "@/components/facts/fact-recall";
@@ -40,11 +40,19 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
         title="My facts"
         description="Everything a resume is allowed to say about you, in your exact words. Edit a fact and it's re-confirmed; delete it and it comes off every resume."
         actions={
-          base.total > 0 && (
+          <>
             <Button size="sm" variant="outline" asChild>
-              <Link href="/app/facts/linkedin">LinkedIn profile</Link>
+              <Link href="/app/onboarding?step=education&import=1">
+                <FileUp data-icon="inline-start" />
+                Import from resume
+              </Link>
             </Button>
-          )
+            {base.total > 0 && (
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/app/facts/linkedin">LinkedIn profile</Link>
+              </Button>
+            )}
+          </>
         }
       />
       <p className="mt-4 flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] leading-5 text-muted-foreground">

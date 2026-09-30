@@ -8,7 +8,7 @@ import { ONBOARDING_STEPS, type OnboardingStep } from "./steps";
 export const metadata: Metadata = { title: "Get started" };
 
 export default async function OnboardingPage({ searchParams }: PageProps<"/app/onboarding">) {
-  const { step: requested, back } = await searchParams;
+  const { step: requested, back, import: importing } = await searchParams;
   const session = await requireSession();
   const userId = session.user.id;
   const profile = await ensureProfile(userId, session.user.name);
@@ -49,6 +49,8 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
     roles: base.roles.map((r) => ({
       id: r.experience.id,
       kind: r.experience.kind,
+      org: r.experience.org,
+      title: r.experience.title ?? "",
       name: [r.experience.title, r.experience.org].filter(Boolean).join(", "),
       lines: r.bullets.length,
     })),
@@ -62,6 +64,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
       availableFrom: profile.availableFrom ?? "",
     },
     hasEducation: readiness.hasEducation,
+    importing: importing === "1",
     returnTo: typeof back === "string" && back.startsWith("/app/") && !back.startsWith("//") ? back : null,
   };
 

@@ -126,3 +126,23 @@ export function draftFromResume(parsed: ParsedResume): ResumeDraft {
     licenses: [...new Set(parsed.certifications.map((s) => s.trim()).filter((s) => s && s.length <= 160))].slice(0, 20),
   };
 }
+
+const same = (a: string, b: string) => {
+  const norm = (value: string) => value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+  return norm(a) === norm(b);
+};
+
+/**
+ * Importing a resume into an account that already has facts: keep only the
+ * schools and roles it doesn't have yet, so nothing is added twice. A school
+ * matches on name plus degree or graduation month; a role on organization plus title.
+ */
+export function newToAccount(
+  draft: ResumeDraft,
+  existing: { schools: Array<{ school: string; degree: string; gradDate: string }>; roles: Array<{ org: string; title: string }> },
+): ResumeDraft {
+  const knownSchool = (entry: EducationDraft) =>
+    existing.schools.some((s) => same(s.school, entry.school) && ((s.degree && same(s.degree, entry.degree)) || (s.gradDate && s.gradDate === entry.gradDate)));
+  const knownRole = (role: RoleDraft) => existing.roles.some((r) => same(r.org, role.org) && (same(r.title, role.title) || !r.title || !role.title));
+  return { ...draft, education: draft.education.filter((entry) => !knownSchool(entry)), roles: draft.roles.filter((role) => !knownRole(role)) };
+}

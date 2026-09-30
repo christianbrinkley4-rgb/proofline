@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseResumeText } from "@/lib/resume/parse/rules";
-import { draftFromResume } from "./draft";
+import { draftFromResume, newToAccount } from "./draft";
 
 const B = "";
 const RESUME = [
@@ -51,5 +51,34 @@ describe("resume into the onboarding form", () => {
   it("carries skills and licenses over for review", () => {
     expect(draft.skills).toEqual(["Excel", "Python", "Tableau"]);
     expect(draft.licenses).toEqual(["NC Life & Health"]);
+  });
+});
+
+describe("importing into an account that already has facts", () => {
+  const draft = {
+    basics: {} as never, otherEducation: [], educationDetails: [], skills: [], licenses: [],
+    education: [
+      { school: "UNC Greensboro", degree: "Bachelor of Science", major: "Accounting", gradDate: "2026-12", gpa: "", honors: "", coursework: "", details: [] },
+      { school: "UNC Greensboro", degree: "Master of Science", major: "Accounting", gradDate: "2027-06", gpa: "", honors: "", coursework: "", details: [] },
+    ],
+    roles: [
+      { key: "r0", kind: "work" as const, org: "Bankers Life", title: "Licensed Insurance Agent", startDate: "", endDate: "", bullets: ["Wrote 12 policies"], extraLines: 0 },
+      { key: "r1", kind: "leadership" as const, org: "UNCG Blockchain & Investment Club", title: "Treasurer", startDate: "", endDate: "", bullets: ["Led pitch meetings"], extraLines: 0 },
+      { key: "r2", kind: "work" as const, org: "Bankers Life", title: "Financial Advisor Intern", startDate: "", endDate: "", bullets: ["Booked 10 meetings"], extraLines: 0 },
+    ],
+  };
+
+  it("keeps only schools and roles the account doesn't have", () => {
+    const result = newToAccount(draft, {
+      schools: [{ school: "UNC  Greensboro", degree: "bachelor of science", gradDate: "" }],
+      roles: [{ org: "Bankers Life", title: "Licensed Insurance Agent" }, { org: "UNCG Blockchain and Investment Club", title: "treasurer" }],
+    });
+    expect(result.education.map((e) => e.degree)).toEqual(["Master of Science"]);
+    expect(result.roles.map((r) => r.title)).toEqual(["Financial Advisor Intern"]);
+  });
+
+  it("matches a school by graduation month when the degree is worded differently", () => {
+    const result = newToAccount(draft, { schools: [{ school: "UNC Greensboro", degree: "B.S.", gradDate: "2026-12" }], roles: [] });
+    expect(result.education.map((e) => e.degree)).toEqual(["Master of Science"]);
   });
 });
