@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { KitGroups } from "@/components/packet/answer-kit";
+import { readSent, sentSummary } from "@/lib/packet/sent-record";
 import { followUpDraft, followUpState, safeJobUrl, STAGES, STAGE_LABEL, stagePatch, trackerStats, type Application, type Stage } from "@/lib/tracker/model";
 import { REPLY_LABEL, type ApplicationActivity, type ReplyKind } from "@/lib/tracker/activity";
 import { cn } from "@/lib/utils";
@@ -204,6 +206,7 @@ function ApplicationCard({ app, insight, due, pending, onOpen, onMove, onSent, o
       <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
         {insight && <span className="rounded border px-1.5 py-0.5">{insight.score} fit</span>}
         {app.resumeId && <span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-muted-foreground"><FileText className="size-3" />Resume attached</span>}
+        {app.sent && <span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-muted-foreground"><Check className="size-3" />Record of what you sent</span>}
         {app.appliedAt && <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Applied {date(app.appliedAt)}</span>}
         {app.deadline && <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Deadline {date(app.deadline)}</span>}
         {app.confirmationRef && <span className="max-w-full truncate rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Conf. {app.confirmationRef}</span>}
@@ -252,6 +255,8 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
   const url = safeJobUrl(app.url);
+  const sent = readSent(app.sent);
+  const sentCounts = sent ? sentSummary(sent) : null;
   function run(action: () => Promise<unknown>, message: string) {
     startTransition(async () => { try { await action(); toast(message); } catch { toast.error(errorMessage); } });
   }
@@ -262,7 +267,21 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
         {url && <Button asChild size="sm"><a href={url} target="_blank" rel="noreferrer">Open posting<ArrowUpRight data-icon="inline-end" /></a></Button>}
         {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId}>Fit score</Link></Button>}
         {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "?tab=tailor"}><FileText data-icon="inline-start" />{app.resumeId ? "Linked resume" : "Tailor a resume"}</Link></Button>}
+        {app.jobId && !sent && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "/kit"}>Answer kit</Link></Button>}
       </div>
+      {sent && sentCounts && <section className="rounded-xl border p-4">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-start justify-between gap-3 rounded outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span>
+              <span className="block text-sm font-semibold">What you sent</span>
+              <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">Saved {date(sent.at)} from your answer kit: {sentCounts.filled} fields filled from what you confirmed, {sentCounts.blank} left blank.</span>
+            </span>
+            <ArrowRight aria-hidden="true" className="mt-1 size-3.5 shrink-0 text-subtle-foreground transition-transform group-open:rotate-90" />
+          </summary>
+          <div className="mt-4"><KitGroups groups={sent.kit.groups} readOnly /></div>
+        </details>
+        {app.jobId && <Link href={"/app/jobs/" + app.jobId + "/kit"} className="mt-3 inline-flex min-h-8 items-center gap-1 text-xs font-medium hover:underline">Open it as a page<ArrowRight className="size-3" /></Link>}
+      </section>}
       {!app.jobId && <div className="rounded-lg border border-dashed p-3 text-[12.5px] leading-5 text-muted-foreground">
         Paste this posting on Jobs to get the knockouts, a fit score, and a tailored resume for it. It links up with this entry automatically.
         <Button asChild size="sm" variant="outline" className="mt-2 flex w-fit"><Link href="/app/jobs">Paste the posting</Link></Button>

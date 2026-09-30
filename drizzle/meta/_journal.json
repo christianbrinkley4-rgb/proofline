@@ -127,6 +127,13 @@
       "when": 1790707200000,
       "tag": "0017_discovery_feed",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790793600000,
+      "tag": "0018_application_sent",
+      "breakpoints": true
     }
   ]
 }

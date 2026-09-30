@@ -556,6 +556,8 @@ export const application = pgTable(
     followUpSentAt: timestamp("follow_up_sent_at", { withTimezone: true }),
     /** The employer's confirmation number or email reference, typed by the person. */
     confirmationRef: text("confirmation_ref"),
+    /** The answer kit exactly as the person worked from it, kept when they marked it submitted (SentRecord in lib/packet/sent.ts). */
+    sent: jsonb("sent").$type<Record<string, unknown>>(),
     deadline: text("deadline"),
     notes: text("notes"),
     contacts: jsonb("contacts").$type<Array<{ name: string; role?: string; email?: string }>>(),

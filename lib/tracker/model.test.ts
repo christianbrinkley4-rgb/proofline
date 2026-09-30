@@ -4,7 +4,7 @@ import { followUpDraft, followUpState, stagePatch, trackerStats, type Applicatio
 const application = (overrides: Partial<Application> = {}): Application => ({
   id: "1", userId: "u", jobId: null, company: "Northwind", title: "Analyst", url: null,
   stage: "saved", resumeId: null, appliedAt: null, stageChangedAt: new Date("2026-09-01T00:00:00Z"),
-  nextFollowUpAt: null, followUpSentAt: null, confirmationRef: null, deadline: null, notes: null, contacts: null, sortOrder: 0,
+  nextFollowUpAt: null, followUpSentAt: null, confirmationRef: null, sent: null, deadline: null, notes: null, contacts: null, sortOrder: 0,
   createdAt: new Date("2026-09-01T00:00:00Z"), updatedAt: new Date("2026-09-01T00:00:00Z"),
   ...overrides,
 });

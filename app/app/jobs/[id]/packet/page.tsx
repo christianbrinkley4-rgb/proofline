@@ -215,22 +215,27 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
                 </>
               ) : (
                 <span className="text-muted-foreground">
-                  Submit on the employer&apos;s site, then track it here for follow-up reminders and a record of what you sent.
+                  The answer kit has every common form field filled from your confirmed facts, ready to copy. You submit on their site, then mark it submitted to keep a record of what you sent.
                 </span>
               )}
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button size="lg" asChild>
+                <Link href={`/app/jobs/${id}/kit`}>{application?.sent ? "What you sent" : "Open the answer kit"}</Link>
+              </Button>
               {applyUrl && (
-                <Button size="lg" asChild>
+                <Button size="lg" variant="outline" asChild>
                   <a href={applyUrl} target="_blank" rel="noreferrer">
                     Apply on their site
                     <ArrowUpRight data-icon="inline-end" />
                   </a>
                 </Button>
               )}
-              <Button size="lg" variant="outline" asChild>
-                <Link href={application ? `/app/tracker?app=${application.id}` : "/app/tracker"}>Open tracker</Link>
-              </Button>
+              {application && (
+                <Button size="lg" variant="ghost" asChild>
+                  <Link href={`/app/tracker?app=${application.id}`}>Open tracker</Link>
+                </Button>
+              )}
             </div>
           </div>
         </StepSection>

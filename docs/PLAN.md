@@ -4,6 +4,17 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## September 30 answer kit and what you sent (spec 04 v1, local)
+
+Spec 04 (`04-one-click-prefill.md` from the owner) asked for Jobbie's speed without its autopilot: the product fills, the person submits, and nothing is guessed. v1 is the clipboard kit plus the sent record.
+
+- **Kit** (`lib/packet/kit.ts`, pure; `lib/packet/kit-service.ts` loads it): contact, documents (resume and cover letter), every school, work history newest first, skills, eligibility, and the form questions drafted on the packet. Each field carries its sources: the confirmed facts it came from, or the saved detail (contact details, Settings answers). A field with nothing behind it is blank and says what to add, with a link. The page leads with "We left N fields blank because we don't have confirmed facts for them." Unbuilt documents and answers whose fact changed are flagged separately and never counted as facts. Role descriptions use the lines on the resume for this job, else the strongest verified bullets, and every line must pass `verifyBullet` against confirmed facts. Work authorization answers follow only what the person picked (`needs_sponsorship` leaves "authorized now?" blank); citizenship is asked only when the posting asks. Self-identification, desired pay, referral source, and attestations are listed under "Answer these yourself".
+- **Page** `/app/jobs/[id]/kit`: copy button per field, sources inline, "Paste another question" drafts from facts in place. Linked from the packet's last step (now the primary action) and the tracker.
+- **Sent record**: "Mark submitted" (confirm dialog) tracks the job if needed, moves it to Applied, and saves the kit to `application.sent` (migration `0018_application_sent.sql`). The page sends the kit's digest; if facts changed since it loaded, nothing is saved and the page reloads the current kit. A second mark keeps the first record. The tracker shows "What you sent", expandable, and the kit page becomes a read-only record. Event `kit_sent`.
+- Skill questions now draft only from lines that show the asked skill (a QuickBooks answer used to borrow an Excel line); with none, the answer is left for the person.
+
+Acceptance: kit builds in about 100 to 400ms locally (test asserts under 3s); a 10-profile audit test checks every filled field has a source, every cited fact is confirmed with the same text, and every number is in the cited facts; blank-and-flagged, stale digest, exact record, and no second record are tested against PGlite. Browser: drafted a question in the kit, marked submitted, saw the record in the tracker; no overflow at 390px, light and dark. v2 (assisted fill on Greenhouse and Lever) is next.
+
 ## September 29 Find jobs feed (spec 03, local)
 
 Spec 03 (`03-discovery-feed.md` from the owner) asked for jobs already matched against confirmed facts, so opening Proofline is enough to see where to apply. The earlier note that it overlapped existing work was half right: the Greenhouse, Lever, Ashby, and SmartRecruiters readers existed, but live search is hidden in the beta and takes 10 to 30 seconds. The feed reuses those readers, `scoreFit`, and `checkKnockouts`; there is no second scorer.
@@ -29,7 +40,7 @@ The owner supplied four specs (design system, browser extension, discovery feed,
 
 Verification: 768 tests, typecheck, lint, production build. Keyboard: every tab stop on onboarding, both job tabs, My facts, and Settings shows a focus ring. No horizontal overflow at 390px in either theme. Lighthouse (mobile, simulated, median of 3 on a local production build): home 87, /check 88, login 93, guides 94, privacy 92; accessibility 98 to 100; CLS 0. Home and /check are still under 90: with real device throttling the landing page spends about 2s on style and layout across the long page and the interactive demo. `content-visibility: auto` on lower sections was tried and reverted because it broke direct links such as `/#faq`. Signed-in pages weren't scored by Lighthouse (the dev login is off in production builds).
 
-Spec 03 (the Find jobs feed) is now built; see its section above. Spec 04 overlaps the tracker and packet and hasn't been started.
+Spec 03 (the Find jobs feed) is now built; see its section above. Spec 04 v1 (answer kit and sent record) is built; see its section above.
 
 ## September 29 fit badge on job sites (spec 02, live)
 

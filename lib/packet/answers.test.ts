@@ -33,6 +33,15 @@ describe("application answers", () => {
     expect(evidenceFor("Tell us about a time you led a team", EVIDENCE)[0].id).toBe("b3");
   });
 
+  it("answers a skill question only with lines that show that skill", () => {
+    const qb = draftAnswerOffline("What experience do you have with QuickBooks?", ctx);
+    expect(qb.sourceIds).toEqual(["b1"]);
+    expect(qb.answer).not.toContain("Excel tracker");
+    const tableau = draftAnswerOffline("What experience do you have with Tableau?", ctx);
+    expect(tableau.sourceIds).toEqual([]);
+    expect(PLACEHOLDER.test(tableau.answer)).toBe(true);
+  });
+
   it("never invents motivation or context", () => {
     const why = draftAnswerOffline("Why are you interested in this role?", ctx);
     expect(PLACEHOLDER.test(why.answer)).toBe(true);

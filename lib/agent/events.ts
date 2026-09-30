@@ -40,7 +40,8 @@ export type AgentEventType =
   | "gate_failed"
   | "exported"
   | "practice_answered"
-  | "proof_shared";
+  | "proof_shared"
+  | "kit_sent";
 
 export async function logEvent(userId: string, type: AgentEventType, data: Record<string, unknown> = {}) {
   await db.insert(schema.agentEvent).values({ userId, type, data });

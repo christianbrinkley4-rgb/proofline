@@ -14,6 +14,7 @@ const JobId = z.uuid();
 
 function refresh(jobId: string) {
   revalidatePath(`/app/jobs/${jobId}/packet`);
+  revalidatePath(`/app/jobs/${jobId}/kit`);
 }
 
 export async function draftCoverLetterAction(jobId: string, why?: string) {
