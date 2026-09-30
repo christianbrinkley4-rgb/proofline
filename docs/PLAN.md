@@ -4,7 +4,7 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
-## September 29 design pass (branch `design-system`, not merged or deployed)
+## September 29 design pass (spec 01, live)
 
 The owner supplied four specs (design system, browser extension, discovery feed, one-click prefill) and asked for only changes that make the product better. Spec 01 ran first on its own branch. The existing tokens, type, and radii were already coherent, so the font swap to Inter, the blanket 8px radius, and a parallel `design/tokens.ts` were skipped as churn. What landed, one commit each:
 
@@ -19,7 +19,7 @@ Verification: 768 tests, typecheck, lint, production build. Keyboard: every tab 
 
 Specs 03 and 04 overlap work that already exists (job search already pulls Greenhouse and Lever boards; the tracker and packet exist) and were not started.
 
-## September 29 fit badge on job sites (spec 02, branch `browser-extension`, not merged or deployed)
+## September 29 fit badge on job sites (spec 02, live)
 
 The extension (0.2.0) now shows the fit score on LinkedIn, Indeed, and Handshake job pages. `extension/sites.js` reads the posting's title, company, location, and description (several selectors per field, then the block under "About the job", then JobPosting data), waits for the page to settle, and scores again only when a different job opens, including LinkedIn's switch-without-reload. The badge opens a panel: knockouts first, then each component's arithmetic, then Open in Proofline, which saves the job and opens its page. That button stays pinned; only the middle scrolls. Signed out, the badge says "Sign in to see your fit" and opens `/login?next=/app/extension` (login now honors `next` for someone already signed in). A page it can't read offers "Paste it in Proofline" instead of a guess.
 
@@ -44,6 +44,8 @@ Live check signed in to LinkedIn and Handshake (the owner signed in; the agent r
 - New fixtures (`linkedin-2026.html`, and `handshake-job.html` rebuilt on the live structure) keep these in the check, which passes: badges in 258 to 309ms on LinkedIn and Indeed, Handshake 1.2 to 1.4s including its fixture's 700ms render, and a cached revisit in 13ms. 772 tests, typecheck, lint.
 
 Edge: `node scripts/check-extension.mjs --browser edge` loads the unpacked extension in the installed Microsoft Edge 154 (fresh profile) and every check passes. Store screenshots were retaken on a made-up posting with fictional employers and no real site's branding (`docs/extension-store/source/posting.html`, `scripts/store-screenshots.mjs`), including one with a graduation knockout. Publishing is the only step left for the owner. A final review found that a failed score request (offline, or over the rate limit) was retried on every page change, which on LinkedIn means about once a second; it now waits for Try again or a different job, and the check covers it.
+
+Released September 29: `design-system` and `browser-extension` fast-forwarded into `main` at `5e486bc` and deployed to https://proofline-beta.vercel.app as Ready production deployment `dpl_xXiJhZpcA8w6egsuUGXNSvw9vKLY`. Before the merge: 772 tests, typecheck, lint, production build, and the extension check in Chromium and Edge 154. Live checks: home, /check, /privacy (with the Browser extension section), and /login return 200; signed-out /app/extension redirects (307); development login is 404; `POST /api/extension/score` without a token is 401; the downloadable `proofline-extension.zip` is 0.2.0 and its files match `main`. The first `vercel --prod` returned "Not authorized"; the retry with `vercel@60.1.3 deploy --prod --yes` went through. Signed-in scoring on production wasn't exercised (no test account on production). Testers with 0.1.0 need to download the new zip and reload it; the job-site permission is new, so Chrome asks them to accept it.
 
 ## September 29 new-task discovery across careers
 
