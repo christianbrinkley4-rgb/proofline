@@ -270,6 +270,31 @@ await page.goto(cacheUrl);
 await waitForBadge(page, /Proofline fit score \d+/);
 check(sent.length === beforeRevisit + 1, `Cache: after visiting Proofline, expected a fresh score request, saw ${sent.length - beforeRevisit}`);
 
+// A failed score isn't retried on every page change: one request, then only when the person asks.
+let failing = true;
+let failed = 0;
+await context.route(`${base}/api/extension/score`, (route) => {
+  if (!failing) return route.fallback();
+  failed += 1;
+  return route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ ok: false, error: "That's a lot of jobs in a few minutes. Scores will be back shortly." }) });
+});
+await page.goto("https://www.indeed.com/viewjob?jk=failing1");
+await waitForBadge(page, /couldn't score this posting/i);
+// Keep the page busy the way LinkedIn is: a steady stream of changes for 3 seconds.
+await page.evaluate(() => new Promise((done) => {
+  const t = setInterval(() => document.body.appendChild(document.createElement("span")), 150);
+  setTimeout(() => { clearInterval(t); done(); }, 3000);
+}));
+check(failed === 1, `Failed score: ${failed} requests while the page kept changing; expected 1`);
+await pill(page);
+await page.waitForTimeout(150);
+check((await panelText(page)).includes("Scores will be back shortly"), "Failed score: the panel didn't show the server's reason");
+failing = false;
+await clickAx(page, "button", /^Try again$/);
+const retried = await waitForBadge(page, /Proofline fit score \d+/);
+check(retried && failed === 1, "Failed score: Try again didn't score the posting");
+results.push(`Failed score: 1 request during 3s of page changes, then Try again scored it`);
+
 // 7. Open in Proofline saves the job and opens its page.
 await page.goto(SITES[2][1]);
 await waitForBadge(page, /Proofline fit score \d+/);

@@ -625,7 +625,8 @@
       if (reply?.ok) state = { kind: "scored", result: reply.result };
       else if (reply?.signedOut) state = { kind: "signed-out" };
       else {
-        identity = null;
+        // Keep this job's identity: a failed request isn't retried on every page change
+        // (LinkedIn changes constantly), only by Try again or when a different job opens.
         state = { kind: "error", message: reply?.error || "Couldn't reach Proofline. Check your connection and try again." };
       }
       render();
