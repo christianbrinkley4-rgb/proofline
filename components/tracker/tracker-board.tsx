@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, Copy, FileText, GripVertical, LayoutList, MailCheck, Plus, Search, SquareKanban, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, Copy, FileText, GripVertical, LayoutList, MailCheck, Plus, Search, SquareKanban, X } from "lucide-react";
 import { toast } from "sonner";
 import { addManualApplicationAction, deleteApplicationAction, markFollowUpSentAction, moveApplicationAction, recordFollowUpAction, recordReplyAction, snoozeFollowUpAction, updateApplicationAction } from "@/app/app/tracker/actions";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,8 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
   }
   return (
     <>
+      {/* Counters and filters only help once there's something to count. */}
+      {apps.length > 0 && (<>
       <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           ["Applications", stats.applications, "Roles you've applied to"],
@@ -93,12 +95,13 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
         </div>
         <Button size="sm" onClick={() => setAdding(true)}><Plus data-icon="inline-start" />Add application</Button>
       </div>
+      </>)}
       {apps.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-dashed px-6 py-14 text-center">
+        <div className="mt-7 rounded-xl border border-dashed px-6 py-14 text-center">
           <BriefcaseBusiness className="mx-auto size-8 text-subtle-foreground" strokeWidth={1.25} />
           <h2 className="mt-4 text-xl font-semibold tracking-tight">Nothing tracked yet.</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Track a job from its page, or add one you applied to elsewhere. Mark it Applied and a follow-up reminder is set for two weeks later.</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2"><Button asChild><Link href="/app/jobs">Paste a job<ArrowUpRight data-icon="inline-end" /></Link></Button><Button variant="outline" onClick={() => setAdding(true)}>Add a role manually</Button></div>
+          <div className="mt-5 flex flex-wrap justify-center gap-2"><Button asChild><Link href="/app/jobs">Paste a job<ArrowRight data-icon="inline-end" /></Link></Button><Button variant="outline" onClick={() => setAdding(true)}>Add a role manually</Button></div>
         </div>
       ) : visible.length === 0 ? (
         <div className="mt-5 rounded-xl border p-10 text-center text-sm text-muted-foreground">No applications match these filters.<Button className="ml-2" variant="ghost" onClick={() => { setQuery(""); setDueOnly(false); }}>Clear filters</Button></div>
