@@ -1,5 +1,5 @@
 import { familiesFor, ROLE_FAMILIES } from "@/lib/jobs/roles";
-import { matchKeywords } from "@/lib/jobs/keywords";
+import { matchKeywords, prepareKeywordText, type KeywordText } from "@/lib/jobs/keywords";
 import { isRemoteText, matchesPlace, resolvePlace } from "@/lib/jobs/locations";
 import type { JobLevel, JobMode } from "@/lib/jobs/types";
 import type { Requirements } from "./requirements";
@@ -59,11 +59,26 @@ export type FitReport = FitResult & {
   requirementsInferred?: boolean;
 };
 
-export type CandidateIndex = { skills: Set<string>; corpus: string };
+/**
+ * Everything about the person that doesn't depend on the posting, worked out once.
+ * Scoring many postings (a search, the feed) reuses it instead of rereading every fact per posting.
+ */
+export type CandidateIndex = {
+  skills: Set<string>;
+  corpus: string;
+  keywordText: KeywordText;
+  /** Skills each confirmed line shows, in the same order as `confirmedText`. */
+  lineSkills: string[][];
+};
 
 export function indexCandidate(c: CandidateProfile): CandidateIndex {
   const corpus = [...c.confirmedText, ...c.experienceTitles, c.major ?? "", c.minor ?? "", ...c.credentials].join("\n");
-  return { skills: new Set(extractEvidenceSkills(corpus)), corpus: corpus.toLowerCase() };
+  return {
+    skills: new Set(extractEvidenceSkills(corpus)),
+    corpus: corpus.toLowerCase(),
+    keywordText: prepareKeywordText(corpus.toLowerCase()),
+    lineSkills: c.confirmedText.map((text) => extractEvidenceSkills(text)),
+  };
 }
 
 const round = (n: number) => Math.round(n);
@@ -71,20 +86,18 @@ const round = (n: number) => Math.round(n);
 const quote = (text: string) => `"${text.length > 80 ? `${text.slice(0, 77).trimEnd()}...` : text}"`;
 
 /** The first confirmed line that shows a skill, for the one-line reason behind a match. */
-function evidenceFor(label: string, candidate: CandidateProfile): string | null {
+export function evidenceFor(label: string, candidate: CandidateProfile, index: CandidateIndex): string | null {
   const parts = label.split(/\s+or\s+/);
-  for (const text of candidate.confirmedText) {
-    const found = extractEvidenceSkills(text);
-    if (parts.some((p) => found.includes(p))) return text;
-  }
+  const at = index.lineSkills.findIndex((found) => parts.some((p) => found.includes(p)));
+  if (at >= 0) return candidate.confirmedText[at];
   const titles = candidate.experienceTitles.find((t) => parts.some((p) => t.toLowerCase().includes(p.toLowerCase())));
   return titles ?? null;
 }
 
-function skillReasons(matched: string[], missing: string[], candidate: CandidateProfile, kind: "required" | "preferred"): Record<string, string> {
+function skillReasons(matched: string[], missing: string[], candidate: CandidateProfile, index: CandidateIndex, kind: "required" | "preferred"): Record<string, string> {
   const why: Record<string, string> = {};
   for (const m of matched) {
-    const evidence = evidenceFor(m, candidate);
+    const evidence = evidenceFor(m, candidate, index);
     why[m] = evidence ? `Shown by your fact ${quote(evidence)}.` : "Shown in your confirmed facts.";
   }
   for (const m of missing) why[m] = `The posting lists it as ${kind}; none of your confirmed facts show it yet.`;
@@ -126,7 +139,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
       matched: reqCov.matched,
       missing: reqCov.missing,
       math: `30 × ${reqCov.matched.length}/${total} = ${points.requiredSkills}`,
-      why: skillReasons(reqCov.matched, reqCov.missing, candidate, "required"),
+      why: skillReasons(reqCov.matched, reqCov.missing, candidate, index, "required"),
     };
   }
 
@@ -224,13 +237,13 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
       matched: prefCov.matched,
       missing: prefCov.missing,
       math: `15 × ${prefCov.matched.length}/${total} = ${points.preferredSkills}`,
-      why: skillReasons(prefCov.matched, prefCov.missing, candidate, "preferred"),
+      why: skillReasons(prefCov.matched, prefCov.missing, candidate, index, "preferred"),
     };
   }
 
   // ── Posting keyword overlap (10): the posting's own keyword phrases found in the profile
   if (job.keywords?.length) {
-    const found = matchKeywords(job.keywords, index.corpus);
+    const found = matchKeywords(job.keywords, index.keywordText);
     points.keywords = round(10 * (found.matched.length / job.keywords.length));
     const why: Record<string, string> = {};
     for (const k of found.matched) why[k] = "The posting uses it, and so do your facts.";

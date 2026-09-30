@@ -98,14 +98,54 @@ export function extractKeywords(description: string | null | undefined, limit = 
   return kept;
 }
 
+/** A body of text read once, so many postings' keywords can be checked against it cheaply. */
+export type KeywordText = {
+  normalized: string;
+  skills: Set<string>;
+  /** Every run of up to PHRASE_WORDS consecutive words, so a phrase lookup is one set check instead of a scan. */
+  phrases: Set<string>;
+};
+
+const PHRASE_WORDS = 6;
+
+export function prepareKeywordText(text: string): KeywordText {
+  const normalized = normalizePhrase(text);
+  const words = normalized.split(" ");
+  const phrases = new Set<string>();
+  for (let i = 0; i < words.length; i++) {
+    let phrase = "";
+    for (let n = 0; n < PHRASE_WORDS && i + n < words.length; n++) {
+      phrase = n ? `${phrase} ${words[i + n]}` : words[i];
+      phrases.add(phrase);
+    }
+  }
+  return { normalized: ` ${normalized} `, skills: new Set(extractSkills(text).map(normalizePhrase)), phrases };
+}
+
+function hasPhrase(text: KeywordText, keyword: string): boolean {
+  return keyword.split(" ").length <= PHRASE_WORDS ? text.phrases.has(keyword) : text.normalized.includes(` ${keyword} `);
+}
+
+// Keywords repeat across postings ("sql", "general ledger"), so their skill lookups are shared.
+const keywordSkillCache = new Map<string, string[]>();
+function keywordSkills(keyword: string): string[] {
+  let hit = keywordSkillCache.get(keyword);
+  if (!hit) {
+    if (keywordSkillCache.size > 20_000) keywordSkillCache.clear();
+    hit = extractSkills(keyword).map(normalizePhrase);
+    keywordSkillCache.set(keyword, hit);
+  }
+  return hit;
+}
+
 /** Which keywords a body of text shows, by normalized phrase or by the same canonical skill. */
-export function matchKeywords(keywords: string[], text: string): { matched: string[]; missing: string[] } {
-  const normalized = ` ${normalizePhrase(text)} `;
-  const skills = new Set(extractSkills(text).map(normalizePhrase));
+export function matchKeywords(keywords: string[], text: string | KeywordText): { matched: string[]; missing: string[] } {
+  const prepared = typeof text === "string" ? prepareKeywordText(text) : text;
+  const { skills } = prepared;
   const matched: string[] = [];
   const missing: string[] = [];
   for (const keyword of keywords) {
-    const hit = normalized.includes(` ${keyword} `) || skills.has(keyword) || extractSkills(keyword).some((s) => skills.has(normalizePhrase(s)));
+    const hit = hasPhrase(prepared, keyword) || skills.has(keyword) || keywordSkills(keyword).some((s) => skills.has(s));
     (hit ? matched : missing).push(keyword);
   }
   return { matched, missing };
