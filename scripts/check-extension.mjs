@@ -26,6 +26,7 @@ const PAGES = {
   "https://www.linkedin.com/jobs/search/": "linkedin-search.html",
   "https://www.linkedin.com/jobs/view/": "linkedin-guest.html",
   "https://www.indeed.com/viewjob": "indeed-viewjob.html",
+  "https://www.indeed.com/jobs": "indeed-2026.html",
   "https://www.indeed.com/m/viewjob": "unreadable.html",
   "https://app.joinhandshake.com/jobs/": "handshake-job.html",
 };
@@ -46,6 +47,13 @@ for (const host of ["https://www.linkedin.com/**", "https://www.indeed.com/**", 
     return route.fulfill({ status: 404, body: "" });
   });
 }
+
+// Every posting the extension sends for scoring, to check what it read.
+const sent = [];
+await context.route(`${base}/api/extension/score`, (route) => {
+  sent.push(JSON.parse(route.request().postData() || "{}"));
+  return route.continue();
+});
 
 const problems = [];
 const results = [];
@@ -128,6 +136,7 @@ const SITES = [
   ["LinkedIn signed-in search", "https://www.linkedin.com/jobs/search/?currentJobId=4011111111&keywords=accounting", "linkedin"],
   ["LinkedIn public job page", "https://www.linkedin.com/jobs/view/marketing-coordinator-at-northwind-4033333333/", "linkedin-guest"],
   ["Indeed job page", "https://www.indeed.com/viewjob?jk=abc123def456", "indeed"],
+  ["Indeed 2026 search pane", "https://www.indeed.com/jobs?q=staff+accountant&l=Raleigh%2C+NC&vjk=aaa111bbb222", "indeed-2026"],
   ["Handshake job page", "https://app.joinhandshake.com/jobs/9876543", "handshake"],
 ];
 for (const [label, url, shot] of SITES) {
@@ -185,6 +194,30 @@ await pill(page);
 await page.waitForTimeout(150);
 check((await axNames(page)).some((n) => n.name === "Paste it in Proofline"), "Unreadable: no paste fallback");
 await page.screenshot({ path: join(out, "unreadable-panel.png") });
+
+// What each site's badge read. Indeed's 2026 pane must stop at the description, before "Explore other jobs".
+const pane = sent.find((p) => p.company === "Pinecrest Holdings");
+check(pane && pane.title === "Staff Accountant" && pane.location === "Raleigh, NC", `Indeed 2026: read ${JSON.stringify(pane && { title: pane.title, company: pane.company, location: pane.location })}`);
+check(pane && pane.description.startsWith("Record journal entries") && !pane.description.includes("Explore other jobs"), "Indeed 2026: description wrong or includes other jobs");
+for (const p of sent) check(p.title && p.company && p.description.length >= 200, `Incomplete posting sent: ${JSON.stringify({ title: p.title, company: p.company })}`);
+results.push(`Read: ${[...new Map(sent.map((p) => [p.title, `${p.title} · ${p.company} · ${p.location || "no place"} (${p.description.length} chars)`])).values()].join("; ")}`);
+
+// Cache: a second visit asks Proofline nothing; visiting Proofline (where facts change) clears it.
+const cacheUrl = SITES[2][1];
+await page.goto(cacheUrl);
+await waitForBadge(page, /Proofline fit score \d+/);
+const beforeRevisit = sent.length;
+await page.goto(cacheUrl);
+const cached = await waitForBadge(page, /Proofline fit score \d+/);
+check(cached && sent.length === beforeRevisit, `Cache: revisit sent ${sent.length - beforeRevisit} request(s)`);
+results.push(`Cache: revisit answered in ${cached?.ms}ms with no request`);
+const facts = await context.newPage();
+await facts.goto(`${base}/app/facts`);
+await facts.waitForTimeout(500);
+await facts.close();
+await page.goto(cacheUrl);
+await waitForBadge(page, /Proofline fit score \d+/);
+check(sent.length === beforeRevisit + 1, `Cache: after visiting Proofline, expected a fresh score request, saw ${sent.length - beforeRevisit}`);
 
 // 7. Open in Proofline saves the job and opens its page.
 await page.goto(SITES[2][1]);

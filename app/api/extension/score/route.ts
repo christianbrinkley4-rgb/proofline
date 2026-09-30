@@ -1,13 +1,19 @@
 import { logEvent } from "@/lib/agent/events";
+import { rateLimiter } from "@/lib/check/rate-limit";
 import { extensionUser, unauthorized } from "@/lib/extension/service";
-import { ScoreRequestSchema, scorePosting } from "@/lib/extension/score";
+import { SCORE_LIMIT, ScoreRequestSchema, scorePosting } from "@/lib/extension/score";
 
 export const dynamic = "force-dynamic";
+
+const allowScore = rateLimiter(SCORE_LIMIT);
 
 /** Scores the posting open on a job site against the person's confirmed facts. Nothing about the posting is stored. */
 export async function POST(request: Request) {
   const user = await extensionUser(request);
   if (!user) return unauthorized();
+  if (!allowScore(user.userId)) {
+    return Response.json({ ok: false, error: "That's a lot of jobs in a few minutes. Scores will be back shortly." }, { status: 429, headers: { "Retry-After": "60" } });
+  }
   const body = await request.json().catch(() => null);
   const parsed = ScoreRequestSchema.safeParse(body);
   if (!parsed.success) return Response.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Couldn't read this posting." }, { status: 400 });

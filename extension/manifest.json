@@ -15,7 +15,7 @@
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
-      "matches": ["https://proofline-beta.vercel.app/app/extension*", "http://localhost:3000/app/extension*"],
+      "matches": ["https://proofline-beta.vercel.app/app/*", "http://localhost:3000/app/*"],
       "js": ["connect.js"],
       "run_at": "document_idle"
     },

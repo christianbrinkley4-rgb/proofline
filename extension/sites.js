@@ -10,6 +10,15 @@
   const clean = (s) => (s || "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
   const numberIn = (re) => (u) => u.pathname.match(re)?.[1] || null;
 
+  /** Indeed's 2026 header runs company, rating, place, and work setting together with no labels. The place is the first piece that isn't one of the others. */
+  function indeedPlace() {
+    const meta = document.querySelector('[data-testid="company-info-metadata"]');
+    if (!meta) return "";
+    const company = clean(meta.querySelector('a[href*="/cmp/"]')?.innerText);
+    const pieces = [...meta.querySelectorAll("div, span")].filter((el) => !el.children.length).map((el) => clean(el.innerText));
+    return pieces.find((p) => p && p !== company && !/^[·•|-]$/.test(p) && !/^\d(\.\d)?$/.test(p) && !/reviews?$/i.test(p)) || "";
+  }
+
   // Selectors change often on these sites, so each field has several, newest first.
   // A description can also be found by the heading above it.
   const SITES = [
@@ -48,7 +57,9 @@
       host: /(^|\.)indeed\.com$/,
       key: (u) => u.searchParams.get("vjk") || u.searchParams.get("jk"),
       onJobs: (u) => /^\/(viewjob|jobs|q-|m\/viewjob|rc\/clk|cmp\/[^/]+\/jobs)/.test(u.pathname) || u.searchParams.has("vjk") || u.searchParams.has("jk"),
+      // The 2026 layout (checked live September 29) first, then the older one.
       title: [
+        '[data-testid="vj-job-title"]',
         '[data-testid="jobsearch-JobInfoHeader-title"]',
         "h1.jobsearch-JobInfoHeader-title",
         ".jobsearch-JobInfoHeader-title",
@@ -56,9 +67,22 @@
         ".jobsearch-JobInfoHeader-title-container h1",
         ".jobsearch-JobInfoHeader-title-container h2",
       ],
-      company: ['[data-testid="inlineHeader-companyName"]', '[data-company-name="true"]', '[data-testid="jobsearch-CompanyInfoContainer"] a', ".jobsearch-CompanyInfoContainer a", ".jobsearch-InlineCompanyRating div"],
-      location: ['[data-testid="inlineHeader-companyLocation"]', '[data-testid="job-location"]', '[data-testid="jobsearch-JobInfoHeader-companyLocation"]', ".jobsearch-JobInfoHeader-subtitle > div:last-child"],
-      description: ["#jobDescriptionText", '[data-testid="jobsearch-JobComponent-description"]', ".jobsearch-jobDescriptionText"],
+      company: [
+        '[data-testid="company-info-metadata"] a[href*="/cmp/"]',
+        '[data-testid="inlineHeader-companyName"]',
+        '[data-company-name="true"]',
+        '[data-testid="jobsearch-CompanyInfoContainer"] a',
+        ".jobsearch-CompanyInfoContainer a",
+        ".jobsearch-InlineCompanyRating div",
+      ],
+      location: [
+        indeedPlace,
+        '[data-testid="inlineHeader-companyLocation"]',
+        '[data-testid="job-location"]',
+        '[data-testid="jobsearch-JobInfoHeader-companyLocation"]',
+        ".jobsearch-JobInfoHeader-subtitle > div:last-child",
+      ],
+      description: ['[data-testid="vj-job-description-heading"] + *', "#jobDescriptionText", '[data-testid="jobsearch-JobComponent-description"]', ".jobsearch-jobDescriptionText"],
       heading: /^(full )?job description$/i,
     },
     {
@@ -81,6 +105,11 @@
   const firstText = (selectors, root = document) => {
     for (const selector of selectors) {
       try {
+        if (typeof selector === "function") {
+          const text = clean(selector());
+          if (text) return text;
+          continue;
+        }
         for (const el of root.querySelectorAll(selector)) {
           const text = clean(el.innerText || el.textContent);
           if (text && visible(el)) return text;
@@ -92,10 +121,20 @@
     return "";
   };
 
-  /** The block under a heading like "About the job": the heading's nearest ancestor with real text after it. */
+  /**
+   * The block under a heading like "About the job". What follows the heading comes
+   * first, so a list of other jobs further down the same column isn't swept in;
+   * failing that, the heading's nearest ancestor with real text.
+   */
   function underHeading(pattern) {
-    for (const h of document.querySelectorAll("h1, h2, h3, h4, strong, [role=heading]")) {
+    for (const h of document.querySelectorAll("h1, h2, h3, h4, h5, strong, [role=heading]")) {
       if (!pattern.test(clean(h.innerText)) || !visible(h)) continue;
+      const after = [];
+      for (let next = h.nextElementSibling; next; next = next.nextElementSibling) {
+        if (/^H[1-4]$/.test(next.tagName) || next.getAttribute("role") === "heading") break;
+        after.push(clean(next.innerText));
+      }
+      if (after.join("\n").length > 300) return after.join("\n");
       let box = h.parentElement;
       for (let depth = 0; box && depth < 5; depth += 1, box = box.parentElement) {
         const text = clean(box.innerText);
@@ -415,8 +454,22 @@
   let firstChange = 0;
   let request = 0;
 
+  // The description is part of the job's identity, so a site that swaps it in after the title still gets a fresh score.
   function jobKey(url, p) {
-    return `${site.id}:${site.key(url) || ""}:${p.title}|${p.company}`;
+    return `${site.id}:${site.key(url) || ""}:${p.title}|${p.company}|${p.description.length}:${p.description.slice(0, 60)}`;
+  }
+
+  /** A cheap look at what's on screen: address, title, and the description's size, without laying out the page. */
+  function glimpse() {
+    let size = 0;
+    for (const selector of site.description) {
+      const el = typeof selector === "string" ? document.querySelector(selector) : null;
+      if (el) {
+        size = el.textContent.length;
+        break;
+      }
+    }
+    return `${location.href}|${firstText(site.title)}|${size}`;
   }
 
   let glance = null;
@@ -430,7 +483,7 @@
         return render();
       }
       // Same address and same title as the job already shown: nothing to do.
-      const now = `${location.href}|${firstText(site.title)}`;
+      const now = glimpse();
       if (now === glance && (state.kind === "scored" || state.kind === "signed-out")) return;
       glance = now;
       const p = readPosting();
@@ -481,12 +534,12 @@
     }
   }
 
-  // Settle: wait for 400ms of quiet, but never more than 1.5s after the first change.
+  // Settle: wait for 300ms of quiet, but never more than 1.2s after the first change.
   function schedule() {
     const now = Date.now();
     if (!timer) firstChange = now;
     window.clearTimeout(timer);
-    const wait = Math.max(0, Math.min(400, firstChange + 1500 - now));
+    const wait = Math.max(0, Math.min(300, firstChange + 1200 - now));
     timer = window.setTimeout(() => {
       timer = null;
       check();
@@ -502,6 +555,14 @@
     schedule();
   }, 400);
 
+  // Coming back to this tab: ask again. It's answered from the cache unless the
+  // person was on Proofline in between, where their facts may have changed.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || state.kind !== "scored") return;
+    identity = glance = null;
+    schedule();
+  });
+
   // Connecting or disconnecting in another tab updates this one.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && "token" in changes) {
@@ -511,5 +572,6 @@
     }
   });
 
-  schedule();
+  // The page has loaded (document_idle), so look now; a page still filling in is retried as it settles.
+  check();
 })();

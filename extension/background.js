@@ -7,6 +7,19 @@ const PROOFLINE_ORIGINS = [BETA, "http://localhost:3000"];
 // A score is reused for the same job for this long, then checked again in case facts changed.
 const CACHE_MS = 15 * 60 * 1000;
 const inFlight = new Map();
+// Bumped whenever cached scores are dropped, so a request already on its way doesn't write an old score back.
+let generation = 0;
+
+async function dropScores() {
+  generation += 1;
+  inFlight.clear();
+  await chrome.storage.session.clear();
+}
+
+const fromProofline = (sender) => {
+  const from = sender.url ? new URL(sender.url) : null;
+  return from && PROOFLINE_ORIGINS.includes(from.origin) ? from : null;
+};
 
 async function connection() {
   const stored = await chrome.storage.local.get(["token", "origin", "pendingOrigin"]);
@@ -38,6 +51,7 @@ async function score(key, posting) {
   const cached = (await chrome.storage.session.get(cacheKey))[cacheKey];
   if (cached && Date.now() - cached.at < CACHE_MS) return { ok: true, result: cached.result };
   if (inFlight.has(key)) return inFlight.get(key);
+  const started = generation;
   const pending = api("/api/extension/score", {
     method: "POST",
     body: JSON.stringify({ title: posting.title, company: posting.company, location: posting.location, description: posting.description }),
@@ -45,7 +59,7 @@ async function score(key, posting) {
     if (!data.ok) return data;
     const result = { ...data };
     delete result.ok;
-    await chrome.storage.session.set({ [cacheKey]: { at: Date.now(), result } });
+    if (started === generation) await chrome.storage.session.set({ [cacheKey]: { at: Date.now(), result } });
     return { ok: true, result };
   });
   inFlight.set(key, pending);
@@ -69,16 +83,20 @@ async function openJob(posting, tabUrl) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Someone is on Proofline, where facts change: scores cached for job sites may be out of date.
+  if (message?.type === "proofline-seen") {
+    if (fromProofline(sender)) dropScores();
+    return false;
+  }
   if (message?.type === "connect") {
-    const from = sender.url ? new URL(sender.url) : null;
-    const trusted = from && PROOFLINE_ORIGINS.includes(from.origin) && from.pathname.startsWith("/app/extension") && message.origin === from.origin;
+    const from = fromProofline(sender);
+    const trusted = from && from.pathname.startsWith("/app/extension") && message.origin === from.origin;
     if (!trusted || typeof message.token !== "string" || !message.token.startsWith("pl_")) {
       sendResponse({ ok: false });
       return false;
     }
     // A new connection may be a different account: drop scores cached for the old one.
-    chrome.storage.session
-      .clear()
+    dropScores()
       .then(() => chrome.storage.local.set({ token: message.token, origin: from.origin }))
       .then(() => sendResponse({ ok: true }));
     return true;

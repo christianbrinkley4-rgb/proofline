@@ -21,6 +21,10 @@ export const PRIVACY_POINTS = [
     text: "A resume or job you paste into the public check is read once to build your report, then dropped. It isn't saved or sent to an AI model.",
   },
   {
+    title: "Browser extension",
+    text: "On LinkedIn, Indeed, and Handshake job pages, it reads the posting's title, company, location, and description and sends them to Proofline to work out your fit score against facts you already confirmed. The posting isn't stored unless you save the job. It never reads your messages, your profile on those sites, or your other tabs, and it does nothing on other sites until you click its toolbar button.",
+  },
+  {
     title: "Take it with you",
     text: "Download everything as one file from Settings at any time.",
   },

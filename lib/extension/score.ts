@@ -15,6 +15,9 @@ import { getProfile } from "@/lib/kb/profile";
  * posting is read, scored against the person's confirmed facts, and dropped.
  */
 
+/** Per account. Someone reading a job every few seconds for ten minutes stays under it; the badge caches repeat visits. */
+export const SCORE_LIMIT = { count: 150, windowMs: 10 * 60 * 1000 } as const;
+
 export const ScoreRequestSchema = z.object({
   title: z.string().trim().min(2, "Couldn't find the job title.").max(200),
   company: z.string().trim().max(160).optional().default(""),

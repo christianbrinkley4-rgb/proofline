@@ -50,9 +50,15 @@ Help job seekers judge and apply to postings using facts they confirmed in their
 - Collects: website content (the job posting text on LinkedIn, Indeed, and Handshake job pages), sent to Proofline to compute a score. Not stored unless the person saves the job.
 - Does not sell data, use it for credit or lending, or use it for anything unrelated to the extension's purpose.
 
-## Screenshots to take
+## Privacy policy URL
 
-1. A LinkedIn job with the badge showing a score.
-2. The open panel: knockouts, then the score math, then Open in Proofline.
-3. The "Sign in to see your fit" badge.
-4. The toolbar popup on an application form after Fill.
+https://proofline-beta.vercel.app/privacy (its "Browser extension" section covers what the extension reads).
+
+## Screenshots (1280 by 800, in this folder)
+
+1. `1-badge.png`: a LinkedIn job with the badge showing a score.
+2. `2-panel.png`: the open panel: knockouts, then the score math, then Open in Proofline.
+3. `3-signed-out.png`: the "Sign in to see your fit" badge.
+4. `4-panel-dark.png`: the panel in dark mode.
+
+They were taken on a public LinkedIn job page with a synthetic development profile. Retake them before submitting if the posting has closed, and decide whether you want a real employer's listing in store screenshots.
