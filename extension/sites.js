@@ -19,6 +19,88 @@
     return pieces.find((p) => p && p !== company && !/^[·•|-]$/.test(p) && !/^\d(\.\d)?$/.test(p) && !/reviews?$/i.test(p)) || "";
   }
 
+  // LinkedIn's signed-in layout from 2026 (/jobs/search-results/, checked live September 29)
+  // has generated class names and no h1. What stays put: the "About the job" heading,
+  // the description box under it, and the tab title "Title | Company | LinkedIn".
+
+  /** The column holding the open job: the one with the "About the job" heading. */
+  function linkedinPane() {
+    const heading = [...document.querySelectorAll("h2")].find((h) => /^about the job$/i.test(clean(h.innerText)));
+    return heading ? { heading, pane: heading.closest('[data-testid="lazy-column"]') || heading.parentElement?.parentElement?.parentElement } : null;
+  }
+
+  /** "Title | Company | LinkedIn", minus a "(3)" unread count. Only trusted when the open job's column says the same title. */
+  function linkedinTabTitle() {
+    const parts = document.title.replace(/^\(\d+\)\s*/, "").split(" | ");
+    const found = linkedinPane();
+    if (parts.length < 3 || !/linkedin/i.test(parts[parts.length - 1]) || !found?.pane) return null;
+    const text = found.pane.innerText || "";
+    return text.includes(parts[0].trim()) ? { title: parts[0].trim(), company: parts.slice(1, -1).join(" | ").trim() } : null;
+  }
+
+  const linkedinTitle = () => linkedinTabTitle()?.title || "";
+  const linkedinCompany = () => linkedinTabTitle()?.company || "";
+
+  /** The line under the title: "Graham, NC · Reposted 9 hours ago · 20 people clicked apply". */
+  function linkedinPlace() {
+    const tab = linkedinTabTitle();
+    const lines = clean(linkedinPane()?.pane?.innerText).split("\n").map((l) => l.trim()).filter(Boolean);
+    const at = tab ? lines.findIndex((l) => l === tab.title) : -1;
+    const line = lines.slice(at + 1, at + 4).find((l) => / · /.test(l) && /(posted|reposted|ago|applicants?|clicked)/i.test(l));
+    return line ? line.split(" · ")[0] : "";
+  }
+
+  /** The description box right under "About the job", without its "… more" button. */
+  function linkedinDescription() {
+    const box = linkedinPane()?.heading.parentElement?.parentElement?.querySelector('[data-testid="expandable-text-box"]');
+    return box ? clean(box.innerText).replace(/\s*…\s*more$/i, "") : "";
+  }
+
+  /** The posting's column: the search page's job pane, or a job's own page. */
+  const handshakePane = () => document.querySelector('[data-hook="right-content"], [data-hook="job-details-page"]');
+
+  /** A section of Handshake's job pane by its heading: the heading's nearest ancestor that holds more than the heading. */
+  function handshakeSection(pattern) {
+    const pane = handshakePane();
+    const heading = pane && [...pane.querySelectorAll("h2, h3")].find((h) => pattern.test(clean(h.innerText)));
+    let box = heading?.parentElement;
+    for (let depth = 0; box && box !== pane && depth < 4; depth += 1, box = box.parentElement) {
+      if (clean(box.innerText).length > clean(heading.innerText).length + 20) return box;
+    }
+    return null;
+  }
+
+  const handshakeText = (pattern) => {
+    const box = handshakeSection(pattern);
+    return box ? clean(box.innerText).replace(/\n(More|Less)$/, "") : "";
+  };
+
+  /**
+   * The posting on Handshake: At a glance, the description, and the qualifications
+   * the employer lists. Handshake's own lines about how the person's profile
+   * matches ("You match some qualifications") are profile data, so they're left out,
+   * as is Handshake's AI summary.
+   */
+  function handshakeDescription() {
+    const wants = handshakeText(/^what they'?re looking for$/i)
+      .split("\n")
+      .filter((line) => !/you match|matching is based on your profile|update profile|^you (don't|do not) match/i.test(line))
+      .join("\n");
+    const description = handshakeText(/^job description$/i);
+    if (!description) return "";
+    return [handshakeText(/^at a glance$/i), description, wants].filter(Boolean).join("\n\n");
+  }
+
+  /** "Onsite, based in Bedford, TX" becomes Bedford, TX; a remote job becomes Remote. */
+  function handshakePlace() {
+    for (const line of handshakeText(/^at a glance$/i).split("\n")) {
+      const m = line.match(/^(onsite|on-site|hybrid|remote)\b(?:,?\s*based in\s+(.+))?/i);
+      // A job in several places lists them all ("New York, NY, New York, NY, +3"); the first city and state is enough.
+      if (m) return m[2] ? m[2].match(/^[^,]+,\s*[^,]+/)?.[0] || m[2] : /remote/i.test(m[1]) ? "Remote" : "";
+    }
+    return "";
+  }
+
   // Selectors change often on these sites, so each field has several, newest first.
   // A description can also be found by the heading above it.
   const SITES = [
@@ -34,6 +116,7 @@
         "h1.top-card-layout__title",
         ".topcard__title",
         ".jobs-details h1",
+        linkedinTitle,
         "main h1",
       ],
       company: [
@@ -42,14 +125,25 @@
         ".jobs-unified-top-card__company-name",
         "a.topcard__org-name-link",
         ".topcard__flavor a",
+        linkedinCompany,
       ],
       location: [
         ".job-details-jobs-unified-top-card__primary-description-container .tvm__text",
         ".job-details-jobs-unified-top-card__bullet",
         ".jobs-unified-top-card__bullet",
         ".topcard__flavor--bullet",
+        linkedinPlace,
       ],
-      description: ["#job-details", ".jobs-description__content", ".jobs-description-content__text", ".jobs-box__html-content", ".show-more-less-html__markup", ".description__text"],
+      description: [
+        "#job-details",
+        ".jobs-description__content",
+        ".jobs-description-content__text",
+        ".jobs-box__html-content",
+        ".show-more-less-html__markup",
+        ".description__text",
+        linkedinDescription,
+        '[data-testid="expandable-text-box"]',
+      ],
       heading: /^about the job$/i,
     },
     {
@@ -90,11 +184,16 @@
       host: /(^|\.)joinhandshake\.com$/,
       key: numberIn(/\/(?:jobs|job-search|postings)\/(\d+)/),
       onJobs: (u) => /\/(jobs|job-search|postings)\b/.test(u.pathname),
-      title: ['[data-hook="job-details-page"] h1', '[data-hook="job-title"]', "main h1", "h1"],
-      company: ['a[href*="/e/"]', 'a[href*="/employers/"]', '[data-hook="employer-name"]'],
-      location: ['[data-hook="job-location"]', '[data-hook="location"]'],
-      description: ['[data-hook="job-description"]', '[class*="jobDescription"]', '[class*="job-description"]'],
+      // The job pane (checked live September 29). Its page also has an h1 "Jobs", so a bare h1 would be wrong.
+      title: ['[data-hook="right-content"] h1', '[data-hook="job-details-page"] h1', '[data-hook="job-title"]'],
+      company: ['[data-hook="right-content"] a[href*="/e/"]', '[data-hook="job-details-page"] a[href*="/e/"]', '[data-hook="employer-name"]'],
+      location: [handshakePlace, '[data-hook="job-location"]', '[data-hook="location"]'],
+      description: [handshakeDescription, '[data-hook="job-description"]'],
       heading: /^(job description|about the (job|role|position)|description|what you'?ll do)$/i,
+      // Clicking More adds text to the pane; a size change means a fresh read.
+      size: () => handshakePane()?.textContent.length || 0,
+      // Handshake shows the first few hundred characters until More is clicked.
+      partial: () => handshakeSection(/^job description$/i)?.querySelector("button")?.innerText.trim() === "More",
     },
   ];
 
@@ -191,7 +290,9 @@
     description = description.slice(0, 40000);
     company = company.replace(/\s*\d(\.\d)?\s*(out of 5 stars|★).*$/i, "").trim();
     place = place.replace(/^[·•]\s*/, "");
-    return { title, company, location: place, description };
+    // Shown in the panel only; the server never sees it.
+    const partial = Boolean(site.partial?.());
+    return { title, company, location: place, description, partial };
   }
 
   // ── The badge and panel ───────────────────────────────────────────────
@@ -358,6 +459,7 @@
           <div class="score"><b>${r.score}</b><span>of 100 · ${esc(r.band)}</span></div>
           <ul>${rows}</ul>
           ${skills ? `<p class="skills">${skills}</p>` : ""}
+          ${posting?.partial ? '<p class="thin">Handshake is showing only the start of this description, so this score is based on part of it. Click More under Job description and the score updates.</p>' : ""}
           ${r.ready ? "" : `<p class="thin">Your profile is thin, so this score has little to go on. <a href="#" data-act="facts">Add your education and one role</a>.</p>`}
         </section>
       </div>
@@ -461,8 +563,8 @@
 
   /** A cheap look at what's on screen: address, title, and the description's size, without laying out the page. */
   function glimpse() {
-    let size = 0;
-    for (const selector of site.description) {
+    let size = site.size ? site.size() : 0;
+    for (const selector of site.size ? [] : site.description) {
       const el = typeof selector === "string" ? document.querySelector(selector) : null;
       if (el) {
         size = el.textContent.length;

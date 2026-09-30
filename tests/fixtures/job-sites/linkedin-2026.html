@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Staff Accountant | Myers &amp; Stauffer | LinkedIn</title>
+<style>body{font-family:sans-serif;margin:0}.wrap{display:flex;gap:24px;padding:24px}.list{width:320px}.card{padding:8px;border-bottom:1px solid #ddd;cursor:pointer}.skel{height:120px;background:#eee}</style></head>
+<body>
+<!-- Synthetic page shaped like LinkedIn's signed-in /jobs/search-results/ layout (2026, checked live September 29):
+     generated class names, no h1, the open job in a lazy column, the tab title "Title | Company | LinkedIn". Not LinkedIn content. -->
+<div class="wrap">
+  <div data-testid="lazy-column" class="list">
+    <div role="button" componentkey="job-card-component-ref-4468304903" class="card"><p><a href="#">Staff Accountant</a></p><p>Myers &amp; Stauffer</p><p>Raleigh, NC (Hybrid)</p></div>
+    <div role="button" componentkey="job-card-component-ref-4469908781" class="card"><p><a href="#">Payroll &amp; Accounting Specialist</a></p><p>Buckner HeavyLift Cranes</p><p>Graham, NC (On-site)</p></div>
+  </div>
+  <div data-testid="lazy-column" id="detail" class="auya1p auymt3">
+    <div class="auymff"><p>Myers &amp; Stauffer</p><p><span>Staff Accountant</span> <svg width="12" height="12"></svg></p><p><span>Raleigh, NC · 1 week ago · 51 applicants</span></p><p>Promoted by hirer · No response insights available yet</p><button>Easy Apply</button><button>Save</button></div>
+    <div><p>Your profile and resume are missing some required qualifications</p><button>Show match details</button></div>
+    <div class="auyk8d"><div><h2>About the job</h2></div><div><span data-testid="expandable-text-box">Job Description
+
+Perform reviews of Medicaid cost reports, reconcile provider accounts, and prepare workpapers for state agency clients. You'll work with senior staff on audits and desk reviews and use Excel every day.
+
+Requirements: Bachelor's degree in accounting. Experience with Excel and attention to detail.
+<button data-testid="expandable-text-button">… more</button></span></div></div>
+    <div><h2>About the company</h2><p>A national firm that serves government health care programs.</p></div>
+  </div>
+</div>
+<script>
+  const JOB = { id: "4469908781", title: "Payroll & Accounting Specialist", company: "Buckner HeavyLift Cranes", line: "Graham, NC · Reposted 9 hours ago · 20 people clicked apply",
+    body: "Process biweekly payroll for 300 employees, reconcile payroll tax accounts, and record month-end accruals. You'll help with multi-state payroll tax filings and support the controller.\n\nRequired: Payroll experience and intermediate Excel skills.\nPreferred: SOX compliance experience a plus\n" };
+  document.querySelector('[componentkey$="4469908781"]').addEventListener("click", () => {
+    history.pushState({}, "", `/jobs/search-results/?currentJobId=${JOB.id}&keywords=staff%20accountant`);
+    document.title = `${JOB.title} | ${JOB.company} | LinkedIn`;
+    const detail = document.getElementById("detail");
+    // The pane shows placeholders first, then the new job.
+    detail.innerHTML = '<div class="skel"></div>';
+    setTimeout(() => {
+      detail.innerHTML = `<div><p>${JOB.company}</p><p><span>${JOB.title}</span></p><p><span>${JOB.line}</span></p></div>
+        <div><div><h2>About the job</h2></div><div><span data-testid="expandable-text-box">${JOB.body.replace(/\n/g, "<br>")}<button data-testid="expandable-text-button">… more</button></span></div></div>`;
+    }, 600);
+  });
+</script>
+</body>
+</html>

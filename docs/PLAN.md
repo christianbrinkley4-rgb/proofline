@@ -37,6 +37,14 @@ Hardening pass, same day:
 
 Verification: the check passes with badges in 228 to 412ms on LinkedIn and Indeed pages (Handshake 1,290ms including its 700ms render), a cached revisit in 143ms with no request, a fresh request after visiting Proofline, and every posting sent complete. On live LinkedIn search, profiling 25 seconds of scrolling with five job switches put the extension's own script at 17ms of about 1.9s of page script. Live Indeed extraction read the right title, company, place, and the full 6,665-character description.
 
+Live check signed in to LinkedIn and Handshake (the owner signed in; the agent read only job pages):
+
+- Signed-in LinkedIn had moved to a new layout (`/jobs/search-results/`) that none of the selectors matched, with generated class names and no `h1`. The badge now reads the tab title (checked against the open job's column), the line under it for the place, and the description box under "About the job". Checked on two jobs, an in-page switch, and a signed-in `/jobs/view/` page. LinkedIn's note about the person's profile missing qualifications is outside what's read.
+- Handshake's search page has its own `h1` "Jobs", which the old fallback would have taken as the title. The badge now reads the job pane (`right-content`, or `job-details-page` on a job's own page): title, employer, place ("Onsite, based in Bedford, TX" becomes Bedford, TX; several places keep the first), At a glance (which carries "US work authorization required" for the knockout check), the description, and the listed qualifications, without Handshake's profile-match lines or AI summary. Handshake shows only about 450 of 1,800 characters until More is clicked and keeps no full copy in the page, so the panel says the score uses part of the description and rescores about 400ms after More. The extension doesn't click it or call Handshake's private data API.
+- New fixtures (`linkedin-2026.html`, and `handshake-job.html` rebuilt on the live structure) keep these in the check, which passes: badges in 258 to 309ms on LinkedIn and Indeed, Handshake 1.2 to 1.4s including its fixture's 700ms render, and a cached revisit in 13ms. 772 tests, typecheck, lint.
+
+Still for the owner: load the zip in Edge once, and decide whether the store screenshots may show a real employer's LinkedIn posting.
+
 ## September 29 new-task discovery across careers
 
 The owner clarified that Add some facts should uncover different work, not repeat existing bullets, and must serve people beyond the owner's profile. Recall previously offered saved-fact method/result follow-ups with a ranking boost; those could dominate fresh duties. Recall now offers only new core occupational tasks. Confirmed facts and active bullets provide relevance context and exclusion evidence, never reframe cards. Old pending fact follow-ups are omitted and cannot be saved through stale tabs. Legacy bank behavior remains compatible.

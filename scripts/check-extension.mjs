@@ -28,7 +28,9 @@ const PAGES = {
   "https://www.indeed.com/viewjob": "indeed-viewjob.html",
   "https://www.indeed.com/jobs": "indeed-2026.html",
   "https://www.indeed.com/m/viewjob": "unreadable.html",
+  "https://www.linkedin.com/jobs/search-results/": "linkedin-2026.html",
   "https://app.joinhandshake.com/jobs/": "handshake-job.html",
+  "https://uncg.joinhandshake.com/job-search/": "handshake-job.html",
 };
 
 const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "proofline-ext-")), {
@@ -39,7 +41,7 @@ const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir()
 });
 // The first-install tab points at the live beta; keep this run local.
 await context.route("https://proofline-beta.vercel.app/**", (route) => route.abort());
-for (const host of ["https://www.linkedin.com/**", "https://www.indeed.com/**", "https://app.joinhandshake.com/**"]) {
+for (const host of ["https://www.linkedin.com/**", "https://www.indeed.com/**", "https://app.joinhandshake.com/**", "https://uncg.joinhandshake.com/**"]) {
   await context.route(host, (route) => {
     const url = route.request().url();
     const match = Object.keys(PAGES).find((prefix) => url.startsWith(prefix));
@@ -137,7 +139,9 @@ const SITES = [
   ["LinkedIn public job page", "https://www.linkedin.com/jobs/view/marketing-coordinator-at-northwind-4033333333/", "linkedin-guest"],
   ["Indeed job page", "https://www.indeed.com/viewjob?jk=abc123def456", "indeed"],
   ["Indeed 2026 search pane", "https://www.indeed.com/jobs?q=staff+accountant&l=Raleigh%2C+NC&vjk=aaa111bbb222", "indeed-2026"],
+  ["LinkedIn 2026 signed-in search", "https://www.linkedin.com/jobs/search-results/?currentJobId=4468304903&keywords=staff%20accountant", "linkedin-2026"],
   ["Handshake job page", "https://app.joinhandshake.com/jobs/9876543", "handshake"],
+  ["Handshake school search pane", "https://uncg.joinhandshake.com/job-search/9876543?query=analyst", "handshake-school"],
 ];
 for (const [label, url, shot] of SITES) {
   const start = Date.now();
@@ -200,7 +204,50 @@ const pane = sent.find((p) => p.company === "Pinecrest Holdings");
 check(pane && pane.title === "Staff Accountant" && pane.location === "Raleigh, NC", `Indeed 2026: read ${JSON.stringify(pane && { title: pane.title, company: pane.company, location: pane.location })}`);
 check(pane && pane.description.startsWith("Record journal entries") && !pane.description.includes("Explore other jobs"), "Indeed 2026: description wrong or includes other jobs");
 for (const p of sent) check(p.title && p.company && p.description.length >= 200, `Incomplete posting sent: ${JSON.stringify({ title: p.title, company: p.company })}`);
-results.push(`Read: ${[...new Map(sent.map((p) => [p.title, `${p.title} · ${p.company} · ${p.location || "no place"} (${p.description.length} chars)`])).values()].join("; ")}`);
+results.push(`Read: ${[...new Map(sent.map((p) => [`${p.title}|${p.company}`, `${p.title} · ${p.company} · ${p.location || "no place"} (${p.description.length} chars)`])).values()].join("; ")}`);
+
+// LinkedIn's 2026 layout: title and company from the tab title, the place from the line under it,
+// and only the description, not LinkedIn's "missing qualifications" note about the person's profile.
+const li = sent.find((p) => p.company === "Myers & Stauffer");
+check(li && li.title === "Staff Accountant" && li.location === "Raleigh, NC", `LinkedIn 2026: read ${JSON.stringify(li && { title: li.title, company: li.company, location: li.location })}`);
+check(li && li.description.startsWith("Job Description") && !/your profile|… more|about the company/i.test(li.description), "LinkedIn 2026: description wrong, or it includes profile matching, the more button, or the company blurb");
+
+// Handshake: the job's h1, not the page's "Jobs"; the requirements it lists; none of Handshake's lines about the person's profile.
+const hs = sent.find((p) => p.company === "Blue Ridge Analytics");
+check(hs && hs.title === "Data Analyst Intern" && hs.location === "Remote", `Handshake: read ${JSON.stringify(hs && { title: hs.title, company: hs.company, location: hs.location })}`);
+check(hs && /US work authorization required/.test(hs.description) && /3\.0 GPA/.test(hs.description), "Handshake: At a glance or qualifications missing");
+check(hs && !/you match|matching is based|update profile|AI summary/i.test(hs.description), "Handshake: profile matching or the AI summary reached the server");
+
+// LinkedIn 2026 switches jobs in place: placeholders first, then the new job.
+await page.goto(SITES.find(([label]) => label.startsWith("LinkedIn 2026"))[1]);
+await waitForBadge(page, /Proofline fit score \d+/);
+await page.locator('[componentkey$="4469908781"]').click();
+const liSwitch = Date.now();
+while (Date.now() - liSwitch < 5000 && !sent.some((p) => p.company === "Buckner HeavyLift Cranes")) await page.waitForTimeout(100);
+const buckner = sent.find((p) => p.company === "Buckner HeavyLift Cranes");
+check(buckner && buckner.title === "Payroll & Accounting Specialist" && buckner.location === "Graham, NC", `LinkedIn 2026 switch: read ${JSON.stringify(buckner && { title: buckner.title, location: buckner.location })}`);
+results.push(`LinkedIn 2026 switch: scored the new job ${Date.now() - liSwitch}ms after the click (including its 600ms of placeholders)`);
+
+// Handshake cuts the description short until More: the panel says so, and clicking More rescores with the full text.
+await page.goto(SITES.find(([label]) => label.startsWith("Handshake school"))[1]);
+await waitForBadge(page, /Proofline fit score \d+/);
+await pill(page);
+await page.waitForTimeout(150);
+check((await panelText(page)).includes("only the start of this description"), "Handshake: no note that the description is cut short");
+await page.keyboard.press("Escape");
+const beforeMore = sent.length;
+await page.click("#toggle");
+const moreAt = Date.now();
+while (Date.now() - moreAt < 4000 && sent.length === beforeMore) await page.waitForTimeout(100);
+const expanded = sent[sent.length - 1];
+check(sent.length > beforeMore && /Qualifications: pursuing/.test(expanded.description), "Handshake: clicking More didn't rescore with the full description");
+await waitForBadge(page, /Proofline fit score \d+/);
+await pill(page);
+await page.waitForTimeout(150);
+check(!(await panelText(page)).includes("only the start of this description"), "Handshake: the cut-short note stayed after More");
+await page.keyboard.press("Escape");
+await page.screenshot({ path: join(out, "handshake-after-more.png") });
+results.push(`Handshake More: rescored with ${expanded?.description.length} characters`);
 
 // Cache: a second visit asks Proofline nothing; visiting Proofline (where facts change) clears it.
 const cacheUrl = SITES[2][1];

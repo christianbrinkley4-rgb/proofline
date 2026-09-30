@@ -1,24 +1,37 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Data Analyst Intern | Handshake (synthetic fixture)</title></head>
+<head><meta charset="utf-8"><title>Jobs | Handshake (synthetic fixture)</title>
+<style>body{font-family:sans-serif;margin:0}.wrap{display:flex;gap:24px;padding:24px}</style></head>
 <body>
-<!-- Synthetic page shaped like Handshake's job page. Not Handshake content. -->
+<!-- Synthetic page shaped like Handshake's job search pane (checked live September 29): an h1 "Jobs" for the page,
+     the job in [data-hook="right-content"], a description cut short until More is clicked, and profile-match lines
+     under "What they're looking for". Not Handshake content. -->
 <div id="root"></div>
 <script>
+  const FULL = "<p>We are looking for a data analyst intern to clean and join datasets in SQL, build dashboards in Tableau, and present findings to the product team every two weeks.</p><p>Responsibilities: automate weekly reports with Python, check data quality, and document every dashboard you build.</p><p>Qualifications: pursuing a degree in statistics, computer science, or economics. Experience with SQL and Python. Tableau is a plus.</p>";
+  const SHORT = "<p>We are looking for a data analyst intern to clean and join datasets in SQL, build dashboards in Tableau, and present findings to the product team every two weeks.</p><p>Responsibilities: automate weekly reports with Python, check data...</p>";
+  function description(full) {
+    return `<div><div><h3>Job description</h3></div><div id="desc">${full ? FULL : SHORT}<button id="toggle">${full ? "Less" : "More"}</button></div></div>`;
+  }
   // Handshake renders in the browser, a moment after the page loads.
   setTimeout(() => {
     document.getElementById("root").innerHTML = `
-      <main>
-        <div data-hook="job-details-page">
-          <a href="/e/12345">Blue Ridge Analytics</a>
-          <h1>Data Analyst Intern</h1>
-          <div data-hook="job-location">Remote</div>
-          <div><h2>Job description</h2><div>
-            <p>Clean and join datasets in SQL, build dashboards in Tableau, and present findings to the product team every two weeks. You'll help automate weekly reports with Python.</p>
-            <p>Qualifications</p><ul><li>Pursuing a degree in statistics, computer science, or economics</li><li>Experience with SQL and Python</li><li>Tableau is a plus</li></ul>
-          </div></div>
+      <h1 aria-label="Jobs">Jobs</h1>
+      <div class="wrap">
+        <ul><li><a href="/job-search/9876543">Data Analyst Intern</a></li></ul>
+        <div data-hook="right-content">
+          <div><a href="/e/12345"><img alt="" width="24" height="24"></a><a href="/e/12345">Blue Ridge Analytics</a><p>Technology</p><h1>Data Analyst Intern</h1><p>Posted 1 day ago∙Apply by October 28, 2026 at 1:00 AM</p></div>
+          <div><h3>Summary</h3><p>Beta</p><p>An AI summary of this job that is not the posting.</p></div>
+          <div><div><h3>At a glance</h3></div><div><p>$25/hr</p><p>Remote</p><p>Internship</p><p>US work authorization required</p></div></div>
+          <div id="descWrap">${description(false)}</div>
+          <div><div><h3>What they're looking for</h3></div><div><p>You match some qualifications.</p><p>3.0 GPA</p><p>Statistics major</p><p>Matching is based on your profile.</p><p>Update profile.</p></div></div>
+          <div><h3>About the employer</h3><p>Blue Ridge Analytics builds reporting tools.</p></div>
         </div>
-      </main>`;
+      </div>`;
+    document.getElementById("descWrap").addEventListener("click", (e) => {
+      if (e.target.id !== "toggle") return;
+      document.getElementById("descWrap").innerHTML = description(e.target.textContent === "More");
+    });
   }, 700);
 </script>
 </body>
