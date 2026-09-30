@@ -156,7 +156,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   const experienceMissing: string[] = [];
   if (job.level === "internship") {
     seniority = 9;
-    seniorityNote = "This posting is an internship; check its student eligibility rules.";
+    seniorityNote = "It's an internship, so they expect students and don't need years of experience.";
   } else if (job.level === "entry") {
     seniority = candidate.experienceTitles.length ? 9 : 6;
     seniorityNote = candidate.experienceTitles.length ? "Your recorded experience counts for this entry-level role." : "Add work, projects, or volunteering to show what you can do.";

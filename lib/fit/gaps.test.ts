@@ -70,6 +70,9 @@ describe("skillFromAnswer", () => {
     expect(skillFromAnswer("Excel or Google Sheets", "I built the club budget in google sheets")).toBe("Google Sheets");
     expect(skillFromAnswer("Excel or Google Sheets", "tracked inventory every week")).toBeNull();
     expect(skillFromAnswer("Account reconciliation", "I reconciled vendor balances monthly")).toBe("Account reconciliation");
+    // Posting keywords are lowercase; an action still counts.
+    expect(skillFromAnswer("account reconciliation", "Reconciled client premium payments against carrier statements each month")).toBe("Account reconciliation");
+    expect(skillFromAnswer("quickbooks", "kept the books in a spreadsheet")).toBeNull();
     expect(skillFromAnswer("SQL", "I have never used SQL at work")).toBeNull();
     expect(skillFromAnswer("Excel or Google Sheets", "I never used Excel, but used Google Sheets for our club budget")).toBe("Google Sheets");
     expect(skillFromAnswer("Excel", "I never used Excel, but used Google Sheets for our club budget")).toBeNull();

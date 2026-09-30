@@ -37,6 +37,8 @@ export function employerWording(item: string, jobDescription: string): string | 
     const theirs = same.replace(/[^\s-]+/g, (word) => {
       const cased = mine[index++] ?? word;
       if (/^[A-Z0-9/&]+$/.test(word) && word.length > 1) return word;
+      // Same word, maybe plural: keep the person's exact capitals ("QuickBooks", not "Quickbooks").
+      if (word.toLowerCase().startsWith(cased.toLowerCase())) return cased + word.slice(cased.length).toLowerCase();
       return cased[0] === cased[0].toUpperCase() ? word[0].toUpperCase() + word.slice(1).toLowerCase() : word.toLowerCase();
     });
     return theirs !== item.trim() ? theirs : null;

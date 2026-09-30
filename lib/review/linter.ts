@@ -403,7 +403,8 @@ export function lintResume(input: LintInput): LintCheck[] {
 
   const spacing: string[] = [];
   for (const line of lines) {
-    const double = line.text.match(/\S+ {2,}\S+/);
+    // "  |  " is the resume's own separator (contact line, entry header, GPA and honors), not a stray space.
+    const double = line.text.replace(/ {2}\| {2}/g, " | ").match(/\S+ {2,}\S+/);
     if (double) spacing.push(double[0]);
     else if (/\S[ \t]+$/.test(line.text)) spacing.push(line.text.trimStart());
   }

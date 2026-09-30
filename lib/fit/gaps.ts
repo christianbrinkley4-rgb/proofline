@@ -102,12 +102,16 @@ export function skillFromAnswer(skill: string, answer: string): string | null {
     if (named) return named;
     // An action can establish a skill without using the exact label, e.g.
     // "reconciled vendor balances" establishes account reconciliation.
-    const detected = new Set(extractSkills(clause));
+    // Posting keywords arrive lowercase ("account reconciliation"); skill names are capitalized.
+    const detected = new Set(extractSkills(clause).map((name) => name.toLowerCase()));
     // Named software needs an explicit name. A transferable spreadsheet skill
     // is useful, but it does not prove the person used Excel itself.
     const namedTools = new Set(["Excel", "Google Sheets", "QuickBooks", "NetSuite", "SAP", "Oracle", "Workday", "Salesforce", "HubSpot", "PowerPoint", "Bloomberg", "Capital IQ", "FactSet", "Jira", "Figma", "Google Analytics", "Tableau", "Power BI", "Alteryx"]);
-    const inferred = options.find((option) => !namedTools.has(option) && detected.has(option) && extractSkills(option).includes(option));
-    if (inferred) return inferred;
+    for (const option of options) {
+      const canonical = extractSkills(option).find((name) => name.toLowerCase() === option.toLowerCase());
+      // Saved under the skill's own name, so it reads "Account reconciliation" on My facts.
+      if (canonical && !namedTools.has(canonical) && detected.has(canonical.toLowerCase())) return canonical;
+    }
   }
   return null;
 }

@@ -106,6 +106,14 @@ describe("review linter", () => {
     expect(byId(checks, "no_trailing_or_double_spaces").evidence_quote).toBe("in  Accounting");
   });
 
+  it("doesn't flag the resume's own \"  |  \" separators, or a current role's \"Meet with\"", () => {
+    const text = STRONG.replace("GPA: 3.6/4.0", "GPA: 3.6/4.0  |  Honors: Dean's List")
+      .replace("- Processed about 60 invoices a week for 3 dentists", "- Meet with 40 clients a month to review retirement options");
+    const checks = lintResume({ resumeText: text, jobDescription: JD, userFacts: FACTS, pageCount: 1 });
+    expect(byId(checks, "no_trailing_or_double_spaces").passed).toBe(true);
+    expect(byId(checks, "bullets_start_with_verb").passed).toBe(true);
+  });
+
   it("reports keyword overlap as information only", () => {
     const check = byId(lintResume({ resumeText: STRONG, jobDescription: JD, userFacts: FACTS, pageCount: 1 }), "jd_keyword_overlap");
     expect(check.severity).toBe("INFO");

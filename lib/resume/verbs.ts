@@ -32,6 +32,8 @@ export const ACTION_VERBS = {
   communication: [
     "Presented", "Pitched", "Negotiated", "Persuaded", "Advised", "Briefed", "Explained", "Taught", "Tutored",
     "Translated", "Edited", "Published", "Interviewed", "Facilitated", "Hosted", "Moderated", "Corresponded", "Wrote",
+    "Met", "Consulted", "Contacted", "Coached", "Collaborated", "Communicated", "Educated", "Informed", "Recommended",
+    "Sold", "Marketed", "Promoted", "Prospected", "Networked",
   ],
   service: [
     "Served", "Assisted", "Supported", "Provided", "Answered", "Resolved", "Handled", "Welcomed", "Scheduled", "Greeted",

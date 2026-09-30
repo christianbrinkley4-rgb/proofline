@@ -85,7 +85,7 @@ const DOUBLED = new Set(["logged", "mapped", "planned", "programmed"]);
 
 /** Past forms that dropped a silent e ("Manage" to "Managed"). Every other action verb just loses "ed". */
 const SILENT_E = new Set([
-  "accelerated", "achieved", "accrued", "advised", "allocated", "analyzed", "arranged", "automated", "balanced",
+  "accelerated", "achieved", "collaborated", "communicated", "educated", "promoted", "accrued", "advised", "allocated", "analyzed", "arranged", "automated", "balanced",
   "calculated", "closed", "coded", "compared", "compiled", "completed", "configured", "consolidated", "coordinated",
   "created", "contributed", "delegated", "diagnosed", "disbursed", "doubled", "eliminated", "estimated", "evaluated", "examined",
   "facilitated", "filed", "guided", "handled", "improved", "increased", "introduced", "investigated", "invoiced",

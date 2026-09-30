@@ -77,5 +77,8 @@ describe("employer wording", () => {
     expect(employerWording("Financial Statement", "Review financial statements monthly")).toBe("Financial Statements");
     // A more specific tool name is a different claim; never swapped in.
     expect(employerWording("Excel", "Advanced pivot tables and VLOOKUP")).toBeNull();
+    // The posting's own capitals never override the person's: QuickBooks stays QuickBooks.
+    expect(employerWording("QuickBooks", "Proficient in Excel; QuickBooks a plus")).toBeNull();
+    expect(employerWording("QuickBooks", "Experience with Quickbooks required")).toBeNull();
   });
 });
