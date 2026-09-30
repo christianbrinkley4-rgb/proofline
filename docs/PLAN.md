@@ -4,6 +4,21 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## September 29 design pass (branch `design-system`, not merged or deployed)
+
+The owner supplied four specs (design system, browser extension, discovery feed, one-click prefill) and asked for only changes that make the product better. Spec 01 ran first on its own branch. The existing tokens, type, and radii were already coherent, so the font swap to Inter, the blanket 8px radius, and a parallel `design/tokens.ts` were skipped as churn. What landed, one commit each:
+
+- Dark mode: green-leaning `.dark` tokens (the old ones were stock zinc and purple), light by default, Settings > Appearance offers Light, Dark, Match my device. `scripts/screenshots.mjs` captures light and dark at desktop and 390px and flags overflow.
+- My facts: each fact shows the day it was confirmed; deletes use an in-page dialog (`components/shared/confirm-delete.tsx`) instead of `window.confirm`.
+- Tailor review: passed checks fold into "N checks passed", so failing ones stand out (the phone page is about 1,000px shorter).
+- Tracker: counters and filters appear only once something is tracked.
+- Job page: the score counts up once (CSS `count-up`, no hydration flash, reduced motion respected).
+- Landing: the hero grain is a masked layer instead of a background image, so it no longer delays largest paint; Geist Mono isn't preloaded. Error copy owns the failure.
+
+Verification: 768 tests, typecheck, lint, production build. Keyboard: every tab stop on onboarding, both job tabs, My facts, and Settings shows a focus ring. No horizontal overflow at 390px in either theme. Lighthouse (mobile, simulated, median of 3 on a local production build): home 87, /check 88, login 93, guides 94, privacy 92; accessibility 98 to 100; CLS 0. Home and /check are still under 90: with real device throttling the landing page spends about 2s on style and layout across the long page and the interactive demo. `content-visibility: auto` on lower sections was tried and reverted because it broke direct links such as `/#faq`. Signed-in pages weren't scored by Lighthouse (the dev login is off in production builds).
+
+Specs 02 to 04 overlap work that already exists (the extension saves postings and fills basic fields; job search already pulls Greenhouse and Lever boards; the tracker and packet exist) and were not started.
+
 ## September 29 new-task discovery across careers
 
 The owner clarified that Add some facts should uncover different work, not repeat existing bullets, and must serve people beyond the owner's profile. Recall previously offered saved-fact method/result follow-ups with a ranking boost; those could dominate fresh duties. Recall now offers only new core occupational tasks. Confirmed facts and active bullets provide relevance context and exclusion evidence, never reframe cards. Old pending fact follow-ups are omitted and cannot be saved through stale tabs. Legacy bank behavior remains compatible.
