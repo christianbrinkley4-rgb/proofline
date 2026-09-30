@@ -1,5 +1,12 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 30 go-live setup
+
+- **AI review works in production.** The owner prepaid Gemini credit. `/api/cron/ai-health` (daily 09:00 UTC, or `MSYS_NO_PATHCONV=1 npx vercel@60.1.3 crons run /api/cron/ai-health`) sent made-up data through both calls on deployment `ea0b852`: resume review passed the sample, fact wording answered, 1.2s. A failure is logged as `ai.health` and left as an alert on the owner page. Prepaid credit runs out; switching Google billing to Postpay or turning on auto-reload keeps downloads from stopping.
+- **Find jobs is filled.** `vercel crons run /api/cron/refresh-feed` read all 96 boards (none failed), 18,812 postings, 1,516 listed.
+- **Owner page** `/app/owner`, linked from Settings for accounts in `OWNER_EMAILS` (set to the owner's sign-in email): password-reset links waiting to be sent (copy or "Email it"), feedback, contact messages, alerts, "Check AI now", and "Send me a test email".
+- **Password-reset email:** christianbrinkleync.com is verified in Resend and `EMAIL_FROM` is `Proofline <noreply@christianbrinkleync.com>`. `RESEND_API_KEY` was not yet on the proofline-beta project when this was written; the owner adds it, then redeploy and press "Send me a test email". Until then, reset links collect on the owner page. Agents must not create or enter the key.
+
 ## September 30 accessibility pass
 
 WCAG 2.1 AA audit and fixes; see the accessibility section in `docs/PLAN.md`. Run `node scripts/a11y-audit.mjs` against the dev server before a release. The extension is now 0.3.1 (same features, readable gray text); testers replace the unzipped folder and press Reload again.
