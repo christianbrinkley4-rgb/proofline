@@ -1,5 +1,9 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 30 release
+
+Commit `1a1bc22` is live at https://proofline-beta.vercel.app as Ready production deployment `dpl_5HAXjPUUUKptZurA1pzmfXctQH3V`. It ships everything since the last release: Find jobs (spec 03), the answer kit and sent record (spec 04 v1), extension 0.3.0 with Greenhouse and Lever fill (spec 04 v2, zip at `/proofline-extension.zip`), and the resume fixes from the owner's line-by-line comparison. Live checks: home and /check 200, signed-out My facts and Find jobs 307 to login, development login 404, the feed cron 401 without its secret, and the first database request ran migrations 0017 and 0018 with no errors in the logs. The Find jobs pool stays empty until the first 10:00 UTC cron run, or until the owner presses Run on the refresh-feed cron in the Vercel dashboard. Signed-in flows were verified locally with synthetic data, not on production. The Gemini 402 billing blocker is unchanged.
+
 ## September 30 answer kit and assisted fill (spec 04, committed locally, not deployed)
 
 `/app/jobs/[id]/kit` lists every common application field filled only from confirmed facts and saved details, with copy buttons and sources inline; fields with nothing behind them are blank and say what to add. "Mark submitted" saves the exact kit to `application.sent` (migration 0018) and the tracker shows "What you sent". Proofline never submits anything. Details in `docs/PLAN.md`.
