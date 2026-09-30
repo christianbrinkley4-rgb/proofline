@@ -10,7 +10,7 @@ export const PRIVACY_POINTS = [
   },
   {
     title: "AI review",
-    text: "When you save a new fact card, its X/Y/Z answers may be sent to Google Gemini to check the wording. You confirm any revision before it is saved. Before a resume can be downloaded, its text, the posting's requirements, and your confirmed facts may also be sent to Gemini for review.",
+    text: "When you save a line from Find more resume lines, your answers on that card may be sent to Google Gemini to check the wording. You see any change before it is saved. Before a resume can be downloaded, its text, the posting's requirements, and your confirmed facts may also be sent to Gemini for review.",
   },
   {
     title: "Proof links",
