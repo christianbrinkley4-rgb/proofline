@@ -20,7 +20,21 @@ export const KNOCKOUT_LABEL: Record<KnockoutKey, string> = {
   start_date: "Start date",
 };
 
-export type KnockoutJob = { title: string; location: string | null; mode: JobMode; description: string | null; requirements: Requirements };
+/**
+ * What the knockout checks need from a description, read once when the posting is stored.
+ * A start `month` of null means the posting says to start immediately (resolved against today).
+ */
+export type PostingScreens = { citizenship: boolean; start: { month: string | null; text: string } | null };
+
+export type KnockoutJob = {
+  title: string;
+  location: string | null;
+  mode: JobMode;
+  description: string | null;
+  requirements: Requirements;
+  /** When present, used instead of reading `description`, so a caller can leave the description unloaded. */
+  screens?: PostingScreens | null;
+};
 export type KnockoutCandidate = {
   /** YYYY-MM */
   gradDate: string | null;
@@ -66,8 +80,7 @@ const CITIZENSHIP = /(u\.?s\.?|united states) citizen(ship)?\s+(is\s+)?(required
 
 function authorization(job: KnockoutJob, c: KnockoutCandidate): Knockout {
   const base = { key: "work_authorization" as const, label: KNOCKOUT_LABEL.work_authorization };
-  const text = job.description ?? "";
-  const citizenship = CITIZENSHIP.test(text);
+  const citizenship = job.screens ? job.screens.citizenship : CITIZENSHIP.test(job.description ?? "");
   const noSponsor = job.requirements.noSponsorship;
   if (!citizenship && !noSponsor) return { ...base, status: "ok", reason: "The posting doesn't limit work authorization." };
   const rule = citizenship ? "requires U.S. citizenship or a security clearance" : "won't sponsor a work visa";
@@ -104,9 +117,14 @@ const SEASON_START: Record<string, string> = { spring: "01", summer: "06", fall:
 
 /** The month a posting says work starts, if it says. */
 export function parseStartDate(text: string | null | undefined, now = new Date()): { month: string; text: string } | null {
+  return resolveStart(readStart(text), now);
+}
+
+/** The stated start, with a null month for "start immediately". */
+function readStart(text: string | null | undefined): PostingScreens["start"] {
   const body = text ?? "";
   const immediate = body.match(/\b(start(?:ing)? immediately|immediate start|asap start|start asap)\b/i);
-  if (immediate) return { month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`, text: immediate[0] };
+  if (immediate) return { month: null, text: immediate[0] };
   const dated = body.match(new RegExp(`\\b(?:start(?:ing|s)?(?: date)?|begin(?:s|ning)?|commenc\\w*|available to start)\\b[^.\\n]{0,24}?\\b(${MONTH})\\.?\\s+(?:\\d{1,2}(?:st|nd|rd|th)?,?\\s+)?(20\\d{2})`, "i"));
   if (dated) {
     const month = normalizeDate(`${dated[1].slice(0, 3)} ${dated[2]}`);
@@ -122,13 +140,24 @@ export function parseStartDate(text: string | null | undefined, now = new Date()
 
 function startDate(job: KnockoutJob, c: KnockoutCandidate, now: Date): Knockout {
   const base = { key: "start_date" as const, label: KNOCKOUT_LABEL.start_date };
-  const start = parseStartDate(`${job.title}\n${job.description ?? ""}`, now);
+  const start = job.screens ? resolveStart(job.screens.start, now) : parseStartDate(`${job.title}\n${job.description ?? ""}`, now);
   if (!start) return { ...base, status: "ok", reason: "The posting doesn't give a start date." };
   if (!c.availableFrom) return { ...base, status: "unknown", reason: `It starts around ${monthLabel(start.month)}. Add when you can start to check.`, fix: "logistics" };
   if (months(start.month, c.availableFrom) > 1) {
     return { ...base, status: "knockout", reason: `It starts around ${monthLabel(start.month)}, and you said you can't start until ${monthLabel(c.availableFrom)}.` };
   }
   return { ...base, status: "ok", reason: `It starts around ${monthLabel(start.month)}, after you're available.` };
+}
+
+const currentMonth = (now: Date) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+function resolveStart(start: PostingScreens["start"], now: Date): { month: string; text: string } | null {
+  return start ? { month: start.month ?? currentMonth(now), text: start.text } : null;
+}
+
+/** Reads the description once for the knockout checks. `checkKnockouts` gives the same result with these or the description. */
+export function readScreens(title: string, description: string | null | undefined): PostingScreens {
+  return { citizenship: CITIZENSHIP.test(description ?? ""), start: readStart(`${title}\n${description ?? ""}`) };
 }
 
 export function knockoutCandidate(profile: {

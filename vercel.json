@@ -1,3 +1,6 @@
 {
-  "crons": [{ "path": "/api/cron/refresh-searches", "schedule": "0 13 * * *" }]
+  "crons": [
+    { "path": "/api/cron/refresh-searches", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/refresh-feed", "schedule": "0 10 * * *" }
+  ]
 }

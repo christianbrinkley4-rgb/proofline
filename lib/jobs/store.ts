@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { FitReport } from "@/lib/fit/engine";
+import { readScreens, type PostingScreens } from "@/lib/fit/knockouts";
 import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
 import { extractKeywords } from "./keywords";
 import { dedupeKey, detectLevel, detectMode, slugify } from "./text";
@@ -34,6 +35,7 @@ function jobValues(j: NormalizedJob) {
     dedupeKey: dedupeKey(j.company, j.title, j.location),
     requirements: requirements as unknown as Record<string, unknown> | null,
     keywords: j.description ? extractKeywords(j.description) : null,
+    screens: j.description ? (readScreens(j.title, j.description) as unknown as Record<string, unknown>) : null,
     fetchedAt: new Date(),
   };
 }
@@ -70,6 +72,7 @@ export async function upsertJobs(jobs: NormalizedJob[]): Promise<Map<string, Job
           description: sql`coalesce(excluded.description, ${schema.job.description})`,
           requirements: sql`coalesce(excluded.requirements, ${schema.job.requirements})`,
           keywords: sql`coalesce(excluded.keywords, ${schema.job.keywords})`,
+          screens: sql`coalesce(excluded.screens, ${schema.job.screens})`,
         },
       })
       .returning();
@@ -80,6 +83,11 @@ export async function upsertJobs(jobs: NormalizedJob[]): Promise<Map<string, Job
 
 export function requirementsOf(row: JobRow): Requirements {
   return (row.requirements as unknown as Requirements | null) ?? parseRequirements(row.description);
+}
+
+/** What the knockout checks read from the description, stored at ingest. Null for rows stored before that. */
+export function screensOf(row: Pick<JobRow, "screens">): PostingScreens | null {
+  return (row.screens as unknown as PostingScreens | null) ?? null;
 }
 
 /** The posting's keyword phrases (stored at ingest; older rows are read on the fly). */

@@ -21,39 +21,41 @@ type GreenhouseList = {
 };
 type GreenhouseJob = GreenhouseList["jobs"][number] & { content: string; departments?: Array<{ name: string }> };
 
-async function greenhouse(ref: BoardRef): Promise<NormalizedJob[]> {
-  const data = await getJson<GreenhouseList>(`https://boards-api.greenhouse.io/v1/boards/${ref.slug}/jobs`);
-  return data.jobs.map((j) => ({
-    source: "greenhouse",
-    sourceId: `${ref.slug}:${j.id}`,
-    company: ref.company,
-    title: j.title.trim(),
-    location: j.location?.name ?? null,
-    mode: detectMode(j.location?.name, j.title),
-    level: detectLevel(j.title),
-    url: j.absolute_url,
-    description: null,
-    department: null,
-    employmentType: null,
-    payMin: null,
-    payMax: null,
-    payPeriod: null,
-    postedAt: new Date(j.first_published ?? j.updated_at),
-  }));
+async function greenhouse(ref: BoardRef, opts: BoardFetchOptions): Promise<NormalizedJob[]> {
+  // `content=true` returns every description in the same response, which saves one request per posting.
+  const data = await getJson<GreenhouseList & { jobs: Array<Partial<GreenhouseJob>> }>(
+    `https://boards-api.greenhouse.io/v1/boards/${ref.slug}/jobs${opts.withContent ? "?content=true" : ""}`,
+    { timeoutMs: opts.timeoutMs },
+  );
+  return data.jobs.map((j) => {
+    const content = greenhouseContent(j);
+    return {
+      source: "greenhouse",
+      sourceId: `${ref.slug}:${j.id}`,
+      company: ref.company,
+      title: j.title.trim(),
+      location: j.location?.name ?? null,
+      mode: detectMode(j.location?.name, j.title, content.description?.slice(0, 1500)),
+      level: detectLevel(j.title),
+      url: j.absolute_url,
+      ...content,
+      employmentType: null,
+      postedAt: new Date(j.first_published ?? j.updated_at),
+    };
+  });
+}
+
+function greenhouseContent(j: Partial<GreenhouseJob>): Pick<NormalizedJob, "description" | "department" | "payMin" | "payMax" | "payPeriod"> {
+  if (!j.content) return { description: null, department: null, payMin: null, payMax: null, payPeriod: null };
+  const description = htmlToText(j.content);
+  const pay = parsePay(description);
+  return { description, department: j.departments?.[0]?.name ?? null, payMin: pay.min, payMax: pay.max, payPeriod: pay.period };
 }
 
 async function greenhouseDetail(slug: string, id: string): Promise<Partial<NormalizedJob>> {
   const j = await getJson<GreenhouseJob>(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs/${id}`);
-  const description = htmlToText(j.content);
-  const pay = parsePay(description);
-  return {
-    description,
-    department: j.departments?.[0]?.name ?? null,
-    mode: detectMode(j.location?.name, j.title, description.slice(0, 1500)),
-    payMin: pay.min,
-    payMax: pay.max,
-    payPeriod: pay.period,
-  };
+  const content = greenhouseContent(j);
+  return { ...content, mode: detectMode(j.location?.name, j.title, content.description?.slice(0, 1500)) };
 }
 
 // ─── Lever ────────────────────────────────────────────────────────────────────
@@ -71,8 +73,8 @@ type LeverPosting = {
   salaryRange?: { min: number; max: number; currency: string; interval: string };
 };
 
-async function lever(ref: BoardRef): Promise<NormalizedJob[]> {
-  const data = await getJson<LeverPosting[]>(`https://api.lever.co/v0/postings/${ref.slug}?mode=json`);
+async function lever(ref: BoardRef, opts: BoardFetchOptions): Promise<NormalizedJob[]> {
+  const data = await getJson<LeverPosting[]>(`https://api.lever.co/v0/postings/${ref.slug}?mode=json`, { timeoutMs: opts.timeoutMs });
   return data.map((p) => {
     const lists = (p.lists ?? []).map((l) => `${l.text}\n${htmlToText(l.content)}`).join("\n\n");
     const description = [p.descriptionPlain, lists, p.additionalPlain].filter(Boolean).join("\n\n").trim();
@@ -116,8 +118,8 @@ type AshbyBoard = {
   }>;
 };
 
-async function ashby(ref: BoardRef): Promise<NormalizedJob[]> {
-  const data = await getJson<AshbyBoard>(`https://api.ashbyhq.com/posting-api/job-board/${ref.slug}?includeCompensation=true`);
+async function ashby(ref: BoardRef, opts: BoardFetchOptions): Promise<NormalizedJob[]> {
+  const data = await getJson<AshbyBoard>(`https://api.ashbyhq.com/posting-api/job-board/${ref.slug}?includeCompensation=true`, { timeoutMs: opts.timeoutMs });
   return data.jobs.map((j) => {
     const pay = parsePay(j.compensation?.compensationTierSummary);
     const workplace = j.workplaceType?.toLowerCase();
@@ -157,8 +159,8 @@ type SmartList = {
   }>;
 };
 
-async function smartrecruiters(ref: BoardRef): Promise<NormalizedJob[]> {
-  const data = await getJson<SmartList>(`https://api.smartrecruiters.com/v1/companies/${ref.slug}/postings?limit=100`);
+async function smartrecruiters(ref: BoardRef, opts: BoardFetchOptions): Promise<NormalizedJob[]> {
+  const data = await getJson<SmartList>(`https://api.smartrecruiters.com/v1/companies/${ref.slug}/postings?limit=100`, { timeoutMs: opts.timeoutMs });
   return data.content.map((p) => {
     const loc = [p.location?.city, p.location?.region, p.location?.country?.toUpperCase()].filter(Boolean).join(", ");
     return {
@@ -196,16 +198,19 @@ async function smartrecruitersDetail(slug: string, id: string): Promise<Partial<
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
 
-export async function fetchBoard(ref: BoardRef): Promise<NormalizedJob[]> {
+/** `withContent` asks Greenhouse for descriptions in the list call; big boards then need a longer timeout. */
+export type BoardFetchOptions = { timeoutMs?: number; withContent?: boolean };
+
+export async function fetchBoard(ref: BoardRef, opts: BoardFetchOptions = {}): Promise<NormalizedJob[]> {
   switch (ref.source) {
     case "greenhouse":
-      return greenhouse(ref);
+      return greenhouse(ref, opts);
     case "lever":
-      return lever(ref);
+      return lever(ref, opts);
     case "ashby":
-      return ashby(ref);
+      return ashby(ref, opts);
     case "smartrecruiters":
-      return smartrecruiters(ref);
+      return smartrecruiters(ref, opts);
   }
 }
 

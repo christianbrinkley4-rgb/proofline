@@ -150,6 +150,11 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
             {job.sourceId.startsWith("pasted:") && (
               <JobDetailsEditor key={`${job.title}|${job.company}|${job.location ?? ""}`} jobId={job.id} title={job.title} company={job.company} location={job.location ?? ""} />
             )}
+            {job.closedAt && (
+              <p className="mt-2 text-[13px] text-pending-ink">
+                {job.company} took this posting down around {job.closedAt.toLocaleDateString("en-US", { month: "long", day: "numeric" })}, so it has probably stopped taking applications.
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1">

@@ -1,5 +1,9 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 30 Find jobs feed (spec 03, committed locally, not deployed)
+
+`/app/find` lists internships and early-career U.S. jobs from the 96 registry boards, scored with the same engine and knockouts as a pasted job, knockouts last. A daily cron (`/api/cron/refresh-feed`) refreshes the pool and closes postings that leave their board. Filters persist per person; save and dismiss move similar listings in the ranking but never change a score. Details and local evidence are in `docs/PLAN.md`. To release: deploy, then confirm migration 0017 ran and the pool fills after the first 10:00 UTC cron, or trigger the cron once with the secret. Until then the page shows an empty-pool message.
+
 ## September 29 new-task discovery across careers
 
 The owner clarified that Add some facts should uncover different work, not repeat existing bullets, and must serve people beyond the owner's profile. Recall previously offered saved-fact method/result follow-ups with a ranking boost; those could dominate fresh duties. Recall now offers only new core occupational tasks. Confirmed facts and active bullets provide relevance context and exclusion evidence, never reframe cards. Old pending fact follow-ups are omitted and cannot be saved through stale tabs. Legacy bank behavior remains compatible.

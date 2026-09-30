@@ -126,6 +126,8 @@ export const profile = pgTable("profile", {
   onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   /** Basics read from the last uploaded resume. Proposals that prefill the form; the profile fields above are what the student confirmed. */
   importedBasics: jsonb("imported_basics").$type<Record<string, string>>(),
+  /** Find jobs filters, kept so the feed opens the way the person left it (lib/jobs/feed/filters.ts). */
+  feedFilters: jsonb("feed_filters").$type<Record<string, unknown>>(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -383,11 +385,16 @@ export const job = pgTable(
     requirements: jsonb("requirements").$type<Record<string, unknown>>(),
     /** Keyword phrases from the posting, lowercased and singular (lib/jobs/keywords.ts). */
     keywords: jsonb("keywords").$type<string[]>(),
+    /** What the knockout checks read from the description (lib/fit/knockouts.ts), so the feed can skip loading it. */
+    screens: jsonb("screens").$type<Record<string, unknown>>(),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Last time the feed refresh saw this posting open on its employer's board. Null when it isn't in the feed. */
+    listedAt: timestamp("listed_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("job_source_uidx").on(t.source, t.sourceId),
+    index("job_listed_idx").on(t.listedAt),
     index("job_dedupe_idx").on(t.dedupeKey),
     index("job_company_idx").on(t.companySlug),
   ],

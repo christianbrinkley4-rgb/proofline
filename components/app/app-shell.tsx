@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ClipboardPaste, House, ListChecks, LogOut, Settings, SquareKanban, type LucideIcon } from "lucide-react";
+import { ClipboardPaste, House, ListChecks, LogOut, Search, Settings, SquareKanban, type LucideIcon } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
 import {
@@ -20,9 +20,10 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean };
 
-// The private beta loop: facts, jobs (paste, score, tailor), tracker.
+// The private beta loop: facts, finding and pasting jobs (score, tailor), tracker.
 const NAV: NavItem[] = [
   { href: "/app", label: "Today", icon: House, mobile: true },
+  { href: "/app/find", label: "Find jobs", icon: Search, mobile: true },
   { href: "/app/jobs", label: "Jobs", icon: ClipboardPaste, mobile: true },
   { href: "/app/facts", label: "My facts", icon: ListChecks, mobile: true },
   { href: "/app/tracker", label: "Tracker", icon: SquareKanban, mobile: true },
@@ -86,7 +87,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
 
         <nav
           aria-label="App"
-          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
         >
           {NAV.filter((n) => n.mobile).map(({ href, label, icon: Icon }) => (
             <Link
