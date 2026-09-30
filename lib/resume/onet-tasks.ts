@@ -69,9 +69,24 @@ function pastTense(statement: string, simple = false): string | null {
   return (verb + clean.slice(first[0].length)).replace(/[,\s]+$/, "");
 }
 
+/**
+ * Job-description padding a person would never write about their own work.
+ * Only words that carry no fact are cut, so the task still means the same thing.
+ */
+export function plainDuty(text: string): string {
+  return text
+    .replace(/\b(?:various|assorted|appropriate|applicable|relevant|specified|designated)\s+(?=\w)/gi, "")
+    .replace(/\bin order to\b/gi, "to")
+    .replace(/\b(?:persons|individuals)\b(?! or businesses)/gi, "people")
+    .replace(/,?\s+(?:as needed|as required|as necessary|as appropriate|when necessary|where appropriate)(?=[,.]|$)/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 /** Counts distinct usable common duties, rather than inflating the bank with variants. */
 function commonDuty(statement: string): string | null {
-  const text = recallWording(statement) ?? pastTense(statement, true);
+  const raw = recallWording(statement) ?? pastTense(statement, true);
+  const text = raw ? plainDuty(raw) : null;
   if (!text || /\d/.test(text) || text.length > 220 || findVoiceIssues(text).length || findWeakOpener(text)) return null;
   const verb = text.split(/\s+/)[0];
   return isActionVerb(verb) && !OVERUSED_VERBS.has(verb.toLowerCase()) ? text : null;

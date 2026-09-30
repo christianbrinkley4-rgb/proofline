@@ -34,7 +34,7 @@ export async function answerSuggestionAction(id: string, input: z.infer<typeof A
     return { ok: true as const, ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not save your answer.";
-    const expected = /number|Fill in|Finish the bullet|clear action|preview changed|wording review changed|Review the finished|Confirm that|out of date|repeats saved work|expired|verify the bullet/i.test(message);
+    const expected = /number|Fill in|Describe what|Shorten|Finish the bullet|clear action|preview changed|wording review changed|Review the finished|Confirm that|out of date|repeats saved work|expired|verify the bullet/i.test(message);
     return { ok: false as const, error: expected ? message : "Could not save your answer. Please try again." };
   }
 }
@@ -43,9 +43,12 @@ export async function reviewSuggestionAction(id: string, input: { editedText: st
   const userId = (await requireSession()).user.id;
   const parsedId = z.uuid().safeParse(id);
   const parsed = AnswerSchema.pick({ editedText: true, xyz: true }).required().extend({ mode: z.enum(["model", "rules"]).optional() }).safeParse(input);
-  if (!parsedId.success || !parsed.success) return { ok: false as const, error: "Fill in the accomplishment, measure, and method before reviewing." };
+  if (!parsedId.success || !parsed.success) return { ok: false as const, error: "Describe what you did before saving." };
   try { return await reviewSuggestion(userId, parsedId.data, parsed.data); }
-  catch { return { ok: false as const, error: "The wording review could not finish. Check the answers and try again." }; }
+  catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    return { ok: false as const, error: /Describe what|brackets|Shorten/.test(message) ? message : "The wording review could not finish. Check the answers and try again." };
+  }
 }
 
 export async function bankStatsAction() {

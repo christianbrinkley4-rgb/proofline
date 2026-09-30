@@ -10,7 +10,8 @@ afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(
 
 describe("whole-sentence recall wording review", () => {
   it("reads every field, rereads the completed sentence, and protects contributions in the prompt", () => {
-    expect(RECALL_REVIEW_PROMPT).toContain("A result entered in Y is still a result");
+    expect(RECALL_REVIEW_PROMPT).toContain("A result entered in measure is still a result");
+    expect(RECALL_REVIEW_PROMPT).toContain("may be empty: then leave that part out");
     expect(RECALL_REVIEW_PROMPT).toContain("REREAD the complete sentence");
     expect(RECALL_REVIEW_PROMPT).toContain("Supporting or contributing work must stay supporting or contributing work");
   });
@@ -100,6 +101,14 @@ describe("whole-sentence recall wording review", () => {
   });
   it("validates all raw parts without inventing missing details", () => {
     expect(recallParts(" Reviewed forms ", { measure: "30 per week", method: "checklist", result: "" }).action).toBe("Reviewed forms");
-    for (const measure of ["", "[count]", "x".repeat(81)]) expect(() => recallParts(parts.action, { ...parts, measure })).toThrow(/Fill in/);
+    expect(() => recallParts(parts.action, { ...parts, measure: "[count]" })).toThrow(/brackets/);
+    expect(() => recallParts(parts.action, { ...parts, measure: "x".repeat(81) })).toThrow(/Shorten/);
+    expect(() => recallParts("  ", { ...parts })).toThrow(/Describe what you did/);
+  });
+  it("accepts a line with no number or method, and adds neither", () => {
+    const bare = recallParts("Explained insurance policies to clients", { measure: "", method: "", result: "" });
+    expect(bare).toEqual({ action: "Explained insurance policies to clients", measure: "", method: "", result: "" });
+    expect(() => validateRecallWording(bare, "Explained insurance policies to 40 clients")).toThrow(/number/);
+    expect(validateRecallWording(bare, "Explained insurance policies to clients")).toBe("Explained insurance policies to clients");
   });
 });

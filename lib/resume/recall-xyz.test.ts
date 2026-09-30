@@ -5,8 +5,11 @@ import { toPresentTense } from "./polish";
 import { isActionVerb } from "./verbs";
 
 describe("fill-in XYZ cards", () => {
-  it("shows unknown measures and methods as blanks without adding numbers", () => {
-    expect(composeRecallXyz("Processed payments", { measure: "", method: "" }, true)).toBe("Processed payments [count, frequency, or % change] by [how you did it]");
+  it("leaves unknown measures and methods out instead of showing blanks or adding numbers", () => {
+    expect(composeRecallXyz("Processed payments", { measure: "", method: "" }, true)).toBe("Processed payments");
+    expect(composeRecallXyz("Processed payments", { measure: "", method: "" })).toBe("Processed payments");
+    expect(composeRecallXyz("Processed payments", { measure: "", method: "using Square" })).toBe("Processed payments using Square");
+    expect(composeRecallXyz("Processed payments", { measure: "40 a shift", method: "" })).toBe("Processed 40 payments a shift");
   });
   it("keeps real contributions, methods, and percentage results exactly as supplied", () => {
     expect(composeRecallXyz("Reviewed intake forms", { measure: "30 forms each week", method: "checking missing contact details", result: "20% fewer incomplete records" })).toBe("Reduced incomplete records 20% by reviewing 30 intake forms each week and checking missing contact details");
@@ -17,7 +20,8 @@ describe("fill-in XYZ cards", () => {
   });
   it("rejects blanks, weak or overused openers, and unfinished placeholder claims", () => {
     for (const action of ["Helped with payments", "Drove growth", "Responsible for scheduling"]) expect(() => composeRecallXyz(action, { measure: "weekly", method: "using the calendar" })).toThrow(/clear action/);
-    for (const xyz of [{ measure: "", method: "using a calendar" }, { measure: "weekly", method: "[tool]" }, { measure: "weekly", method: "using a calendar", result: "[improvement]" }]) expect(() => composeRecallXyz("Scheduled appointments", xyz)).toThrow(/Fill in/);
+    for (const xyz of [{ measure: "weekly", method: "[tool]" }, { measure: "weekly", method: "using a calendar", result: "[improvement]" }]) expect(() => composeRecallXyz("Scheduled appointments", xyz)).toThrow(/brackets/);
+    expect(() => composeRecallXyz(" ", { measure: "", method: "" })).toThrow(/Describe what you did/);
   });
   it("prefills only the person's saved details when asking a follow-up", () => {
     expect(recallXyzDefaults("Scheduled appointments (25 each week) using the clinic calendar, resulting in [what changed?]")).toEqual({ action: "Scheduled appointments", measure: "25 each week", method: "using the clinic calendar", result: "" });
@@ -27,7 +31,7 @@ describe("fill-in XYZ cards", () => {
     const defaults = recallXyzDefaults("Assisted customers by providing information and resolving complaints");
     expect(defaults.action).toBe("Assisted customers");
     expect(defaults.method).toBe("by providing information and resolving complaints");
-    expect(composeRecallXyz(defaults.action, defaults, true)).toBe("Assisted customers [count, frequency, or % change] by providing information and resolving complaints");
+    expect(composeRecallXyz(defaults.action, defaults, true)).toBe("Assisted customers by providing information and resolving complaints");
   });
   it("avoids institutional language, clipped clauses, and mixed imperative verbs", () => {
     const tasks = ["Cashier", "Bookkeeper", "Software developer", "Warehouse worker"].flatMap((title) => onetTasksForTitle(title, 180, true));
@@ -115,9 +119,15 @@ describe("fill-in XYZ cards", () => {
       for (const task of tasks) {
         const preview = composeRecallXyz(task.template, { measure: "", method: "" }, true);
         expect(isActionVerb(preview.split(" ")[0])).toBe(true);
-        expect(preview).toContain("[count, frequency, or % change]");
-        expect(preview).toContain("[how you did it]");
+        expect(preview).not.toMatch(/[\[\]]/);
       }
     }
+  });
+});
+
+describe("a result that is only a number", () => {
+  it("asks what the number measures instead of writing \"resulting in 25%\"", () => {
+    for (const result of ["25%", "about 25 percent", "40", "$500"]) expect(() => composeRecallXyz("Identified prospective customers", { measure: "", method: "", result }, true)).toThrow(/what the number measures/);
+    expect(composeRecallXyz("Identified prospective customers", { measure: "", method: "", result: "25% more referrals" })).not.toMatch(/resulting in 25%$/);
   });
 });

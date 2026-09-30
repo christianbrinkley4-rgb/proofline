@@ -61,8 +61,8 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
       </p>
 
       <section className="mt-5 rounded-xl border bg-background p-4">
-        <h2 className="text-[16px] font-semibold">Build your bullet bank</h2>
-        <p className="mt-1 mb-3 text-[13px] leading-5 text-muted-foreground">You do not have to remember everything at once. Work through possible tasks from your past roles, add your own details, and save the ones you did. Your bank can grow across every experience; each resume uses the lines that fit that job.</p>
+        <h2 className="text-[16px] font-semibold">Remember more of what you did</h2>
+        <p className="mt-1 mb-3 text-[13px] leading-5 text-muted-foreground">We show you tasks that are common in roles like yours, one at a time. Say yes to the ones you did, add a number if you have one, and each becomes a resume line in your words. Every resume picks the lines that fit that job.</p>
         <FactRecall roles={recallRoles} />
       </section>
 
@@ -159,7 +159,7 @@ function RoleSection({ title, roles, project, roleOptions }: { title: string; ro
                 ))}
                 {role.bullets.length === 0 && <li className="px-3 py-1 text-[13px] text-muted-foreground">No lines yet.</li>}
               </ul>
-              <div className="mt-3 px-3 pb-1"><FactRecall roles={[{ id: role.experience.id, name, lines: role.bullets.length }]} label="Suggest more facts" /></div>
+              <div className="mt-3 px-3 pb-1"><FactRecall roles={[{ id: role.experience.id, name, lines: role.bullets.length }]} label="Find more lines for this role" /></div>
             </div>
           );
         })}

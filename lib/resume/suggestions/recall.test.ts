@@ -51,16 +51,29 @@ describe("common-duty recall", () => {
     expect(legacyCards.some((item) => item.id === recall.id)).toBe(false);
   });
 
-  it("cannot accept missing XYZ details or an unchecked confirmation, and leaves the card pending", async () => {
+  it("cannot accept an unchecked confirmation, missing answers, or an unreviewed line, and leaves the card pending", async () => {
     const userId = await student();
     const exp = await role(userId);
     const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
     const before = (await listFacts(userId)).length;
     await expect(answerSuggestion(userId, card.id, { answer: "yes", editedText: "Scheduled appointments" })).rejects.toThrow(/Confirm/);
-    await expect(answerSuggestion(userId, card.id, { answer: "yes", confirmed: true, editedText: "Scheduled appointments" })).rejects.toThrow(/Fill in/);
-    await expect(answerSuggestion(userId, card.id, { answer: "yes", confirmed: true, editedText: "Scheduled appointments", xyz: { measure: "20 each week", method: "" } })).rejects.toThrow(/Fill in/);
+    await expect(answerSuggestion(userId, card.id, { answer: "yes", confirmed: true, editedText: "Scheduled appointments" })).rejects.toThrow(/Describe what you did/);
+    await expect(answerSuggestion(userId, card.id, { answer: "yes", confirmed: true, editedText: "Scheduled appointments", xyz: { measure: "20 each week", method: "" } })).rejects.toThrow(/Review the finished wording/);
+    expect(await reviewSuggestion(userId, card.id, { editedText: " ", xyz: { measure: "", method: "" } }).catch((error: Error) => error.message)).toMatch(/Describe what you did/);
     expect((await listFacts(userId)).length).toBe(before);
     expect((await nextSuggestions(userId, exp.id, 1, "recall"))[0].id).toBe(card.id);
+  });
+
+  it("saves a true line with no number or method, exactly as reviewed, without adding either", async () => {
+    vi.stubEnv("PROOFLINE_REVIEW_KEY", "");
+    const userId = await student();
+    const exp = await role(userId);
+    const [card] = await nextSuggestions(userId, exp.id, 1, "recall");
+    const result = await reviewedAnswer(userId, card.id, { answer: "yes", confirmed: true, editedText: "Scheduled patient appointments", xyz: { measure: "", method: "" } });
+    expect(result.status).toBe("accepted");
+    const facts = await listFacts(userId, { experienceId: exp.id });
+    expect(facts.some((fact) => fact.content === "Scheduled patient appointments")).toBe(true);
+    vi.unstubAllEnvs();
   });
 
   it("uses core occupational duties and clinic context instead of hotel duties or unrated guesses", () => {

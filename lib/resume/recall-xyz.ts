@@ -103,26 +103,32 @@ function outcomePhrase(value: string): string | null {
   return change ? `${/^(decrease|reduction)$/i.test(change[2]) ? "Reduced" : /^increase$/i.test(change[2]) ? "Increased" : "Improved"} ${change[3]} by ${change[1]}` : null;
 }
 
-/** Live preview and server save share this wording; raw parts remain in fact data. */
+/**
+ * Live preview and server save share this wording; raw parts remain in fact data.
+ * Only the action is required. A count, method, or result makes a line stronger,
+ * but a true line without one is still a line, so blanks are left out, never shown.
+ */
 export function composeRecallXyz(action: string, details: RecallXyz, draft = false): string {
   const x = actionPhrase(action);
-  const y = clean(details.measure).replace(/\s*\/\s*(shift|day|week|month|year|hour|quarter)\b/gi, " per $1") || (draft ? "[count, frequency, or % change]" : "");
-  const z = clean(details.method) || (draft ? "[how you did it]" : "");
+  const y = clean(details.measure).replace(/\s*\/\s*(shift|day|week|month|year|hour|quarter)\b/gi, " per $1");
+  const z = clean(details.method);
   const result = clean(details.result ?? "");
-  if (!draft && (!x || !y || !z || [x, y, z, result].some((part) => /[\[\]\n\r]/.test(part)))) throw new Error("Fill in the accomplishment, measure, and method before saving");
+  if (!x) throw new Error("Describe what you did before saving");
+  if ([x, y, z, result].some((part) => /[\[\]\n\r]/.test(part))) throw new Error("Fill in your own words where the brackets are");
+  if (/^(?:(?:about|approximately|around|roughly|nearly|at least|up to|over|under)\s+)?[$£€]?\d[\d,.]*\s*(?:%|percent)?$/i.test(result)) throw new Error("Say what the number measures, like \"25% more referrals\"");
   const verb = x.split(/\s+/)[0];
   if (!isActionVerb(verb) || OVERUSED_VERBS.has(verb.toLowerCase())) throw new Error("Use a clear action verb and plain wording");
-  const measureOutcome = outcomePhrase(y);
-  const measured = measureOutcome && !CHANGE_VERBS.test(x) ? x : measuredAction(x, y);
-  const method = /\[[^\]]+\]/.test(z) ? `by ${z}` : methodPhrase(z);
+  const measureOutcome = y ? outcomePhrase(y) : null;
+  const measured = !y ? x : measureOutcome && !CHANGE_VERBS.test(x) ? x : measuredAction(x, y);
+  const method = z ? methodPhrase(z) : "";
   const resultOutcome = result ? outcomePhrase(result) : null;
   const outcome = resultOutcome ?? measureOutcome;
   const connector = /\bby [^,]+$/.test(measured) && CHANGE_VERBS.test(measured) && method.startsWith("by ") ? `through ${method.slice(3)}` : method;
-  let text = `${measured} ${connector}`;
+  let text = connector ? `${measured} ${connector}` : measured;
   if (outcome && outcome.split(" ")[0].toLowerCase() !== verb.toLowerCase()) {
     const activity = `${gerund(verb)}${measured.slice(verb.length)}`;
     const lead = outcome.replace(/ by ((?:(?:about|approximately|around|roughly|at least|up to|over|under)\s+)?\d[\d,.]*(?:%| percent))$/i, " $1");
-    text = `${lead} by ${activity}${method.startsWith("by ") ? ` and ${method.slice(3)}` : ` ${method}`}`;
+    text = `${lead} by ${activity}${!method ? "" : method.startsWith("by ") ? ` and ${method.slice(3)}` : ` ${method}`}`;
   }
   if (measureOutcome && resultOutcome && measureOutcome !== resultOutcome) text += ` and ${measureOutcome.charAt(0).toLowerCase()}${measureOutcome.slice(1)}`;
   if (result && !resultOutcome) {

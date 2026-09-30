@@ -137,7 +137,7 @@ export async function answerSuggestion(userId: string, id: string, input: Answer
   const xyzRecall = item.promptVersion?.startsWith("role-recall.");
   if (xyzRecall && item.taskId?.startsWith("fact:")) throw new Error("This old question repeats saved work. Load the next question for a new task.");
   if (xyzRecall && input.confirmed !== true) throw new Error("Confirm that this line is true and in your own words");
-  if (xyzRecall && !input.xyz) throw new Error("Fill in the accomplishment, measure, and method before saving");
+  if (xyzRecall && !input.xyz) throw new Error("Describe what you did before saving");
   if (!xyzRecall && item.slot && (!slotValue || slotValue.length > 40 || /[\[\]\n\r]/.test(slotValue) || (item.slot === "how many?" && !/\d/.test(slotValue)))) {
     throw new Error(item.slot === "how many?" ? "Enter a real number you can explain" : "Fill in what happened in your own words");
   }
