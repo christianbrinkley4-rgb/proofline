@@ -1,5 +1,9 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 30 owner's report (live)
+
+The extension's "Couldn't reach Proofline", duplicate schools after a resume import, and the confusing Add some facts card (now Find more resume lines) are fixed and deployed as `dpl_8QbcyBQ7qVRNxMU5wDr6pscKyC2F`. Details and the posting-reading fixes found on the way are in `docs/PLAN.md` under "owner's report". Testers don't need a new extension zip; Try again on the badge (or reloading the job page) works. Duplicate schools already saved in an account stay until deleted on My facts.
+
 ## September 30 go-live setup
 
 - **AI review works in production.** The owner prepaid Gemini credit. `/api/cron/ai-health` (daily 09:00 UTC, or `MSYS_NO_PATHCONV=1 npx vercel@60.1.3 crons run /api/cron/ai-health`) sent made-up data through both calls on deployment `ea0b852`: resume review passed the sample, fact wording answered, 1.2s. A failure is logged as `ai.health` and left as an alert on the owner page. Prepaid credit runs out; switching Google billing to Postpay or turning on auto-reload keeps downloads from stopping.
