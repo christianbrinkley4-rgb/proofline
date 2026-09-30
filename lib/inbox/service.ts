@@ -4,11 +4,11 @@ import { db, schema } from "@/lib/db";
 
 /**
  * Messages the owner reads straight from the database (table inbox_message):
- * in-app feedback, the public contact form, and password-reset links when no
- * email provider is configured. Nothing here is emailed or sent anywhere else.
+ * in-app feedback, the public contact form, password-reset links when no
+ * email provider is configured, and alerts from scheduled checks. Nothing here is emailed or sent anywhere else.
  */
 
-export type InboxKind = "feedback" | "contact" | "password_reset";
+export type InboxKind = "feedback" | "contact" | "password_reset" | "alert";
 
 export const FeedbackMessage = z.object({
   message: z.string().trim().min(3, "Write a few words first.").max(4000, "Keep it under 4,000 characters."),
@@ -22,7 +22,7 @@ export const ContactMessage = z.object({
 });
 
 /** Keeps one person, or one address on the public form, from flooding the inbox. */
-const DAILY_LIMIT: Record<InboxKind, number> = { feedback: 40, contact: 5, password_reset: 5 };
+const DAILY_LIMIT: Record<InboxKind, number> = { feedback: 40, contact: 5, password_reset: 5, alert: 10 };
 
 async function sentToday(kind: InboxKind, by: { userId?: string; email?: string }) {
   const since = new Date(Date.now() - 864e5);
@@ -74,6 +74,18 @@ export async function savePasswordResetForOwner(user: { id: string; email: strin
   return row;
 }
 
-export async function listInbox(kind: InboxKind, limit = 100) {
-  return db.query.inboxMessage.findMany({ where: eq(schema.inboxMessage.kind, kind), orderBy: [desc(schema.inboxMessage.createdAt)], limit });
+/** A problem a scheduled check found, for the owner inbox. */
+export async function saveOwnerAlert(message: string) {
+  if ((await sentToday("alert", {})) >= DAILY_LIMIT.alert) return null;
+  const [row] = await db.insert(schema.inboxMessage).values({ kind: "alert", message: message.slice(0, 2000) }).returning();
+  return row;
+}
+
+export async function listInbox(kind: InboxKind, limit = 100, withinHours?: number) {
+  const since = withinHours ? new Date(Date.now() - withinHours * 3_600_000) : null;
+  return db.query.inboxMessage.findMany({
+    where: since ? and(eq(schema.inboxMessage.kind, kind), gte(schema.inboxMessage.createdAt, since)) : eq(schema.inboxMessage.kind, kind),
+    orderBy: [desc(schema.inboxMessage.createdAt)],
+    limit,
+  });
 }

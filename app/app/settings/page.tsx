@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Database, Palette, Puzzle, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Database, Inbox, Palette, Puzzle, ShieldCheck, UserRound } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { YourData } from "@/components/settings/your-data";
 import { ThemeChoice } from "@/components/theme/theme-choice";
 import { requireSession } from "@/lib/auth";
 import { getProfile } from "@/lib/kb/profile";
+import { isOwner } from "@/lib/owner";
 import { PRIVACY_POINTS } from "@/lib/privacy";
 import { formatMonth } from "@/lib/resume/parse/dates";
 
@@ -25,6 +26,13 @@ export default async function SettingsPage() {
   return (
     <PageBody className="max-w-4xl">
       <PageHeader title="Settings" description="Your account, what we use to check knockouts, and your data." />
+      {isOwner(session.user.email) && (
+        <Link href="/app/owner" className="mt-6 flex min-h-11 items-center gap-2 rounded-xl border border-dashed bg-muted/40 px-4 text-[13.5px] font-medium hover:bg-muted">
+          <Inbox className="size-4" />
+          Owner page: reset requests, feedback, and system checks
+          <ArrowRight className="ml-auto size-3.5" />
+        </Link>
+      )}
       <section className="mt-8 rounded-xl border bg-background p-5 sm:p-6">
         <div className="flex items-center gap-2">
           <UserRound className="size-4 text-brand" />

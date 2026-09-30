@@ -17,8 +17,12 @@ export async function sendEmail(message: { to: string; subject: string; text: st
       body: JSON.stringify({ from: process.env.EMAIL_FROM!.trim(), to: [message.to], subject: message.subject, text: message.text }),
       signal: AbortSignal.timeout(10_000),
     });
-    return response.ok ? "sent" : "failed";
-  } catch {
+    if (response.ok) return "sent";
+    // Resend's error names the problem (unverified domain, bad key); it never echoes the key.
+    console.error(`[email] Resend HTTP ${response.status}: ${(await response.text().catch(() => "")).slice(0, 300)}`);
+    return "failed";
+  } catch (error) {
+    console.error("[email] Resend request failed:", error instanceof Error ? error.message : String(error));
     return "failed";
   }
 }

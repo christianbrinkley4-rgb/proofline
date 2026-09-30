@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { cronAuthorized } from "@/lib/cron-auth";
 import { dbReady } from "@/lib/db";
 import { refreshDue } from "@/lib/jobs/saved";
 
@@ -12,16 +12,8 @@ import { refreshDue } from "@/lib/jobs/saved";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-function authorized(header: string | null): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || !header) return false;
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const given = Buffer.from(header);
-  return expected.length === given.length && timingSafeEqual(expected, given);
-}
-
 export async function GET(request: Request) {
-  if (!authorized(request.headers.get("authorization"))) return new Response("Unauthorized", { status: 401 });
+  if (!cronAuthorized(request.headers.get("authorization"))) return new Response("Unauthorized", { status: 401 });
   await dbReady;
   // Stop starting new searches before the 300-second function limit.
   const refreshed = await refreshDue({ limit: 20, deadline: new Date(Date.now() + 210_000) });

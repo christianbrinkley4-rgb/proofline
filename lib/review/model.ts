@@ -94,13 +94,18 @@ export function settleVerdict(output: z.infer<typeof Output>, resumeText: string
   return output.verdict === "FAIL" && issues.length ? { status: "fail", issues } : { status: "pass", issues: [] };
 }
 
-export async function modelReview(userId: string, input: { requirements: string; resumeText: string; facts: string[] }): Promise<ModelReview> {
+export async function modelReview(
+  userId: string,
+  input: { requirements: string; resumeText: string; facts: string[] },
+  /** The owner's health check sends made-up data and is not charged to any account. */
+  opts: { chargeAccount?: boolean } = {},
+): Promise<ModelReview> {
   const key = process.env.PROOFLINE_REVIEW_KEY?.trim();
   const model = process.env.PROOFLINE_REVIEW_MODEL?.trim() || DEFAULT_REVIEW_MODEL;
   if (!key) return { status: "unavailable", issues: [], model: null, message: "AI review is temporarily unavailable. Your checks above still ran." };
 
   try {
-    await reserveModelCredits(userId, "review.gate");
+    if (opts.chargeAccount !== false) await reserveModelCredits(userId, "review.gate");
   } catch (error) {
     if (error instanceof ModelQuotaError) return { status: "limit", issues: [], model, message: `${error.message} Your checks above still ran.` };
     return { status: "error", issues: [], model, message: "AI review couldn't start. Try again in a minute." };

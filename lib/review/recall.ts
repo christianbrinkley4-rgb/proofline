@@ -66,12 +66,18 @@ export function validateRecallWording(parts: RecallParts, text: string): string 
   return clean;
 }
 
-export async function reviewRecallWording(userId: string, parts: RecallParts, mode: RecallReviewMode = "model"): Promise<RecallWordingReview> {
+export async function reviewRecallWording(
+  userId: string,
+  parts: RecallParts,
+  mode: RecallReviewMode = "model",
+  /** The owner's health check sends made-up answers and is not charged to any account. */
+  opts: { chargeAccount?: boolean } = {},
+): Promise<RecallWordingReview> {
   const key = process.env.PROOFLINE_REVIEW_KEY?.trim();
   // A person may explicitly choose the basic check. Never present it as AI review.
   if (mode === "rules" || !key) return basicWordingReview(parts);
   const model = process.env.PROOFLINE_REVIEW_MODEL?.trim() || DEFAULT_REVIEW_MODEL;
-  try { await reserveModelCredits(userId, "recall.wording"); }
+  try { if (opts.chargeAccount !== false) await reserveModelCredits(userId, "recall.wording"); }
   catch (error) { return { ok: false, fallbackAvailable: error instanceof ModelQuotaError, error: error instanceof ModelQuotaError ? error.message : "The wording review could not start. Try again." }; }
   const base = (process.env.PROOFLINE_REVIEW_BASE_URL?.trim() || "https://generativelanguage.googleapis.com").replace(/\/$/, "");
   const input = JSON.stringify(parts);

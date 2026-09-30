@@ -660,7 +660,7 @@ export const inboxMessage = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     /** Null for the public contact form. Deleting the account deletes its messages. */
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-    /** "feedback", "contact", or "password_reset". */
+    /** "feedback", "contact", "password_reset", or "alert". */
     kind: text("kind").notNull(),
     email: text("email"),
     name: text("name"),
