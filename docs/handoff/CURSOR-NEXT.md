@@ -2,7 +2,7 @@
 
 ## September 30 owner's report (live)
 
-The extension's "Couldn't reach Proofline", duplicate schools after a resume import, and the confusing Add some facts card (now Find more resume lines) are fixed and deployed (latest `dpl_2jbu7ACbSJHo8WMqb6B3BybXNgn6`), along with posting-reading and resume-checker bugs found by walking a new account through import, fit, tailoring, and the answer kit. Details and the posting-reading fixes found on the way are in `docs/PLAN.md` under "owner's report". Testers don't need a new extension zip; Try again on the badge (or reloading the job page) works. Duplicate schools already saved in an account stay until deleted on My facts.
+The extension's "Couldn't reach Proofline", duplicate schools after a resume import, and the confusing Add some facts card (now Find more resume lines) are fixed and deployed (latest `dpl_8VajmD1FED1kDRjcWv8ebBt3n3ww`), along with posting-reading and resume-checker bugs found by walking a new account through import, fit, tailoring, and the answer kit, and Find jobs ranking, the LinkedIn kit, and the free check found on the owner's live account. Details and the posting-reading fixes found on the way are in `docs/PLAN.md` under "owner's report". Testers don't need a new extension zip; Try again on the badge (or reloading the job page) works. Duplicate schools already saved in an account stay until deleted on My facts.
 
 ## September 30 go-live setup
 

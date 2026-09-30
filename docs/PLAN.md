@@ -16,6 +16,17 @@ Found while walking through as a new user: a posting line "Proficient in Excel; 
 
 Carrying the same account through to a tailored resume and the answer kit found four more, fixed and deployed as `dpl_2jbu7ACbSJHo8WMqb6B3BybXNgn6`: a current role's "Met with" became "Meet with" and failed the resume's own action-verb check (client-facing verbs such as Met, Consulted, Sold, Networked are now action verbs); the resume's own "  |  " separator between GPA and honors was flagged as a stray space; matching the posting's wording lowercased "QuickBooks" to "Quickbooks"; and Make it stronger rejected "Reconciled client premium payments..." for the lowercase keyword "account reconciliation" (case mismatch; the skill is now saved as "Account reconciliation"). Resumes built before a fix keep their old text until facts change and they're rebuilt.
 
+Signed in to the owner's live account (read-only; nothing saved as him), a third round found and fixed, deployed as `dpl_8VajmD1FED1kDRjcWv8ebBt3n3ww`:
+
+- **Find jobs ranked unrelated work beside accounting.** Social Media, Level Design, Data Science, and PhD research internships scored 66 to 71 for an accounting student because postings with no listed skills got fixed neutral points. `fieldFit` (lib/fit/engine.ts) now scales those points by how close the work is to what the person studies and has done (`NEAR_FAMILIES`; engineering, scientist, and design titles need that background). Experience relevance counts a same-field major (12 of 15) and caps work outside the person's field at 5. Education points are unchanged so no one is marked down for a degree a job doesn't ask for. A first feed with no target roles starts from the major (Accounting opens on "accounting, finance"): 13 relevant listings instead of 229 mixed ones.
+- **PhD- and MBA-only internships** are a "Degree program" knockout (`program` in lib/fit/knockouts.ts) when the title or a requirement limits them and the latest degree isn't one; the row appears only on those postings.
+- **Places** read "Cary, NC" and "New York, NY • Stamford, CT" (`tidyLocation`), on cards and at ingest.
+- **LinkedIn kit** no longer pastes old follow-up answers ("Volume: 40 a month (Bankers Life)", "Tools used (…): Excel,quickbooks") or a restated title into descriptions (`isProfileLine`), and the About leads with the strongest line.
+- **Free check** finds em dashes in the pasted text (its rebuilt copy lost them) and tells a visitor to add a phone under their name, not "in Settings". Signed-in advice points to Edit contact details on My facts.
+- Copy: the Jobs page and empty tracker no longer repeat themselves; the privacy note describes Find more resume lines without X/Y/Z.
+
+The owner-page AI check passed on the live deployment with prompt `recall-wording.v3` (0.9s).
+
 ## September 30 accessibility audit (WCAG 2.1 AA)
 
 `node scripts/a11y-audit.mjs` runs axe-core (WCAG 2.1 A and AA plus best practices) on all 23 pages, public ones signed out and app ones signed in with a real job, kit, packet, resume, and guide. It covers light and dark, desktop and 375px. It also tabs through each page to check every stop shows focus, measures tap targets against 24px, and checks for horizontal overflow; `--sizes narrow` adds the 320px reflow width. The first run found six kinds of issue; the final run found none on all 88 page, theme, and size combinations, and none at 320px. Fixed:
