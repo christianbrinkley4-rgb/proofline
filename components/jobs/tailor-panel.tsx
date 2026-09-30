@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, CircleAlert, Download, Info, LoaderCircle, Lock, Minus, Pencil, RefreshCw, Scissors, SquareKanban } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, CircleAlert, Download, Info, LoaderCircle, Lock, Minus, Pencil, RefreshCw, Scissors, SquareKanban } from "lucide-react";
 import { toast } from "sonner";
 import { editLineAction, rerunReviewAction, shareResumeAction, stopSharingAction, tailorJobAction } from "@/app/app/jobs/[id]/tailor-actions";
 import { trackJobAction } from "@/app/app/tracker/actions";
@@ -365,7 +365,50 @@ function ReviewList({
   reviewing: boolean;
 }) {
   const checks = [...resume.linter].sort((a, b) => Number(a.passed) - Number(b.passed) || SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  // What needs attention (and notes worth reading) stays open; checks that passed fold into one line.
+  const open = checks.filter((c) => !c.passed || c.severity === "INFO");
+  const passed = checks.filter((c) => c.passed && c.severity !== "INFO");
   const model = resume.model;
+  const row = (c: LintCheck) => (
+    <li key={c.id} className="p-3">
+      <div className="flex gap-2.5">
+        {c.passed ? (
+          c.severity === "INFO" ? <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> : <Dot tone="pass" />
+        ) : c.severity === "BLOCKING" ? (
+          <Minus className="mt-0.5 size-4 shrink-0 text-destructive" />
+        ) : (
+          <CircleAlert className="mt-0.5 size-4 shrink-0 text-pending" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 text-[13px] font-medium">
+            {c.label}
+            <span
+              className={cn(
+                "rounded px-1 py-px text-[10.5px] font-semibold tracking-wide",
+                c.passed || c.severity === "INFO" ? "bg-muted text-muted-foreground" : c.severity === "BLOCKING" ? "bg-destructive/10 text-destructive" : "bg-pending-soft text-pending-ink",
+              )}
+            >
+              {c.severity}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[12.5px] leading-5 text-muted-foreground">{c.detail}</p>
+          {!c.passed &&
+            c.failures.slice(0, 5).map((quote) => (
+              <div key={quote} className="mt-1.5 rounded-md bg-muted/60 p-2 text-[12.5px] leading-5">
+                <blockquote className="border-l-2 border-pending pl-2 break-words">&ldquo;{quote}&rdquo;</blockquote>
+                <div className="mt-1 flex gap-3">
+                  <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => showOnPage(quote)}>
+                    Show on page
+                  </button>
+                  <FixLink quote={quote} fixHref={fixHref} editHere={editHere} canEditHere={canEditHere} />
+                </div>
+              </div>
+            ))}
+          {!c.passed && c.failures.length > 5 && <p className="mt-1 text-[12px] text-muted-foreground">And {c.failures.length - 5} more.</p>}
+        </div>
+      </div>
+    </li>
+  );
   return (
     <>
       <div className={cn("rounded-lg border p-3", resume.canExport ? "border-brand/40 bg-brand-soft/50" : "border-pending/40 bg-pending-soft/50")}>
@@ -412,43 +455,20 @@ function ReviewList({
         ))}
       </section>
 
-      <ul className="divide-y rounded-lg border">
-        {checks.map((c) => (
-          <li key={c.id} className="p-3">
-            <div className="flex gap-2.5">
-              {c.passed ? (
-                c.severity === "INFO" ? <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" /> : <Dot tone="pass" />
-              ) : c.severity === "BLOCKING" ? (
-                <Minus className="mt-0.5 size-4 shrink-0 text-destructive" />
-              ) : (
-                <CircleAlert className="mt-0.5 size-4 shrink-0 text-pending" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5 text-[13px] font-medium">
-                  {c.label}
-                  <span className={cn("rounded px-1 py-px text-[10.5px] font-semibold tracking-wide", c.severity === "BLOCKING" ? "bg-destructive/10 text-destructive" : c.severity === "WARN" ? "bg-pending-soft text-pending-ink" : "bg-muted text-muted-foreground")}>
-                    {c.severity}
-                  </span>
-                </div>
-                <p className="mt-0.5 text-[12.5px] leading-5 text-muted-foreground">{c.detail}</p>
-                {!c.passed &&
-                  c.failures.slice(0, 5).map((quote) => (
-                    <div key={quote} className="mt-1.5 rounded-md bg-muted/60 p-2 text-[12.5px] leading-5">
-                      <blockquote className="border-l-2 border-pending pl-2 break-words">&ldquo;{quote}&rdquo;</blockquote>
-                      <div className="mt-1 flex gap-3">
-                        <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => showOnPage(quote)}>
-                          Show on page
-                        </button>
-                        <FixLink quote={quote} fixHref={fixHref} editHere={editHere} canEditHere={canEditHere} />
-                      </div>
-                    </div>
-                  ))}
-                {!c.passed && c.failures.length > 5 && <p className="mt-1 text-[12px] text-muted-foreground">And {c.failures.length - 5} more.</p>}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {open.length > 0 && <ul className="divide-y rounded-lg border">{open.map(row)}</ul>}
+
+      {passed.length > 0 && (
+        <details className="group rounded-lg border">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 px-3 text-[13px] font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+            <Dot tone="pass" />
+            <span className="flex-1">
+              {passed.length} {passed.length === 1 ? "check" : "checks"} passed
+            </span>
+            <ChevronDown className="size-4 text-subtle-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <ul className="divide-y border-t">{passed.map(row)}</ul>
+        </details>
+      )}
     </>
   );
 }
