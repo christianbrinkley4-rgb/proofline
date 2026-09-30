@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FactBase, FactRow, RoleBlock } from "@/lib/facts/base";
 import { findVoiceIssues } from "@/lib/voice/rules";
-import { ABOUT_PROMPT, buildLinkedInKit, LINKEDIN_LIMITS } from "./profile-kit";
+import { ABOUT_PROMPT, buildLinkedInKit, isProfileLine, LINKEDIN_LIMITS } from "./profile-kit";
 
 let n = 0;
 const row = (text: string, field: FactRow["field"] = null): FactRow => ({ id: `f${++n}`, text, field, label: "", verifiedAt: null, source: "user_stated" });
@@ -98,5 +98,29 @@ describe("LinkedIn profile kit", () => {
     expect(graduated.headline.startsWith("Staff Accountant Intern at Acme Health")).toBe(true);
     expect(graduated.headline.length).toBeLessThanOrEqual(LINKEDIN_LIMITS.headline);
     expect(graduated.about).toContain("I studied Accounting at State University.");
+  });
+});
+
+describe("lines that aren't for a LinkedIn description", () => {
+  const agent = role("Bankers Life", "Insurance Agent", "Apr 2026 to Present", [
+    "Was a insurance agent.",
+    "Logged my data in a CRM.",
+    "Volume: 40 a month (Bankers Life)",
+    "Tools used (Bankers Life): Excel,quickbooks",
+    "Explained features, advantages, and disadvantages of insurance policies to prospective customers",
+  ]);
+  const kit = buildLinkedInKit({ ...base, roles: [agent] }, { gradDate: "2027-05" }, today);
+
+  it("leaves out follow-up notes and a restated title, and keeps real lines", () => {
+    expect(isProfileLine("Volume: 40 a month (Bankers Life)")).toBe(false);
+    expect(isProfileLine("Tools used (Bankers Life): Excel,quickbooks")).toBe(false);
+    expect(isProfileLine("Was a insurance agent.")).toBe(false);
+    expect(isProfileLine("Logged my data in a CRM.")).toBe(true);
+    expect(kit.roles[0].description).not.toMatch(/Volume:|Tools used|Was a insurance/);
+    expect(kit.roles[0].bullets).toBe(2);
+  });
+
+  it("leads the About with the strongest line, not the first one", () => {
+    expect(kit.about).toContain("At Bankers Life, I explained features, advantages, and disadvantages");
   });
 });

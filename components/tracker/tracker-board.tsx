@@ -102,7 +102,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
         <div className="mt-7 rounded-xl border border-dashed px-6 py-14 text-center">
           <BriefcaseBusiness className="mx-auto size-8 text-subtle-foreground" strokeWidth={1.25} />
           <h2 className="mt-4 text-xl font-semibold tracking-tight">Nothing tracked yet.</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Track a job from its page, or add one you applied to elsewhere. Mark it Applied and a follow-up reminder is set for two weeks later.</p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Track a job from its page, or add one you applied to somewhere else.</p>
           <div className="mt-5 flex flex-wrap justify-center gap-2"><Button asChild><Link href="/app/jobs">Paste a job<ArrowRight data-icon="inline-end" /></Link></Button><Button variant="outline" onClick={() => setAdding(true)}>Add a role manually</Button></div>
         </div>
       ) : visible.length === 0 ? (
@@ -125,7 +125,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
       ) : (
         <ApplicationTable apps={visible} instant={instant} pending={pending} onOpen={(id) => setSelected(id)} onMove={move} onSent={markSent} />
       )}
-      <p className="mt-2 text-[12px] leading-5 text-subtle-foreground">Apply on the employer&apos;s site, then mark the role Applied here. A follow-up is due 14 days after you apply; you choose what to send.</p>
+      {apps.length > 0 && <p className="mt-2 text-[12px] leading-5 text-subtle-foreground">Proofline never applies for you. Apply on the employer&apos;s site, then mark the role Applied here; you choose what to send when the follow-up comes due.</p>}
       <Dialog open={adding} onOpenChange={setAdding}><DialogContent><DialogHeader><DialogTitle>Add an application</DialogTitle><DialogDescription>A role from anywhere, all in one place.</DialogDescription></DialogHeader><AddApplication onDone={() => setAdding(false)} /></DialogContent></Dialog>
       <Sheet open={Boolean(active)} onOpenChange={(open) => { if (!open) setSelected(null); }}><SheetContent className="data-[side=right]:w-full sm:data-[side=right]:max-w-lg overflow-y-auto">
         {active && <ApplicationDetail key={active.id} app={active} insight={insights[active.id]} logs={activity.filter((item) => item.applicationId === active.id)} name={name} onClose={() => setSelected(null)} />}

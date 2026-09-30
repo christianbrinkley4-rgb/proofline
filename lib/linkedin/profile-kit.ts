@@ -1,4 +1,5 @@
 import type { FactBase, FactRow, RoleBlock } from "@/lib/facts/base";
+import { scoreBullet } from "@/lib/resume/bullet-score";
 import { dedupeSkills, hasNumber, skillName } from "@/lib/resume/polish";
 import { nearDuplicate } from "@/lib/resume/suggest";
 import { isActionVerb } from "@/lib/resume/verbs";
@@ -65,6 +66,19 @@ function byRecency(a: RoleBlock, b: RoleBlock): number {
   return end(b).localeCompare(end(a)) || (b.experience.startDate ?? "").localeCompare(a.experience.startDate ?? "");
 }
 
+/**
+ * Answers to older follow-up questions ("Volume: 40 a month (Acme)", "Tools used
+ * (Acme): Excel") and a bare restatement of the title ("Was a cashier.") are facts,
+ * but not lines to paste into a LinkedIn description.
+ */
+export function isProfileLine(text: string): boolean {
+  const line = text.trim();
+  if (/^(volume|result|results|tools used|frequency|how many|how often)\b[^:]{0,60}:/i.test(line)) return false;
+  if (/^about .{1,40} involved\b/i.test(line)) return false;
+  if (/^(i\s+)?(was|am|is|worked as)\s+(a|an|the)\s+[\w\s-]{1,40}\.?$/i.test(line)) return false;
+  return line.split(/\s+/).length >= 3;
+}
+
 function unique(items: string[]): string[] {
   const seen = new Set<string>();
   return items.map((i) => i.trim()).filter((i) => i && !seen.has(i.toLowerCase()) && seen.add(i.toLowerCase()));
@@ -99,7 +113,7 @@ export function buildLinkedInKit(base: FactBase, profile: KitProfile = {}, today
   const roles: LinkedInRole[] = recent
     .filter((r) => r.bullets.length || field(r.header, "title"))
     .map((r) => {
-      const bullets = distinctLines(r.bullets.map((b) => b.text));
+      const bullets = distinctLines(r.bullets.map((b) => b.text).filter(isProfileLine));
       return {
         id: r.experience.id,
         title: field(r.header, "title"),
@@ -130,8 +144,10 @@ export function buildLinkedInKit(base: FactBase, profile: KitProfile = {}, today
   const stories = [...recent]
     .sort((a, b) => rank(a) - rank(b))
     .map((r) => {
-      const lines = distinctLines(r.bullets.map((b) => b.text)).filter(opensWithVerb);
-      return { org: field(r.header, "org") || r.experience.org, line: lines.find(hasNumber) ?? lines[0] };
+      // The strongest line leads: a number first, then the one the bullet score rates highest.
+      const lines = distinctLines(r.bullets.map((b) => b.text).filter(isProfileLine)).filter(opensWithVerb);
+      const best = [...lines].sort((a, b) => Number(hasNumber(b)) - Number(hasNumber(a)) || scoreBullet(b).score - scoreBullet(a).score)[0];
+      return { org: field(r.header, "org") || r.experience.org, line: best };
     })
     .filter((s): s is { org: string; line: string } => Boolean(s.org && s.line))
     .slice(0, 2);

@@ -153,7 +153,7 @@ export function PasteJobBox({
                     `Keep going: paste the whole posting, duties and requirements included (${trimmed.length}/${MIN_TEXT} characters).`
                   : link
                   ? `Saving the link too: ${new URL(link).hostname}`
-                  : "You get the knockouts, a fit score with the math shown, and one tailored resume."}
+                  : "A link works, or paste the whole posting."}
           </p>
           <Button type="submit" size="lg" disabled={pending || (!asLink && !asText)}>
             {pending ? <LoaderCircle className="animate-spin" /> : null}
