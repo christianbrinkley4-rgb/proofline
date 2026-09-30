@@ -10,9 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { FactGroup } from "@/lib/facts/base";
 import { cn } from "@/lib/utils";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { ConfirmBox } from "./confirm-box";
 
 export type FactRowView = { id: string; text: string; label: string; field: string | null; verifiedAt: string | null };
+
+/** "Sep 29" this year, "Sep 2025" before that. Local time, so the day matches when they ticked the box. */
+function confirmedOn(iso: string, long = false) {
+  const date = new Date(iso);
+  const thisYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString("en-US", long ? { month: "long", day: "numeric", year: thisYear ? undefined : "numeric" } : thisYear ? { month: "short", day: "numeric" } : { month: "short", year: "numeric" });
+}
 
 function useAction() {
   const router = useRouter();
@@ -47,6 +55,11 @@ export function FactRow({ fact, canDelete = true, multiline }: { fact: FactRowVi
         ) : (
           <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={600} className="mt-1 h-10" aria-label="Edit fact" />
         )}
+        {fact.verifiedAt && (
+          <p className="mt-2 text-[12px] text-subtle-foreground" suppressHydrationWarning>
+            You confirmed this on {confirmedOn(fact.verifiedAt, true)}. Saving a change confirms it again.
+          </p>
+        )}
         <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-2" />
         <div className="mt-1 flex flex-wrap gap-2">
           <Button
@@ -79,22 +92,33 @@ export function FactRow({ fact, canDelete = true, multiline }: { fact: FactRowVi
         {fact.label && <span className="mr-2 text-[12px] font-medium text-subtle-foreground">{fact.label}</span>}
         <span className="text-[14.5px] leading-6 break-words">{fact.text}</span>
       </div>
-      <div className="flex shrink-0 gap-0.5 opacity-100 sm:opacity-60 sm:group-hover:opacity-100">
+      {fact.verifiedAt && (
+        <time
+          dateTime={fact.verifiedAt}
+          title={`You confirmed this on ${confirmedOn(fact.verifiedAt, true)}`}
+          className="hidden shrink-0 pt-1 text-[12px] text-subtle-foreground tabular-nums sm:block"
+          suppressHydrationWarning
+        >
+          <span className="sr-only">Confirmed </span>
+          {confirmedOn(fact.verifiedAt)}
+        </time>
+      )}
+      <div className="flex shrink-0 gap-0.5 opacity-100 sm:opacity-60 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
         <Button size="icon-sm" variant="ghost" aria-label={`Edit: ${fact.text}`} onClick={() => setEditing(true)}>
           <Pencil />
         </Button>
         {canDelete && (
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            aria-label={`Delete: ${fact.text}`}
-            disabled={pending}
-            onClick={() => {
-              if (window.confirm(`Delete this fact?\n\n"${fact.text}"\n\nAnything built from it comes off your resumes.`)) run(() => deleteFactAction(fact.id), undefined, "Deleted.");
-            }}
+          <ConfirmDelete
+            title="Delete this fact?"
+            description="Anything built from it comes off your resumes."
+            quote={fact.text}
+            confirmLabel="Delete fact"
+            onConfirm={() => run(() => deleteFactAction(fact.id), undefined, "Deleted.")}
           >
-            {pending ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
-          </Button>
+            <Button size="icon-sm" variant="ghost" aria-label={`Delete: ${fact.text}`} disabled={pending}>
+              {pending ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
+            </Button>
+          </ConfirmDelete>
         )}
       </div>
     </li>
@@ -104,36 +128,34 @@ export function FactRow({ fact, canDelete = true, multiline }: { fact: FactRowVi
 export function DeleteRoleButton({ experienceId, name }: { experienceId: string; name: string }) {
   const { pending, run } = useAction();
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="text-muted-foreground"
-      disabled={pending}
-      onClick={() => {
-        if (window.confirm(`Delete ${name} and every fact under it?`)) run(() => deleteRoleAction(experienceId), undefined, `Deleted ${name}.`);
-      }}
+    <ConfirmDelete
+      title={`Delete ${name}?`}
+      description="Every fact under it goes too, and comes off your resumes."
+      confirmLabel="Delete all of it"
+      onConfirm={() => run(() => deleteRoleAction(experienceId), undefined, `Deleted ${name}.`)}
     >
-      <Trash2 data-icon="inline-start" />
-      Delete
-    </Button>
+      <Button size="sm" variant="ghost" className="text-muted-foreground" disabled={pending} aria-label={`Delete ${name}`}>
+        {pending ? <LoaderCircle className="animate-spin" data-icon="inline-start" /> : <Trash2 data-icon="inline-start" />}
+        Delete
+      </Button>
+    </ConfirmDelete>
   );
 }
 
 export function DeleteEducationButton({ entryId, name }: { entryId: string; name: string }) {
   const { pending, run } = useAction();
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="text-muted-foreground"
-      disabled={pending}
-      onClick={() => {
-        if (window.confirm(`Delete ${name} and every fact under it?`)) run(() => deleteEducationAction(entryId), undefined, `Deleted ${name}.`);
-      }}
+    <ConfirmDelete
+      title={`Delete ${name}?`}
+      description="Every fact under it goes too, and comes off your resumes."
+      confirmLabel="Delete all of it"
+      onConfirm={() => run(() => deleteEducationAction(entryId), undefined, `Deleted ${name}.`)}
     >
-      <Trash2 data-icon="inline-start" />
-      Delete
-    </Button>
+      <Button size="sm" variant="ghost" className="text-muted-foreground" disabled={pending} aria-label={`Delete ${name}`}>
+        {pending ? <LoaderCircle className="animate-spin" data-icon="inline-start" /> : <Trash2 data-icon="inline-start" />}
+        Delete
+      </Button>
+    </ConfirmDelete>
   );
 }
 
