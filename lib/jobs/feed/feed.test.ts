@@ -224,8 +224,8 @@ describe("refresh and load", () => {
 describe("a first feed with no target roles", () => {
   it("starts from the person's major, and leaves role keywords empty without one", () => {
     const base = { targetRoles: [], targetLocations: [], workModes: [], gradDate: "2027-06" };
-    expect(defaultFilters({ ...base, major: "Accounting" }).keywords).toBe("accounting");
-    expect(defaultFilters({ ...base, major: "Marketing" }).keywords).toBe("marketing");
+    expect(defaultFilters({ ...base, major: "Accounting" }).keywords).toBe("accounting, finance");
+    expect(defaultFilters({ ...base, major: "Marketing" }).keywords).toBe("marketing, sales");
     expect(defaultFilters({ ...base, major: "Art History" }).keywords).toBe("");
     expect(defaultFilters({ ...base, targetRoles: ["Audit intern"], major: "Accounting" }).keywords).toBe("Audit intern");
   });

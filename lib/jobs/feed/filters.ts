@@ -45,7 +45,11 @@ type ProfileForFilters = {
 function rolesFromMajor(major: string | null | undefined): string {
   if (!major?.trim()) return "";
   const families = familiesFor(major.toLowerCase().split(/[^a-z&]+/).filter(Boolean));
-  return families.length ? families.slice(0, 2).map((f) => f.triggers[0]).join(", ") : "";
+  // Majors whose students usually search a neighboring field too.
+  const RELATED: Record<string, string> = { accounting: "finance", finance: "accounting", marketing: "sales" };
+  const words = families.slice(0, 2).map((f) => f.triggers[0]);
+  const related = words.map((w) => RELATED[w]).find((w) => w && !words.includes(w));
+  return [...words, ...(related ? [related] : [])].join(", ");
 }
 
 /** Still in school, or graduating within the next year: lead with internships. */
