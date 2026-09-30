@@ -34,6 +34,7 @@ export type AgentEventType =
   | "signup"
   | "job_ingested"
   | "score_viewed"
+  | "extension_scored"
   | "tailor_completed"
   | "gate_passed"
   | "gate_failed"

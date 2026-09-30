@@ -161,3 +161,7 @@ footer a {
   font-weight: 500;
   text-decoration: none;
 }
+
+#disconnected .fine {
+  margin: 0 0 14px;
+}

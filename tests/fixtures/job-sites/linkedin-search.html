@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Jobs | LinkedIn (synthetic fixture)</title>
+<style>body{font-family:sans-serif;margin:0}.layout{display:flex;gap:24px;padding:24px}.list{width:320px}.list li{padding:8px;border-bottom:1px solid #ddd;cursor:pointer}.pane{flex:1}#msg{position:fixed;right:0;bottom:0;width:288px;height:48px;background:#eef}</style></head>
+<body>
+<!-- Synthetic page shaped like LinkedIn's signed-in job search (2025 markup). Not LinkedIn content. -->
+<header><h2>LinkedIn</h2></header>
+<main class="layout">
+  <ul class="list">
+    <li data-job="4011111111">Staff Accountant Intern · Acme Health</li>
+    <li data-job="4022222222">Tax Associate Intern · Birch &amp; Pine LLP</li>
+  </ul>
+  <div class="pane jobs-search__job-details--container">
+    <div class="job-details-jobs-unified-top-card__container--two-pane">
+      <div class="job-details-jobs-unified-top-card__company-name"><a href="#">Acme Health</a></div>
+      <div class="job-details-jobs-unified-top-card__job-title"><h1 class="t-24 t-bold inline"><a href="#">Staff Accountant Intern</a></h1></div>
+      <div class="job-details-jobs-unified-top-card__primary-description-container"><span class="tvm__text tvm__text--low-emphasis">Raleigh, NC</span> <span class="tvm__text">· 2 weeks ago</span></div>
+    </div>
+    <div class="jobs-description__content jobs-description-content">
+      <div class="jobs-box__html-content" id="job-details">
+        <h2 class="text-heading-large">About the job</h2>
+        <div class="mt4"><p>You will reconcile vendor accounts, record journal entries, and prepare month-end close schedules in QuickBooks and Excel. You'll work with the controller on accounts payable and help with the annual audit.</p>
+        <p><strong>Requirements</strong></p><ul><li>Currently pursuing a degree in accounting or finance</li><li>Experience with Excel, including pivot tables</li><li>Strong attention to detail</li></ul>
+        <p>This is a paid summer internship based in Raleigh, NC.</p></div>
+      </div>
+    </div>
+  </div>
+</main>
+<div id="msg">Messaging</div>
+<script>
+  const JOBS = {
+    "4022222222": { title: "Tax Associate Intern", company: "Birch & Pine LLP", place: "Alexandria, VA",
+      body: "<p>Prepare individual and partnership tax returns, research federal tax questions, and support the tax team during busy season. You'll use tax software and Excel every day.</p><p><strong>Qualifications</strong></p><ul><li>Pursuing a bachelor's degree in accounting</li><li>Open to students graduating in 2026</li><li>Proficient in Excel</li></ul><p>This role is onsite in Alexandria, VA.</p>" },
+  };
+  document.querySelectorAll(".list li").forEach((li) => li.addEventListener("click", () => {
+    const id = li.dataset.job;
+    history.pushState({}, "", `/jobs/search/?currentJobId=${id}&keywords=accounting`);
+    const job = JOBS[id];
+    if (!job) return;
+    // LinkedIn swaps the pane a moment after the address changes.
+    setTimeout(() => {
+      document.querySelector(".job-details-jobs-unified-top-card__job-title h1 a").textContent = job.title;
+      document.querySelector(".job-details-jobs-unified-top-card__company-name a").textContent = job.company;
+      document.querySelector(".tvm__text--low-emphasis").textContent = job.place;
+      document.querySelector("#job-details .mt4").innerHTML = job.body;
+    }, 350);
+  }));
+</script>
+</body>
+</html>

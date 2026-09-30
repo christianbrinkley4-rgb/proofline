@@ -55,7 +55,7 @@ export function ConnectExtension({ connected }: { connected: number }) {
           <Check className="size-4 text-brand" strokeWidth={3} aria-hidden="true" />
           This browser is connected.
         </p>
-        <p className="mt-1 text-[13.5px] leading-6 text-muted-foreground">Open a job posting or an application, then click the Proofline icon in your toolbar. You can close this tab.</p>
+        <p className="mt-1 text-[13.5px] leading-6 text-muted-foreground">Open a job on LinkedIn, Indeed, or Handshake and your fit score shows up beside it. On other sites and application forms, click the Proofline icon in your toolbar. You can close this tab.</p>
       </div>
     );
   }

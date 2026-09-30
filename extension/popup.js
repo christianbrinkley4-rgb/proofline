@@ -132,6 +132,8 @@ async function init() {
 
 $("connect").addEventListener("click", () => {
   const origin = $("use-local").checked ? LOCAL : BETA;
+  // So a "Sign in to see your fit" badge opens the same Proofline before the connection lands.
+  chrome.storage.local.set({ pendingOrigin: origin });
   chrome.tabs.create({ url: `${origin}/app/extension` });
   window.close();
 });
@@ -144,6 +146,7 @@ $("open").addEventListener("click", (e) => {
 });
 $("disconnect").addEventListener("click", async () => {
   await chrome.storage.local.remove(["token", "origin", "jobs"]);
+  await chrome.storage.session.clear();
   show("disconnected");
 });
 

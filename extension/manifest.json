@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Proofline",
   "short_name": "Proofline",
-  "version": "0.1.0",
-  "description": "Save job postings to Proofline and fill application forms from your confirmed profile. You review every field; it never submits for you.",
+  "version": "0.2.0",
+  "description": "Your fit score on LinkedIn, Indeed, and Handshake jobs, from facts you confirmed in Proofline. Save jobs and fill basic fields.",
   "action": {
     "default_title": "Proofline",
     "default_popup": "popup.html",
@@ -17,6 +17,11 @@
     {
       "matches": ["https://proofline-beta.vercel.app/app/extension*", "http://localhost:3000/app/extension*"],
       "js": ["connect.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.linkedin.com/*", "https://*.indeed.com/*", "https://*.joinhandshake.com/*"],
+      "js": ["sites.js"],
       "run_at": "document_idle"
     }
   ]

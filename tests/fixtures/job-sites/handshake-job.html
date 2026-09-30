@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Data Analyst Intern | Handshake (synthetic fixture)</title></head>
+<body>
+<!-- Synthetic page shaped like Handshake's job page. Not Handshake content. -->
+<div id="root"></div>
+<script>
+  // Handshake renders in the browser, a moment after the page loads.
+  setTimeout(() => {
+    document.getElementById("root").innerHTML = `
+      <main>
+        <div data-hook="job-details-page">
+          <a href="/e/12345">Blue Ridge Analytics</a>
+          <h1>Data Analyst Intern</h1>
+          <div data-hook="job-location">Remote</div>
+          <div><h2>Job description</h2><div>
+            <p>Clean and join datasets in SQL, build dashboards in Tableau, and present findings to the product team every two weeks. You'll help automate weekly reports with Python.</p>
+            <p>Qualifications</p><ul><li>Pursuing a degree in statistics, computer science, or economics</li><li>Experience with SQL and Python</li><li>Tableau is a plus</li></ul>
+          </div></div>
+        </div>
+      </main>`;
+  }, 700);
+</script>
+</body>
+</html>

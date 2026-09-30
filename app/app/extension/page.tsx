@@ -9,6 +9,7 @@ import { EXTENSION_TOKEN_NAME } from "@/lib/extension/service";
 export const metadata: Metadata = { title: "Browser extension" };
 
 const DOES = [
+  "Shows your fit score on job postings on LinkedIn, Indeed, and Handshake. Click it for knockouts first, then the math behind the score.",
   "Saves the job posting you're looking at, with its fit score, in one click.",
   "Fills your name, contact details, school, degree, and links into an application form, and highlights every field it touched so you can check it.",
   "Marks the job Applied on your tracker when you tell it you submitted.",
@@ -17,7 +18,8 @@ const DOES = [
 const NEVER = [
   "Clicks submit or sends anything for you.",
   "Answers questions about work authorization, demographics, or anything you haven't told Proofline.",
-  "Reads pages you don't open it on.",
+  "Reads your messages, your profile on a job site, or your other tabs. On LinkedIn, Indeed, and Handshake it reads only the job posting on screen.",
+  "Keeps postings you only look at. A job is saved to Proofline only when you choose to save it.",
 ];
 
 export default async function ExtensionPage() {
@@ -25,7 +27,7 @@ export default async function ExtensionPage() {
   const connected = (await listTokens(session.user.id)).filter((t) => t.name === EXTENSION_TOKEN_NAME).length;
   return (
     <PageBody className="max-w-3xl">
-      <PageHeader title="Browser extension" description="Less typing on application forms, and your tracker stays current. You stay in charge of what gets sent." />
+      <PageHeader title="Browser extension" description="Your fit score where you already look for jobs, less typing on application forms, and a tracker that stays current. Scores use only facts you've already confirmed. Nothing new is collected." />
       <div className="mt-8">
         <ConnectExtension connected={connected} />
       </div>

@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { POST as appliedRoute } from "@/app/api/extension/applied/route";
 import { POST as jobsRoute } from "@/app/api/extension/jobs/route";
 import { GET as profileRoute } from "@/app/api/extension/profile/route";
+import { POST as scoreRoute } from "@/app/api/extension/score/route";
 import { createToken, revokeToken } from "@/lib/agent/tokens";
 import { db, dbReady, schema } from "@/lib/db";
 import { updateProfile } from "@/lib/kb/profile";
@@ -73,5 +74,33 @@ describe("browser extension API", () => {
     await revokeToken(userId, row.id);
     expect((await profileRoute(call("/api/extension/profile", {}, other))).status).toBe(401);
     expect((await profileRoute(new Request("http://localhost:3000/api/extension/profile"))).status).toBe(401);
+  });
+
+  it("scores a posting on a job site the same way as a saved job, and stores nothing", async () => {
+    const posting = { ...POSTING, title: "Tax Associate Intern", description: `${POSTING.description} Open to students graduating in 2026.` };
+    const jobsBefore = (await db.select().from(schema.job)).length;
+    const res = await scoreRoute(call("/api/extension/score", { method: "POST", body: JSON.stringify(posting) }));
+    const body = await res.json();
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(body).toMatchObject({ ok: true, ready: false, factsUrl: "http://localhost:3000/app/facts" });
+    expect((await db.select().from(schema.job)).length).toBe(jobsBefore);
+
+    // Knockouts come first and on their own: this one is for 2026 graduates, and Jordan graduates in 2028.
+    expect(body.knockouts[0]).toMatchObject({ label: "Graduation date", status: "knockout" });
+    expect(body.knockouts.every((k: { status: string }) => k.status !== "ok")).toBe(true);
+    // The math adds up to the score, component by component.
+    expect(body.components.map((c: { label: string }) => c.label)).toEqual(["Required skills", "Experience relevance", "Education and qualifications", "Preferred skills", "Posting keyword overlap", "Location and work mode"]);
+    expect(body.components.reduce((sum: number, c: { points: number }) => sum + c.points, 0)).toBe(body.score);
+    expect(body.components[0].math).toMatch(/^30 × \d+\/\d+ = \d+$|neutral/);
+
+    const saved = await (await jobsRoute(call("/api/extension/jobs", { method: "POST", body: JSON.stringify(posting) }))).json();
+    expect(saved.fit).toBe(body.score);
+  });
+
+  it("asks for a sign-in, or a fuller posting, before it scores", async () => {
+    expect((await scoreRoute(call("/api/extension/score", { method: "POST", body: JSON.stringify(POSTING) }, "pl_not-a-real-token"))).status).toBe(401);
+    const thin = await scoreRoute(call("/api/extension/score", { method: "POST", body: JSON.stringify({ ...POSTING, description: "Short." }) }));
+    expect(thin.status).toBe(400);
+    expect((await thin.json()).error).toBe("Couldn't find the full description.");
   });
 });
