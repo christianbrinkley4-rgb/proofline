@@ -35,7 +35,8 @@ The extension can send requests only to the origins in `host_permissions` (the b
 
 ## Develop
 
-- Load `extension/` unpacked from `chrome://extensions` with Developer mode on. Tick "Use a local dev server" in the popup to connect to `localhost:3000`.
+- Load `extension/` unpacked from `chrome://extensions` (or `edge://extensions`) with Developer mode on.
+- `node scripts/check-extension.mjs` runs every badge check against the fixtures in Playwright's Chromium; add `--browser edge` to run it in the installed Microsoft Edge (passes on Edge 154) in a fresh profile. Tick "Use a local dev server" in the popup to connect to `localhost:3000`.
 - Manual form check: serve `tests/fixtures/extension-form.html`, run `page-scripts.js` in its console, call `extractPosting()` and `fillForm(profile)`. Expect 7 fields filled and the company, employer, GitHub, sponsorship, gender, prefilled, and hidden fields left alone.
 - After changing anything here, run `npm run extension:build`. It renders the icons from `app/icon.svg` and rebuilds `public/proofline-extension.zip`, which the Connect page offers for download.
 

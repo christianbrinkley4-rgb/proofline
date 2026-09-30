@@ -43,7 +43,7 @@ Live check signed in to LinkedIn and Handshake (the owner signed in; the agent r
 - Handshake's search page has its own `h1` "Jobs", which the old fallback would have taken as the title. The badge now reads the job pane (`right-content`, or `job-details-page` on a job's own page): title, employer, place ("Onsite, based in Bedford, TX" becomes Bedford, TX; several places keep the first), At a glance (which carries "US work authorization required" for the knockout check), the description, and the listed qualifications, without Handshake's profile-match lines or AI summary. Handshake shows only about 450 of 1,800 characters until More is clicked and keeps no full copy in the page, so the panel says the score uses part of the description and rescores about 400ms after More. The extension doesn't click it or call Handshake's private data API.
 - New fixtures (`linkedin-2026.html`, and `handshake-job.html` rebuilt on the live structure) keep these in the check, which passes: badges in 258 to 309ms on LinkedIn and Indeed, Handshake 1.2 to 1.4s including its fixture's 700ms render, and a cached revisit in 13ms. 772 tests, typecheck, lint.
 
-Still for the owner: load the zip in Edge once, and decide whether the store screenshots may show a real employer's LinkedIn posting.
+Edge: `node scripts/check-extension.mjs --browser edge` loads the unpacked extension in the installed Microsoft Edge 154 (fresh profile) and every check passes. Store screenshots were retaken on a made-up posting with fictional employers and no real site's branding (`docs/extension-store/source/posting.html`, `scripts/store-screenshots.mjs`), including one with a graduation knockout. Publishing is the only step left for the owner.
 
 ## September 29 new-task discovery across careers
 

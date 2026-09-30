@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Staff Accountant Intern at Cedar Row Health</title>
+<!--
+  A made-up job page for the store screenshots: a fictional employer and posting, and a
+  neutral layout that copies no real job site's name or branding. It uses the element
+  names the extension reads on Indeed, so the real badge scores it.
+  ?job=knockout swaps in a posting limited to 2026 graduates to show a knockout.
+-->
+<style>
+  :root { --ink: #1d2327; --muted: #5b646b; --line: #e3e7ea; --soft: #f5f7f8; --link: #2a5b84; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .top { display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 32px; border-bottom: 1px solid var(--line); }
+  .search { display: flex; flex: 1; max-width: 620px; height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); color: var(--muted); align-items: center; padding: 0 14px; font-size: 14px; }
+  .search b { color: var(--ink); font-weight: 500; margin-right: 18px; }
+  .dot { width: 28px; height: 28px; border-radius: 50%; background: #d6dde2; margin-left: auto; }
+  .wrap { display: grid; grid-template-columns: 330px 1fr; gap: 0; height: calc(100vh - 60px); }
+  .list { border-right: 1px solid var(--line); overflow: hidden; }
+  .card { padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  .card.on { background: var(--soft); box-shadow: inset 3px 0 0 var(--link); }
+  .card h3 { margin: 0; font-size: 15px; color: var(--link); }
+  .card p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; }
+  .detail { padding: 28px 460px 28px 40px; overflow: hidden; }
+  .logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: #e4efe9; color: #2f6b52; font-weight: 700; }
+  h1 { margin: 14px 0 4px; font-size: 26px; line-height: 1.2; }
+  .meta { color: var(--muted); font-size: 14px; }
+  .company { color: var(--ink); font-weight: 600; }
+  .chips { display: flex; gap: 8px; margin: 14px 0 18px; }
+  .chips span { padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; }
+  .apply { display: inline-block; padding: 9px 18px; border-radius: 10px; background: var(--link); color: #fff; font-weight: 600; font-size: 14px; }
+  h2 { margin: 26px 0 8px; font-size: 17px; }
+  #jobDescriptionText p, #jobDescriptionText li { color: #2f383e; }
+  #jobDescriptionText ul { margin: 6px 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+  <div class="top"><div class="search"><b>staff accountant</b> Raleigh, NC</div><div class="dot"></div></div>
+  <div class="wrap">
+    <div class="list">
+      <div class="card on"><h3 id="card-title">Staff Accountant Intern</h3><p id="card-company">Cedar Row Health</p><p id="card-place">Raleigh, NC · Hybrid</p></div>
+      <div class="card"><h3>Accounts Payable Assistant</h3><p>Maple Street Foods</p><p>Durham, NC</p></div>
+      <div class="card"><h3 id="other-title">Junior Tax Associate</h3><p id="other-company">Lindgren &amp; Ortiz CPAs</p><p id="other-place">Cary, NC</p></div>
+      <div class="card"><h3>Finance Intern</h3><p>Brightwater Logistics</p><p>Remote</p></div>
+      <div class="card"><h3>Payroll Specialist</h3><p>Oakhurst Schools</p><p>Chapel Hill, NC</p></div>
+    </div>
+    <div class="detail">
+      <div class="logo" id="logo">CR</div>
+      <h1 data-testid="jobsearch-JobInfoHeader-title" id="title">Staff Accountant Intern</h1>
+      <div class="meta"><span class="company" data-testid="inlineHeader-companyName" id="company">Cedar Row Health</span> · <span data-testid="inlineHeader-companyLocation" id="place">Raleigh, NC</span></div>
+      <div class="chips" id="chips"></div>
+      <span class="apply">Apply</span>
+      <h2>About the role</h2>
+      <div id="jobDescriptionText"></div>
+    </div>
+  </div>
+<script>
+  const JOBS = {
+    fit: {
+      title: "Staff Accountant Intern", company: "Cedar Row Health", logo: "CR", place: "Raleigh, NC", mode: "Hybrid",
+      chips: ["Hybrid", "Paid internship", "Summer 2027"], other: ["Junior Tax Associate", "Lindgren & Ortiz CPAs", "Cary, NC"],
+      body: `<p>Join our finance team for the summer. You'll reconcile vendor accounts, record journal entries, and help prepare month-end close schedules in QuickBooks and Excel.</p>
+        <p><b>Requirements</b></p>
+        <ul><li>Pursuing a degree in accounting or finance</li><li>Experience with Excel, including pivot tables</li><li>Strong attention to detail</li></ul>
+        <p>This paid internship is hybrid, based in Raleigh, NC.</p>`,
+    },
+    knockout: {
+      title: "Tax Associate Intern", company: "Lindgren & Ortiz CPAs", logo: "LO", place: "Cary, NC", mode: "Onsite",
+      chips: ["Onsite", "Paid internship", "Busy season 2027"], other: ["Staff Accountant Intern", "Cedar Row Health", "Raleigh, NC"],
+      body: `<p>Prepare individual and partnership tax returns, research federal tax questions, and support the tax team during busy season. You'll use tax software and Excel every day.</p>
+        <p><b>Qualifications</b></p>
+        <ul><li>Pursuing a bachelor's degree in accounting</li><li>Open to students graduating in 2026</li><li>Proficient in Excel</li></ul>
+        <p>This role is onsite in Cary, NC.</p>`,
+    },
+  };
+  const job = JOBS[new URLSearchParams(location.search).get("job") === "knockout" ? "knockout" : "fit"];
+  const fields = [["title", job.title], ["company", job.company], ["place", job.place], ["logo", job.logo], ["card-title", job.title], ["card-company", job.company],
+    ["card-place", `${job.place} · ${job.mode}`], ["other-title", job.other[0]], ["other-company", job.other[1]], ["other-place", job.other[2]]];
+  for (const [id, value] of fields) document.getElementById(id).textContent = value;
+  document.getElementById("chips").innerHTML = job.chips.map((c) => `<span>${c}</span>`).join("");
+  document.getElementById("jobDescriptionText").innerHTML = job.body;
+  document.title = `${job.title} at ${job.company}`;
+</script>
+</body>
+</html>

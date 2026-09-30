@@ -1,6 +1,6 @@
 # Chrome Web Store listing (draft)
 
-Publishing is the owner's decision. This is the copy to paste when that happens. The same text works for the Edge Add-ons store.
+Publishing is the owner's decision. This is the copy to paste when that happens. The same text works for the Edge Add-ons store; the extension passes the full check in Microsoft Edge 154 (`node scripts/check-extension.mjs --browser edge`).
 
 ## Name
 
@@ -56,9 +56,10 @@ https://proofline-beta.vercel.app/privacy (its "Browser extension" section cover
 
 ## Screenshots (1280 by 800, in this folder)
 
-1. `1-badge.png`: a LinkedIn job with the badge showing a score.
+1. `1-badge.png`: a job posting with the badge showing a score.
 2. `2-panel.png`: the open panel: knockouts, then the score math, then Open in Proofline.
-3. `3-signed-out.png`: the "Sign in to see your fit" badge.
-4. `4-panel-dark.png`: the panel in dark mode.
+3. `3-knockout.png`: a posting for 2026 graduates, with the graduation knockout listed first.
+4. `4-signed-out.png`: the "Sign in to see your fit" badge.
+5. `5-panel-dark.png`: the panel following the device's dark mode.
 
-They were taken on a public LinkedIn job page with a synthetic development profile. Retake them before submitting if the posting has closed, and decide whether you want a real employer's listing in store screenshots.
+They use the real extension on a made-up posting (`source/posting.html`): fictional employers, and a plain layout with no real job site's name or branding. Scores come from a synthetic development profile. Retake them with `node scripts/store-screenshots.mjs` (needs `npm run dev`) after changing the badge or panel.

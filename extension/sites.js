@@ -433,7 +433,7 @@
       ? `<ul>${r.knockouts
           .map((k) => `<li class="ko ${k.status === "knockout" ? "out" : ""}"><span class="ko-icon" aria-hidden="true">${k.status === "knockout" ? "✕" : "?"}</span><div><b>${esc(k.label)}.</b> <span>${esc(k.reason)}</span></div></li>`)
           .join("")}</ul>`
-      : '<p class="ok">None found: graduation date, work authorization, location, and start date all check out.</p>';
+      : '<p class="ok">Graduation date, work authorization, location, and start date all check out.</p>';
     const rows = r.components
       .map(
         (c) => `<li class="row"><div class="row-top"><span>${esc(c.label)}</span><span>${c.points} of ${c.max}</span></div>

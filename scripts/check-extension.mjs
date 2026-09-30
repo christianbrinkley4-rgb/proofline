@@ -2,11 +2,12 @@
 // local dev server: signed out, connect, the badge on each site, the panel, a
 // LinkedIn job switch without a reload, the unreadable fallback, and Open in Proofline.
 //
-//   node scripts/check-extension.mjs [--out .data/shots/extension] [--base http://localhost:3000]
+//   node scripts/check-extension.mjs [--browser chromium|edge] [--out .data/shots/extension] [--base http://localhost:3000]
 //
 // Needs `npm run dev` on localhost:3000 and `npm run extension:build` first (for the
-// icons). Uses Playwright's own Chromium, because branded Chrome and Edge no longer
-// load unpacked extensions from the command line. Signs in with the development login.
+// icons). Uses Playwright's own Chromium by default, because branded Chrome no longer
+// loads unpacked extensions from the command line; Edge still does (checked on Edge 154),
+// in a fresh profile that never touches the person's own. Signs in with the development login.
 import { mkdtempSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -33,12 +34,15 @@ const PAGES = {
   "https://uncg.joinhandshake.com/job-search/": "handshake-job.html",
 };
 
+const EDGE = process.env.EDGE_PATH ?? "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
+const browser = args.browser === "edge" ? { executablePath: EDGE } : { channel: "chromium" };
 const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "proofline-ext-")), {
   headless: true,
-  channel: "chromium",
+  ...browser,
   viewport: { width: 1280, height: 860 },
-  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, "--no-first-run"],
 });
+console.log(`Browser: ${context.browser()?.version() ?? (args.browser === "edge" ? "Edge" : "Chromium")}`);
 // The first-install tab points at the live beta; keep this run local.
 await context.route("https://proofline-beta.vercel.app/**", (route) => route.abort());
 for (const host of ["https://www.linkedin.com/**", "https://www.indeed.com/**", "https://app.joinhandshake.com/**", "https://uncg.joinhandshake.com/**"]) {
