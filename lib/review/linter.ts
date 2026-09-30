@@ -440,7 +440,7 @@ export function lintResume(input: LintInput): LintCheck[] {
     "contact_info_complete",
     "Email and phone at the top",
     "WARN",
-    contactMissing.length && contact.trim() ? fail([contact.trim()], `Your contact line has no ${contactMissing.join(" or ")}. Add it in onboarding details or Settings.`) : pass(contact.trim() ? "Email and phone are there." : "No contact line to check."),
+    contactMissing.length && contact.trim() ? fail([contact.trim()], `Your contact line has no ${contactMissing.join(" or ")}. Add it with Edit contact details on My facts.`) : pass(contact.trim() ? "Email and phone are there." : "No contact line to check."),
   );
 
   // ── Voice

@@ -79,3 +79,26 @@ describe("the public defend-every-line check", () => {
     expect(followUp(["12"])).toMatch(/count/);
   });
 });
+
+describe("the free check reads the resume as pasted", () => {
+  const pasted = [
+    "Jordan Lee",
+    "Greensboro, NC | jordan.lee@example.com",
+    "EDUCATION",
+    "UNC Greensboro — Bachelor of Science, Accounting    Dec 2026",
+    "EXPERIENCE",
+    "Licensed Insurance Agent | Bankers Life",
+    "April 2026 - Present",
+    "• Met with 40 clients a month to review retirement options",
+  ].join("\n");
+  const report = defendReport(parseResumeText(pasted), "", pasted);
+
+  it("finds an em dash the rebuilt copy would lose", () => {
+    expect(report.checks.find((c) => c.id === "no_em_dashes")).toMatchObject({ passed: false, evidence_quote: "UNC Greensboro — Bachelor of Science, Accounting    Dec 2026" });
+  });
+
+  it("gives contact advice that works without an account", () => {
+    const contact = report.checks.find((c) => c.id === "contact_info_complete");
+    expect(contact?.detail).toBe("Your contact line has no phone. Add it to the line under your name.");
+  });
+});

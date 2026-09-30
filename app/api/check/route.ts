@@ -45,5 +45,5 @@ export async function POST(request: Request) {
   if (!parsed.entries.some((e) => e.bullets.length)) {
     return fail("We couldn't find any bullet points. Put each job under an Experience heading with its bullets below it, or paste the text instead of uploading.", 422);
   }
-  return NextResponse.json<CheckResponse>({ ok: true, report: defendReport(parsed, jobText) }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json<CheckResponse>({ ok: true, report: defendReport(parsed, jobText, text) }, { headers: { "Cache-Control": "no-store" } });
 }
