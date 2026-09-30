@@ -6,6 +6,7 @@ import { addFact, listFacts, rejectFact, reviseFact, type Fact, type FactCategor
 import { getProfile, updateProfile } from "@/lib/kb/profile";
 import { scoreBullet } from "@/lib/resume/bullet-score";
 import { formatMonth } from "@/lib/resume/parse/dates";
+import { sameSchool } from "@/lib/resume/parse/education-tidy";
 
 /**
  * The fact base: the user's source of truth, and the only thing a resume may
@@ -292,6 +293,20 @@ export async function saveEducation(userId: string, entries: EducationEntryInput
     coursework: clean(entry.coursework ?? ""),
     details: (entry.details ?? []).map(clean).filter((line) => line.length > 1),
   })).filter((entry) => entry.school);
+  // The same degree sent twice (a resume imported again, a school typed twice)
+  // is one school: the copy only fills what the first left blank.
+  const unique: typeof cleaned = [];
+  for (const entry of [...cleaned.filter((e) => e.entryId), ...cleaned.filter((e) => !e.entryId)]) {
+    const key = (e: typeof entry) => ({ school: e.school, degree: e.degree || null, gradDate: e.gradDate || null });
+    const twin = entry.entryId ? undefined : unique.find((kept) => sameSchool(key(kept), key(entry)));
+    if (!twin) {
+      unique.push(entry);
+      continue;
+    }
+    for (const field of ["degree", "major", "gradDate", "gpa", "honors", "coursework"] as const) twin[field] ||= entry[field];
+    for (const line of entry.details) if (!twin.details.some((d) => d.toLowerCase() === line.toLowerCase())) twin.details.push(line);
+  }
+  cleaned.splice(0, cleaned.length, ...unique);
   if (!cleaned.length) throw new Error("Add your school.");
   if (cleaned.length > 6) throw new Error("Six schools is the limit. Remove one to add another.");
 

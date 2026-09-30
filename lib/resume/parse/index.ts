@@ -3,6 +3,7 @@ import mammoth from "mammoth";
 import { getLlm } from "@/lib/llm/provider";
 import { RESUME_PARSE_V1 } from "@/lib/llm/prompts/resume-parse.v1";
 import { docxHtmlLines, pdfPageLines } from "./layout-text";
+import { tidyEducation } from "./education-tidy";
 import { parseResumeText as parseRulesText } from "./rules";
 import { ParsedResumeSchema, type ParsedResume } from "./types";
 
@@ -87,7 +88,7 @@ export async function parseResumeText(text: string, userId?: string): Promise<Pa
         schema: ParsedResumeSchema,
         effort: "low",
       });
-      return { parsed, method: "model", text: clean };
+      return { parsed: { ...parsed, education: tidyEducation(parsed.education) }, method: "model", text: clean };
     } catch {
       // Fall through to the rules parser.
     }
@@ -123,7 +124,7 @@ export async function parseResume(file: ResumeFile, userId?: string): Promise<Pa
         schema: ParsedResumeSchema,
         effort: "low",
       });
-      return { parsed, method: "model", text };
+      return { parsed: { ...parsed, education: tidyEducation(parsed.education) }, method: "model", text };
     } catch {
       // Fall through to the rules parser; the user still gets proposals to confirm.
     }

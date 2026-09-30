@@ -121,6 +121,22 @@ describe("two degrees from import to tailored resume", () => {
     expect((await loadFactBase(id)).educationEntries).toHaveLength(1);
   });
 
+  it("saves each degree once when the same resume is imported again", async () => {
+    const id = await student();
+    const draft = draftFromResume(parseResumeText(SOURCE));
+    await saveEducation(id, draft.education);
+    const saved = (await loadFactBase(id)).educationEntries!;
+    // The import screen sends the saved schools with their ids plus the resume's copies without ids.
+    await saveEducation(id, [
+      ...saved.map((e) => ({ entryId: e.id, school: e.school, degree: e.degree, major: e.major, gradDate: e.gradMonth ?? "", gpa: e.gpa, honors: e.honors, coursework: e.coursework })),
+      ...draft.education,
+      { ...draft.education[0], degree: "M.S." },
+    ]);
+    const after = (await loadFactBase(id)).educationEntries!;
+    expect(after.map((e) => e.degree).sort()).toEqual(["Bachelor of Science", "Master of Science"]);
+    expect(after.find((e) => e.degree === "Bachelor of Science")?.extras).toEqual(["CPA candidate"]);
+  });
+
   it("rejects another person's entry id and duplicate entries before changing facts", async () => {
     const id = await student();
     const other = await student();

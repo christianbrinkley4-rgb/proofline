@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, FileText, LoaderCircle, Plus, Upload } from "lucide-react";
@@ -55,7 +55,10 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
   const router = useRouter();
   const [step, setStep] = useState<OnboardingStep>(data.step === "done" ? "job" : data.step);
   const [, start] = useTransition();
-  const [draft, setDraftState] = useState<ResumeDraft | null>(null);
+  const [storedDraft, setDraftState] = useState<ResumeDraft | null>(null);
+  // Schools and roles saved since the resume was read drop out of it, so going
+  // back a screen never offers (or saves) a second copy of one.
+  const draft = useMemo(() => (storedDraft ? newToAccount(storedDraft, { schools: data.education, roles: data.roles }) : null), [storedDraft, data.education, data.roles]);
   // Keep a read resume through reloads in this tab.
   useEffect(() => {
     try {
@@ -77,7 +80,7 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
     }
   };
   const doneWithDraft = (key: string) => {
-    if (draft) setDraft({ ...draft, roles: draft.roles.filter((r) => r.key !== key) });
+    if (storedDraft) setDraft({ ...storedDraft, roles: storedDraft.roles.filter((r) => r.key !== key) });
   };
   const isProject = (kind: string) => kind === "project" || kind === "research";
   const aboutIndex = (ABOUT_SCREENS as readonly string[]).indexOf(step);

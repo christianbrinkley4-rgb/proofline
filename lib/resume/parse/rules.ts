@@ -3,6 +3,7 @@ import { findDateRange } from "./dates";
 import { COLUMN_BREAK } from "./layout-text";
 import type { ParsedEducation, ParsedEntry, ParsedResume } from "./types";
 import { BULLET, joinWrapped } from "./bullets";
+import { tidyEducation } from "./education-tidy";
 
 /**
  * Rules-based resume parser. Works on the plain text of a PDF or DOCX, needs no
@@ -59,6 +60,8 @@ const CITY_STATE = /\b([A-Z][a-zA-Z.]+(?:\s[A-Z][a-zA-Z.]+)*),\s?([A-Z]{2})\b/;
 const SCHOOL = /\b(university|college|institute|school|academy)\b/i;
 const DEGREE = /\b(bachelor|master|associate|doctor|b\.?\s?s\.?|b\.?\s?a\.?|m\.?\s?s\.?|m\.?\s?b\.?\s?a\.?|ph\.?\s?d\.?|b\.?\s?b\.?\s?a\.?)\b/i;
 const GPA = /\bgpa[:\s]*([0-4]\.\d{1,2})|([0-4]\.\d{1,2})\s*\/\s*4\.0|\b([0-4]\.\d{1,2})\s+(?:cumulative\s+)?gpa\b/i;
+/** A line that opens with a degree name, so it starts a degree rather than mentioning one. */
+const LEADING_DEGREE = /^(?:(?:bachelor|master|associate|doctor(?:ate)?)\b|ph\.?\s?d\b|m\.b\.a\.|mba\b|b\.b\.a\.|bba\b|[bm]\.\s?(?:s|a|sc)\.|[bm](?:s|a|sc)(?:\s+in\b|,))/i;
 const GPA_TEXT = /\bgpa[:\s]*[0-4]\.\d{1,2}(?:\s*\/\s*4(?:\.0+)?)?|[0-4]\.\d{1,2}\s*\/\s*4(?:\.0+)?|\b[0-4]\.\d{1,2}\s+(?:cumulative\s+)?gpa\b/gi;
 
 function headingOf(line: string): Section | null {
@@ -268,7 +271,32 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       .join(", ");
     let detailText = text;
     let detailClean = clean;
-    if (SCHOOL.test(text) && !DEGREE.test(text.split(",")[0])) {
+    // "UNC Greensboro — Bachelor of Science, Accounting" or the degree first, split by a dash.
+    const dashed = firstColumn.match(/^([^\d].*?)\s+[—–-]\s+([^\d].*)$/);
+    const dashedDegree = dashed ? (DEGREE.test(dashed[2]) && !DEGREE.test(dashed[1]) ? 2 : DEGREE.test(dashed[1]) && !DEGREE.test(dashed[2]) ? 1 : 0) : 0;
+    if (dashed && dashedDegree) {
+      if (current) results.push(current);
+      const schoolPart = dashed[dashedDegree === 2 ? 1 : 2];
+      const degreePart = dashed[dashedDegree];
+      const range = findDateRange(text);
+      current = startEntry({
+        school: stripDates(schoolPart).replace(CITY_STATE, "").replace(/[\s,|–-]+$/, "").trim(),
+        degree: null,
+        major: null,
+        minor: null,
+        gradDate: range?.end ?? null,
+        gpa: null,
+        honors: splitParts(text).filter((p) => /(honors|dean's list|cum laude|scholar)/i.test(p)),
+        coursework: [],
+      }, "");
+      detailText = [degreePart, ...splitParts(text).slice(1)].join(" | ");
+      detailClean = stripDates(degreePart).trim();
+    } else if (current?.degree && LEADING_DEGREE.test(text) && !SCHOOL.test(text)) {
+      // A second degree under the same school heading: "Bachelor of Science in Accounting" after the Master's.
+      results.push(current);
+      const range = findDateRange(text);
+      current = { school: current.school, degree: null, major: null, minor: null, gradDate: range?.end ?? null, gpa: null, honors: [], coursework: [], details: [] };
+    } else if (SCHOOL.test(text) && !DEGREE.test(text.split(",")[0])) {
       if (current) results.push(current);
       const degreeBreak = text.match(new RegExp(",\\s*(?=" + DEGREE.source + ")", "i"));
       const inline = degreeBreak?.index != null ? text.slice(degreeBreak.index + degreeBreak[0].length).trim() : "";
@@ -311,7 +339,10 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       current.coursework = splitList(text.replace(/^(relevant\s+)?coursework\s*:?\s*/i, "")).map((s) => s.trim()).filter(Boolean);
       inCoursework = true;
     } else if (/(honors|dean's list|cum laude|scholar)/i.test(text)) {
-      current.honors.push(text.replace(/^honors\s*:?\s*/i, ""));
+      // "GPA: 3.69 | Dean's List": the GPA is read above; only the honor is an honor.
+      const parts = splitParts(text.replace(/^honors\s*:?\s*/i, ""));
+      const honors = parts.length > 1 ? parts.filter((p) => /(honors|dean's list|cum laude|scholar)/i.test(p)) : parts;
+      for (const honor of honors) if (!current.honors.some((h) => h.toLowerCase() === honor.toLowerCase())) current.honors.push(honor);
     } else {
       for (const note of educationDetailLines(detailText)) pushDetail(current, note);
     }
@@ -454,7 +485,7 @@ export function parseResumeText(text: string): ParsedResume {
     phone: headerText.match(PHONE)?.[0] ?? null,
     location: headerText.match(CITY_STATE)?.[0] ?? header.map(placeWithStateName).find(Boolean) ?? null,
     links,
-    education: parseEducation(buckets.get("education") ?? []),
+    education: tidyEducation(parseEducation(buckets.get("education") ?? [])),
     entries,
     skills: skillLines.skills,
     certifications: parseCertifications([...(buckets.get("certifications") ?? []), ...skillLines.licenses]),
