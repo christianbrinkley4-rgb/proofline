@@ -73,6 +73,8 @@ Three product motions, all behind `motion-safe:`, none looping:
 
 Plus `animate-view-in` (260ms) for plain view changes.
 
+A big score counts up once with `count-up` (400ms): put the real number in an `sr-only` span and set `--to` on an `aria-hidden` sibling. It's pure CSS, so the server-rendered page never flashes, and reduced motion shows the final number.
+
 Onboarding gets its own small set so answering the first questions feels alive: `animate-step-forward`/`animate-step-back` slide a step in from the direction you're moving, `animate-word-in` settles the agent's sentence in word by word (screen readers get the whole sentence), `animate-ring-out` sends one ring off the agent's avatar, the progress bar fills with a width transition, and choice cards stagger in. The flow container uses `overflow-x-clip` so slides never cause sideways scroll.
 
 ## Copy

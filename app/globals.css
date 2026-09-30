@@ -425,3 +425,29 @@
     transform: translateX(300%);
   }
 }
+
+/*
+ * A score counts up once (400ms) when it first appears. Pure CSS, so the server-rendered
+ * number never flashes: set --to on the element and hide the real number visually.
+ * With reduced motion the final number shows straight away.
+ */
+@property --count {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+@keyframes count-up {
+  from {
+    --count: 0;
+  }
+}
+@utility count-up {
+  --count: var(--to);
+  counter-reset: count var(--count);
+  &::after {
+    content: counter(count);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    animation: count-up 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}

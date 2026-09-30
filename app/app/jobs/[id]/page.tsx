@@ -187,7 +187,10 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
                   Fit score
                 </h2>
                 <div className="flex items-baseline gap-1">
-                  <span className="font-display text-[52px] leading-none font-semibold tabular-nums">{fit.score}</span>
+                  <span className="font-display text-[52px] leading-none font-semibold tabular-nums">
+                    <span className="sr-only">{fit.score}</span>
+                    <span aria-hidden="true" className="count-up" style={{ "--to": fit.score } as React.CSSProperties} />
+                  </span>
                   <span className="text-[14px] text-subtle-foreground">/100</span>
                   <span className="ml-3 flex items-center gap-1.5 text-[13px] font-medium">
                     <span className={cn("size-1.5 rounded-full", band === "strong" || band === "good" ? "bg-brand" : "bg-border-strong")} />
