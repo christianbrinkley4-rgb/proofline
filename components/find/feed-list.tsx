@@ -9,6 +9,7 @@ import { CompanyAvatar, MatchChip } from "@/components/shared/fit";
 import { Button } from "@/components/ui/button";
 import type { FeedItem } from "@/lib/jobs/feed/load";
 import { cn } from "@/lib/utils";
+import { tidyLocation } from "@/lib/jobs/locations";
 
 function postedAgo(iso: string | null, now: number): string | null {
   if (!iso) return null;
@@ -61,7 +62,7 @@ export function FeedList({ items, now }: { items: FeedItem[]; now: string }) {
     <ul className="divide-y rounded-2xl border bg-background">
       {visible.map((item) => {
         const posted = postedAgo(item.postedAt, nowMs);
-        const meta = [item.company, item.location, item.pay].filter(Boolean).join(" · ");
+        const meta = [item.company, tidyLocation(item.location), item.pay].filter(Boolean).join(" · ");
         return (
           <li key={item.jobId} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-start sm:gap-3">
             <Link href={`/app/jobs/${item.jobId}`} className="group flex min-w-0 flex-1 items-start gap-3 rounded-lg">

@@ -88,3 +88,27 @@ export function isUSLocation(location: string | null | undefined): boolean {
   return Object.keys(STATES).some((abbr) => new RegExp(`,\\s*${abbr}\\b`).test(location)) ||
     Object.values(STATES).some((n) => location.toLowerCase().includes(n.toLowerCase()));
 }
+
+/**
+ * How a place reads on a card: "Cary,North Carolina,United States" becomes
+ * "Cary, NC". Each place in a list ("San Francisco, CA • New York, NY") is
+ * tidied on its own; anything we don't recognize keeps its words.
+ */
+export function tidyLocation(location: string | null | undefined): string | null {
+  if (!location?.trim()) return null;
+  return location
+    .split(/\s*(•|;|\|)\s*/)
+    .map((part) => {
+      if (/^(•|;|\|)$/.test(part)) return part === "•" ? " • " : `${part} `;
+      const pieces = part.split(/\s*,\s*/).map((p) => p.trim()).filter(Boolean);
+      if (pieces.length > 1 && /^(united states( of america)?|usa|us)$/i.test(pieces.at(-1)!)) pieces.pop();
+      if (pieces.length === 2) {
+        const code = STATE_BY_NAME.get(pieces[1].toLowerCase());
+        if (code) pieces[1] = code;
+      }
+      return pieces.join(", ");
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}

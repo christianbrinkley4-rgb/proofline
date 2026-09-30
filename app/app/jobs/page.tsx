@@ -11,6 +11,7 @@ import { checkKnockouts, firstKnockout, knockoutCandidate } from "@/lib/fit/knoc
 import { listMatches, requirementsOf } from "@/lib/jobs/store";
 import { getProfile } from "@/lib/kb/profile";
 import type { GateResult } from "@/lib/review/gate";
+import { tidyLocation } from "@/lib/jobs/locations";
 
 export const metadata: Metadata = { title: "Jobs" };
 
@@ -55,7 +56,7 @@ export default async function JobsPage() {
                   <CompanyAvatar name={job.company} className="hidden sm:grid" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14.5px] font-medium">{job.title}</span>
-                    <span className="block truncate text-[13px] text-muted-foreground">{[job.company, job.location].filter(Boolean).join(" · ")}</span>
+                    <span className="block truncate text-[13px] text-muted-foreground">{[job.company, tidyLocation(job.location)].filter(Boolean).join(" · ")}</span>
                     {knockout ? (
                       <span className="mt-1 flex items-start gap-1.5 text-[12.5px] text-destructive">
                         <OctagonX className="mt-0.5 size-3.5 shrink-0" />

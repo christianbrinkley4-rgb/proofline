@@ -4,6 +4,7 @@ import type { FitReport } from "@/lib/fit/engine";
 import { readScreens, type PostingScreens } from "@/lib/fit/knockouts";
 import { parseRequirements, REQUIREMENTS_VERSION, type Requirements } from "@/lib/fit/requirements";
 import { extractKeywords } from "./keywords";
+import { tidyLocation } from "./locations";
 import { dedupeKey, detectLevel, detectMode, slugify } from "./text";
 import type { NormalizedJob } from "./types";
 
@@ -21,7 +22,7 @@ function jobValues(j: NormalizedJob) {
     company: j.company,
     companySlug: slugify(j.company),
     title: j.title,
-    location: j.location,
+    location: tidyLocation(j.location),
     mode: j.mode,
     level: j.level,
     url: j.url,
@@ -32,7 +33,7 @@ function jobValues(j: NormalizedJob) {
     payMax: j.payMax,
     payPeriod: j.payPeriod,
     postedAt: j.postedAt && !Number.isNaN(j.postedAt.getTime()) ? j.postedAt : null,
-    dedupeKey: dedupeKey(j.company, j.title, j.location),
+    dedupeKey: dedupeKey(j.company, j.title, tidyLocation(j.location)),
     requirements: requirements as unknown as Record<string, unknown> | null,
     keywords: j.description ? extractKeywords(j.description) : null,
     screens: j.description ? (readScreens(j.title, j.description) as unknown as Record<string, unknown>) : null,

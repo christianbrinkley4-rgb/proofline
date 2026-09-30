@@ -120,18 +120,67 @@ function monthsBetween(a: string, b: string): number {
   return (by - ay) * 12 + (Number(bm) - Number(am));
 }
 
+/** Careers that share training: an accounting student fits audit, tax, and finance work, not design or trades. */
+const NEAR_FAMILIES: string[][] = [
+  ["accounting", "audit", "tax", "finance", "banking", "consulting", "business", "data"],
+  ["data", "software", "product"],
+  ["marketing", "sales", "business", "product"],
+  ["hr", "administration", "business", "customer-service"],
+  ["customer-service", "retail", "hospitality", "sales", "administration"],
+  ["project", "business", "consulting", "product"],
+  ["warehouse", "trades"],
+  ["healthcare"],
+];
+/** Titles that need a technical or design background, whatever family their other words suggest. */
+const TECHNICAL_TITLE = /\b(engineer(ing)?|developer|data scien\w*|scientist|machine learning|hardware|firmware|robotics)\b/i;
+const TECHNICAL_BACKGROUND = /\b(computer|software|data|statistic\w*|math\w*|engineer\w*|physics|information (systems|technology)|developer|programm\w*|scientist)\b/i;
+const DESIGN_TITLE = /\b(design|designer)\b/i;
+const DESIGN_BACKGROUND = /\b(design\w*|art|arts|graphic\w*|ux|ui|architecture|animation|illustrat\w*|game)\b/i;
+
+const wordIn = (text: string, word: string) => new RegExp(`(?:^|[^a-z])${word.replace(/[.*+?^${}()|[\]\\&]/g, "\\$&")}`, "i").test(text);
+
+/**
+ * How close a posting's kind of work is to what the person studies and has done.
+ * Used only when the posting lists no skills, so a Social Media or Level Design
+ * internship doesn't score like an accounting one for an accounting student.
+ */
+export function fieldFit(jobTitle: string, jobFamilies: string[], candidate: Pick<CandidateProfile, "major" | "minor" | "experienceTitles">): "near" | "far" | "unknown" {
+  const background = [candidate.major, candidate.minor, ...candidate.experienceTitles].filter(Boolean).join(" ; ");
+  if (!background.trim()) return "unknown";
+  if (TECHNICAL_TITLE.test(jobTitle) && !/\bsales engineer/i.test(jobTitle)) return TECHNICAL_BACKGROUND.test(background) ? "near" : "far";
+  if (DESIGN_TITLE.test(jobTitle)) return DESIGN_BACKGROUND.test(background) ? "near" : "far";
+  if (!jobFamilies.length) return "unknown";
+  const mine = ROLE_FAMILIES.filter((f) => f.titleWords.some((w) => wordIn(background, w)) || f.triggers.some((t) => t.length > 3 && wordIn(background, t))).map((f) => f.id);
+  if (!mine.length) return "unknown";
+  const near = jobFamilies.some((id) => mine.includes(id) || NEAR_FAMILIES.some((group) => group.includes(id) && mine.some((m) => group.includes(m))));
+  return near ? "near" : "far";
+}
+
 export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = indexCandidate(candidate)): FitReport {
   const req = job.requirements;
   const details = {} as Record<FitComponentKey, ComponentDetail>;
   const points = {} as FitPoints;
   const gates: EligibilityGate[] = [];
+  const jobFamilies = ROLE_FAMILIES.filter((f) => f.titleWords.some((w) => job.title.toLowerCase().includes(w)) && !f.excludeTitle?.test(job.title));
+  const field = fieldFit(job.title, jobFamilies.map((f) => f.id), candidate);
+  const fieldLabel = jobFamilies[0]?.label.toLowerCase();
 
   // ── Required skills (30)
   const reqGroups = req.requiredGroups?.length ? req.requiredGroups : req.required.map((sk) => [sk]);
   const reqCov = coverage(reqGroups, index.skills);
   if (reqCov.ratio === null) {
-    points.requiredSkills = 20;
-    details.requiredSkills = { note: "The posting doesn't list specific skills, so this is a neutral score.", matched: [], missing: [], math: "No listed skills: neutral 20 of 30" };
+    // Nothing to match, so the points reflect how close the work is to the person's field.
+    points.requiredSkills = field === "near" ? 20 : field === "far" ? 10 : 15;
+    details.requiredSkills = {
+      note: field === "near"
+        ? "The posting doesn't list specific skills. The work is close to what you study and have done."
+        : field === "far"
+          ? `The posting doesn't list specific skills, and ${fieldLabel ? `${fieldLabel} work` : "this work"} is outside what you study and have done.`
+          : "The posting doesn't list specific skills, so this is a neutral score.",
+      matched: [],
+      missing: [],
+      math: field === "near" ? "No listed skills, close to your field: 20 of 30" : field === "far" ? "No listed skills, outside your field: 10 of 30" : "No listed skills: neutral 15 of 30",
+    };
   } else {
     points.requiredSkills = round(30 * reqCov.ratio);
     const total = reqCov.matched.length + reqCov.missing.length;
@@ -228,8 +277,8 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
   // ── Preferred skills (15)
   const prefCov = coverage(req.preferredGroups?.length ? req.preferredGroups : req.preferred.map((sk) => [sk]), index.skills);
   if (prefCov.ratio === null) {
-    points.preferredSkills = 10;
-    details.preferredSkills = { note: "No separate nice-to-have list.", matched: [], missing: [], math: "No nice-to-have list: neutral 10 of 15" };
+    points.preferredSkills = field === "near" ? 10 : field === "far" ? 5 : 8;
+    details.preferredSkills = { note: "No separate nice-to-have list.", matched: [], missing: [], math: field === "near" ? "No nice-to-have list, close to your field: 10 of 15" : field === "far" ? "No nice-to-have list, outside your field: 5 of 15" : "No nice-to-have list: neutral 8 of 15" };
   } else {
     points.preferredSkills = round(15 * prefCov.ratio);
     const total = prefCov.matched.length + prefCov.missing.length;

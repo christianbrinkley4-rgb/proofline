@@ -9,7 +9,7 @@ import type { Requirements } from "./requirements";
  * "unknown" means we couldn't check (the person hasn't told us yet); it never blocks.
  */
 
-export type KnockoutKey = "graduation" | "work_authorization" | "location" | "start_date";
+export type KnockoutKey = "graduation" | "work_authorization" | "location" | "start_date" | "program";
 export type KnockoutStatus = "ok" | "knockout" | "unknown";
 export type Knockout = { key: KnockoutKey; label: string; status: KnockoutStatus; reason: string; fix?: string };
 
@@ -18,6 +18,7 @@ export const KNOCKOUT_LABEL: Record<KnockoutKey, string> = {
   work_authorization: "Work authorization",
   location: "Location and work mode",
   start_date: "Start date",
+  program: "Degree program",
 };
 
 /**
@@ -45,6 +46,8 @@ export type KnockoutCandidate = {
   openToRelocate: boolean | null;
   /** YYYY-MM */
   availableFrom: string | null;
+  /** The latest degree on the profile, for postings open only to PhD or MBA students. */
+  degree?: string | null;
 };
 
 function months(a: string, b: string): number {
@@ -169,6 +172,7 @@ export function knockoutCandidate(profile: {
   workModes: Array<"remote" | "hybrid" | "onsite">;
   openToRelocate: boolean | null;
   availableFrom: string | null;
+  degree?: string | null;
 } | null | undefined): KnockoutCandidate {
   return {
     gradDate: profile?.gradDate ?? null,
@@ -177,11 +181,44 @@ export function knockoutCandidate(profile: {
     workModes: profile?.workModes ?? [],
     openToRelocate: profile?.openToRelocate ?? null,
     availableFrom: profile?.availableFrom ?? null,
+    degree: profile?.degree ?? null,
   };
 }
 
+const PROGRAMS = [
+  {
+    name: "PhD",
+    posting: /\b(ph\.?\s?d|doctoral)\b/i,
+    required: /\b(pursuing|enrolled in|current(ly)?|candidate for)\b[^.\n]{0,30}\b(ph\.?\s?d|doctoral|doctorate)\b|\bph\.?\s?d\.? (students?|candidates?)\b/i,
+    holds: /\b(ph\.?\s?d|doctor(ate)?|d\.?phil)\b/i,
+  },
+  {
+    name: "MBA",
+    posting: /\bm\.?b\.?a\b/i,
+    required: /\b(pursuing|enrolled in|current(ly)?)\b[^.\n]{0,30}\bm\.?b\.?a\b|\bmba (students?|candidates?)\b/i,
+    holds: /\b(m\.?b\.?a|master of business administration)\b/i,
+  },
+];
+
+/**
+ * Internships only for PhD or MBA students, named in the title ("PhD Intern") or
+ * a requirement ("currently pursuing a PhD"). Shown only when the posting has one.
+ */
+function program(job: KnockoutJob, c: KnockoutCandidate): Knockout | null {
+  const base = { key: "program" as const, label: KNOCKOUT_LABEL.program };
+  const inTitle = PROGRAMS.find((p) => p.posting.test(job.title));
+  // A requirement line that also accepts bachelor's or master's students isn't program-only.
+  const inLine = PROGRAMS.find((p) => job.requirements.requiredLines.some((line) => p.required.test(line) && !/\b(bachelor'?s?|master'?s|undergrad\w*|b\.s\.?|m\.s\.?|bs|ms)\b/i.test(line)));
+  const found = inTitle ?? inLine;
+  if (!found) return null;
+  if (!c.degree) return { ...base, status: "unknown", reason: `This posting is for ${found.name} students. Add your degree to check.`, fix: "education" };
+  if (found.holds.test(c.degree)) return { ...base, status: "ok", reason: `It's for ${found.name} students, and you're in a ${found.name} program.` };
+  return { ...base, status: "knockout", reason: `This internship is for ${found.name} students. Your latest degree is a ${c.degree}.` };
+}
+
 export function checkKnockouts(job: KnockoutJob, candidate: KnockoutCandidate, now = new Date()): Knockout[] {
-  return [graduation(job, candidate), authorization(job, candidate), location(job, candidate), startDate(job, candidate, now)];
+  const programCheck = program(job, candidate);
+  return [graduation(job, candidate), authorization(job, candidate), location(job, candidate), startDate(job, candidate, now), ...(programCheck ? [programCheck] : [])];
 }
 
 export function firstKnockout(knockouts: Knockout[]): Knockout | null {

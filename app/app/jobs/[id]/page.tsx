@@ -36,6 +36,7 @@ import { getResume } from "@/lib/resume/store";
 import { gateStatus } from "@/lib/review/gate";
 import { reviewConfigured } from "@/lib/review/model";
 import { cn } from "@/lib/utils";
+import { tidyLocation } from "@/lib/jobs/locations";
 
 export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]">): Promise<Metadata> {
   const session = await requireSession();
@@ -145,7 +146,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
           <div className="min-w-0">
             <h1 className="font-display text-[24px] leading-tight font-semibold sm:text-[30px]">{job.title}</h1>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
-              {[job.company, job.location, modeLabel && !job.location?.toLowerCase().includes(job.mode) ? modeLabel : null, pay].filter(Boolean).join(" · ")}
+              {[job.company, tidyLocation(job.location), modeLabel && !job.location?.toLowerCase().includes(job.mode) ? modeLabel : null, pay].filter(Boolean).join(" · ")}
             </p>
             {job.sourceId.startsWith("pasted:") && (
               <JobDetailsEditor key={`${job.title}|${job.company}|${job.location ?? ""}`} jobId={job.id} title={job.title} company={job.company} location={job.location ?? ""} />
