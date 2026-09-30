@@ -27,3 +27,21 @@ export function postingOverlap(evidence: string, description: string | null | un
   const evidenceTerms = new Set(terms(evidence));
   return Math.min(4, [...evidenceTerms].reduce((score, term) => score + Math.min(2, posting.get(term) ?? 0), 0));
 }
+
+/** Words that name the level or format of a course, not its subject. */
+const COURSE_FILLER = new Set(["introduction", "intro", "principles", "principle", "concepts", "concept", "fundamentals", "intermediate", "advanced", "topics", "topic", "seminar", "survey", "applied", "honors", "special", "course", "i", "ii", "iii"]);
+
+/**
+ * How much a posting is about one course's subject. Uses the course name only
+ * (not a note in parentheses), counts three-letter subjects such as "tax", and
+ * lets a subject the posting keeps repeating outrank one it names once.
+ */
+export function courseRelevance(course: string, description: string | null | undefined): number {
+  if (!description) return 0;
+  const name = course.replace(/\([^)]*\)/g, " ").toLowerCase();
+  const words = [...new Set((name.match(/[a-z]{3,}/g) ?? []).filter((word) => !STOP.has(word) && !COURSE_FILLER.has(word)).map(stem))];
+  if (!words.length) return 0;
+  const posting = new Map<string, number>();
+  for (const word of description.slice(0, 12_000).toLowerCase().match(/[a-z]{3,}/g) ?? []) posting.set(stem(word), (posting.get(stem(word)) ?? 0) + 1);
+  return words.reduce((score, word) => score + Math.min(5, posting.get(word) ?? 0), 0);
+}

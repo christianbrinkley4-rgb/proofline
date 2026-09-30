@@ -31,8 +31,15 @@ export function employerWording(item: string, jobDescription: string): string | 
   const words = item.trim().split(/[\s-]+/).map((w) => `${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:e?s)?`);
   const same = jobDescription.match(new RegExp(`(?<![a-z0-9])${words.join("[\\s-]+")}(?![a-z0-9])`, "i"))?.[0];
   if (same && normalizePhrase(same).replace(/-/g, " ") === normalizePhrase(item).replace(/-/g, " ")) {
-    const theirs = same[0].toUpperCase() + same.slice(1);
-    return theirs !== item ? theirs : null;
+    // Their plural or hyphenation, in the person's capitalization, so the list reads as one style.
+    const mine = item.trim().split(/[\s-]+/);
+    let index = 0;
+    const theirs = same.replace(/[^\s-]+/g, (word) => {
+      const cased = mine[index++] ?? word;
+      if (/^[A-Z0-9/&]+$/.test(word) && word.length > 1) return word;
+      return cased[0] === cased[0].toUpperCase() ? word[0].toUpperCase() + word.slice(1).toLowerCase() : word.toLowerCase();
+    });
+    return theirs !== item.trim() ? theirs : null;
   }
   // The posting's acronym for the same skill: keep the full name, add theirs.
   for (const pattern of def.patterns) {

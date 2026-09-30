@@ -5,7 +5,7 @@ import { extractSkills, skillCategory } from "@/lib/fit/skills";
 import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
 import { ROLE_FAMILIES } from "@/lib/jobs/roles";
 import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
-import { postingOverlap } from "@/lib/jobs/relevance";
+import { courseRelevance, postingOverlap } from "@/lib/jobs/relevance";
 import { getJobForUser } from "@/lib/jobs/store";
 import { listExperiences, type Experience } from "@/lib/kb/experiences";
 import { applyLooseHonors, readEducationRecords, type EducationRecord } from "@/lib/facts/base";
@@ -246,7 +246,7 @@ export async function tailorResume(
     const sections: ResumeSection[] = [];
     const sourceFactIds = new Set<string>();
     // Education first for students and recent grads (see RESUME-STANDARDS.md).
-    const educationEntries = buildEducationSection(educationRecords, { showCoursework });
+    const educationEntries = buildEducationSection(educationRecords, { showCoursework, courseRelevance: job ? (course) => courseRelevance(course, job.description) : undefined });
     if (educationEntries.length) {
       sections.push({ kind: "education", title: "Education", entries: educationEntries });
       educationRecords.forEach((record, index) => {

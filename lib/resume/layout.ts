@@ -138,13 +138,18 @@ export async function layoutResume(doc: ResumeDocument, t: Template): Promise<La
   y -= 3;
   if (doc.header.contact.length) {
     const contactSize = t.bodySize - 0.5;
-    const joined = doc.header.contact.join("  |  ");
-    const lines = wrapSegments([{ text: joined, font: "regular" }], width, contactSize, fonts);
-    for (const line of lines) {
+    // Break only between items, so no line starts or ends with a stray separator.
+    const lines: string[] = [];
+    for (const item of doc.header.contact) {
+      const last = lines[lines.length - 1];
+      if (last && measure(`${last}  |  ${item}`, "regular", contactSize) <= width) lines[lines.length - 1] = `${last}  |  ${item}`;
+      else if (measure(item, "regular", contactSize) <= width) lines.push(item);
+      else lines.push(...wrapSegments([{ text: item, font: "regular" }], width, contactSize, fonts).map((line) => line.map((s) => s.text).join("")));
+    }
+    for (const text of lines) {
       y -= lh(contactSize);
-      const text = line.map((s) => s.text).join("");
       const w = measure(text, "regular", contactSize);
-      ops.push({ kind: "text", x: t.headerAlign === "center" ? left + (width - w) / 2 : left, y, text, font: "regular", size: contactSize });
+      ops.push({ kind: "text", x: t.headerAlign === "center" ? left + (width - w) / 2 : left, y, text: sanitize(text), font: "regular", size: contactSize });
     }
   }
 

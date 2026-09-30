@@ -4,6 +4,16 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## September 30 owner's resume compared line by line (handoff item 5, local)
+
+The owner's master resume (`Christian-Brinkley-Resume.pdf`) was run through the real import (rules parser), every line saved as confirmed, a tax internship posting pasted, and `tailorBestResume` rendered to PDF, then compared with his hand-tailored Deloitte tax version. Items 1 to 4 had already closed the big gaps: both degrees, GPA, Dean's List, coursework, CPA candidate, website and LinkedIn all survive, the Front Desk role keeps its one line, and tense is consistent within each entry. Three differences remained and are fixed:
+
+- **Contact line** wrapped mid-list and left a stray "|" at the end of the first line. The PDF layout now breaks only between items (`lib/resume/layout.ts`).
+- **Skills capitalization**: posting wording turned "Data Analytics" into "Data analytics" next to "Financial Modeling". `employerWording` now keeps the person's capitalization and changes only plural or hyphenation.
+- **Coursework order**: his version leads with the tax course. Coursework now lists the courses the posting is about first, same words, nothing dropped (`courseRelevance` in `lib/jobs/relevance.ts` counts three-letter subjects like "tax" and ignores notes in parentheses). A tax posting leads with Federal Tax Concepts; a data posting leads with Data Analytics.
+
+Left as is, on purpose: his version moves certifications into Education and trims unrelated courses; Proofline keeps every confirmed course and puts licenses under Skills. Bullet wording is his own confirmed text, so no rewrite toward his tailored phrasing was attempted.
+
 ## September 30 assisted fill on Greenhouse and Lever (spec 04 v2, local)
 
 The extension (0.3.0) now fills Greenhouse and Lever applications from the job's answer kit and never submits. Details and the matching rules are in `extension/README.md`.

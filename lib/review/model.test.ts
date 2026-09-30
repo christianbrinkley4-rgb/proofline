@@ -72,6 +72,9 @@ describe("employer wording", () => {
   it("uses the posting's form of the same skill and keeps the person's otherwise", () => {
     expect(employerWording("Account reconciliation", "Experience with account reconciliations required")).toBe("Account reconciliations");
     expect(employerWording("Accounts payable", "Process A/P for 30 vendors")).toBe("Accounts payable (A/P)");
+    // Case alone never changes, so one list keeps one capitalization style.
+    expect(employerWording("Data Analytics", "Organize data and apply data analytics to trends")).toBeNull();
+    expect(employerWording("Financial Statement", "Review financial statements monthly")).toBe("Financial Statements");
     // A more specific tool name is a different claim; never swapped in.
     expect(employerWording("Excel", "Advanced pivot tables and VLOOKUP")).toBeNull();
   });

@@ -120,7 +120,7 @@ Projects without dates came out as "Architect…/Track…" next to "Drove…/Boo
 ### 5. Smaller issues seen in the same test
 
 - Every non-project role needs two lines (`saveRoleStepAction`). His Front Desk role had one on his resume, so import makes him write a second. Consider allowing one line for imported roles.
-- Compare his hand-tailored resume (he has the PDF) with Proofline's output line by line once items 1 to 4 are fixed. His version keeps coursework and education detail that Proofline currently drops.
+- Compare his hand-tailored resume (he has the PDF) with Proofline's output line by line once items 1 to 4 are fixed. Done September 30: see "owner's resume compared line by line" in `docs/PLAN.md`. Coursework and education detail now survive; the contact line, skill capitalization, and coursework order were fixed.
 
 ## What shipped on September 28 (all live)
 

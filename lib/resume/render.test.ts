@@ -24,6 +24,16 @@ describe("layout", () => {
     expect((await layoutResume(long, TEMPLATES.classic)).overflow).toBe(true);
   });
 
+  it("wraps the contact line between items, never leaving a separator at a line's edge", async () => {
+    const doc = structuredClone(sample);
+    doc.header.contact = ["Creedmoor, NC", "christianbrinkley4@gmail.com", "919.408.6671", "linkedin.com/in/christianbrinkley", "christianbrinkleync.com", "github.com/example-person"];
+    const layout = await layoutResume(doc, TEMPLATES.classic);
+    const contact = layout.ops.filter((op) => op.kind === "text" && doc.header.contact.some((item) => op.text.includes(item))).map((op) => (op.kind === "text" ? op.text : ""));
+    expect(contact.length).toBeGreaterThan(1);
+    expect(contact.join("  |  ").split("  |  ")).toEqual(doc.header.contact);
+    for (const line of contact) expect(line).not.toMatch(/^\s*\||\|\s*$/);
+  });
+
   it("keeps text the PDF fonts can encode", () => {
     expect(sanitize("Café → growth ✓ “quoted” — dash")).toBe("Café -> growth  “quoted” — dash");
   });

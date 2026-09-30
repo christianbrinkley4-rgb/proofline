@@ -8,6 +8,8 @@ import { addEducationEntry, addManualFact, deleteEducationEntry, deleteFact, ens
 import { draftFromResume, confirmedEducationDetails } from "@/lib/onboarding/draft";
 import { tailorResume } from "@/lib/resume/tailor";
 import { runQualityGate } from "@/lib/resume/quality";
+import { buildEducationSection, splitCourses } from "@/lib/resume/document";
+import { courseRelevance } from "@/lib/jobs/relevance";
 import { renderDocx, renderPdf } from "@/lib/resume/render";
 import { resumeToText } from "@/lib/resume/parse";
 import { parseResumeText } from "@/lib/resume/parse/rules";
@@ -81,6 +83,15 @@ describe("two degrees from import to tailored resume", () => {
     const bullets = result.document.sections.flatMap((s) => s.kind === "entries" ? s.entries.flatMap((e) => e.bullets) : []);
     const checks = runQualityGate(result.document, result.layout, new Map(current.map((fact) => [fact.id, fact.content])), new Set(bullets.map((bullet) => bullet.id)));
     expect(checks.find((check) => check.id === "facts")?.status).toBe("fail");
+  });
+
+  it("puts the courses a posting asks about first, in the person's own words", () => {
+    const [entry] = buildEducationSection(
+      [{ school: "UNC Greensboro", degree: "BS", major: "Accounting", gradDate: "2026-12", gpa: "", honors: "", coursework: "Relevant coursework: Data Analytics, Auditing, Federal Tax Concepts (prepared tax returns, Grade A)", extras: [] } as never],
+      { courseRelevance: (course) => courseRelevance(course, "Prepare federal tax returns and research tax issues. Coursework in federal income taxation.") },
+    );
+    expect(entry.details).toContain("Relevant coursework: Federal Tax Concepts (prepared tax returns, Grade A), Data Analytics, Auditing");
+    expect(splitCourses("A, B (x, y); C")).toEqual(["A", "B (x, y)", "C"]);
   });
 
   it("saves no unchecked detail, including a candidate credential", () => {

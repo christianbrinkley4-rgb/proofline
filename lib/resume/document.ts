@@ -74,15 +74,37 @@ function gradLine(entry: EducationSource, today: Date): string {
   return entry.gradDate?.trim() ?? "";
 }
 
-function courseworkLine(text: string): string {
-  const body = text.replace(/^(relevant\s+)?coursework\s*:\s*/i, "").trim();
+/** Splits "A, B (x, y); C" into courses, leaving commas inside parentheses alone. */
+export function splitCourses(body: string): string[] {
+  const courses: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of body) {
+    if (ch === "(") depth++;
+    if (ch === ")") depth = Math.max(0, depth - 1);
+    if ((ch === "," || ch === ";") && depth === 0) {
+      courses.push(current.trim());
+      current = "";
+    } else current += ch;
+  }
+  courses.push(current.trim());
+  return courses.filter(Boolean);
+}
+
+function courseworkLine(text: string, relevance?: (course: string) => number): string {
+  let body = text.replace(/^(relevant\s+)?coursework\s*:\s*/i, "").trim();
+  if (body && relevance) {
+    // Same courses in the person's words; the ones this posting asks about come first.
+    const courses = splitCourses(body);
+    if (courses.length > 1) body = courses.map((course, i) => ({ course, i, score: relevance(course) })).sort((a, b) => b.score - a.score || a.i - b.i).map((c) => c.course).join(", ");
+  }
   return body ? `Relevant coursework: ${body}` : "";
 }
 
 /** One resume block per school. GPA under 3.0 is left off. Honors and coursework stay in the person's words. */
 export function buildEducationSection(
   entries: EducationSource[],
-  opts?: { showCoursework?: (coursework: string) => boolean; today?: Date },
+  opts?: { showCoursework?: (coursework: string) => boolean; courseRelevance?: (course: string) => number; today?: Date },
 ): EducationEntry[] {
   const today = opts?.today ?? new Date();
   const showCoursework = opts?.showCoursework ?? (() => true);
@@ -93,7 +115,7 @@ export function buildEducationSection(
       const honors = entry.honors.trim();
       const honorLine = honors ? (/^honors\b/i.test(honors) ? honors : `Honors: ${honors}`) : null;
       const details = [[gpa, honorLine].filter(Boolean).join("  |  ")].filter(Boolean);
-      const coursework = courseworkLine(entry.coursework);
+      const coursework = courseworkLine(entry.coursework, opts?.courseRelevance);
       if (coursework && showCoursework(entry.coursework)) details.push(coursework);
       for (const extra of entry.extras ?? []) {
         const line = extra.trim();
