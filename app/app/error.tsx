@@ -12,13 +12,13 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
 
   return (
     <main className="mx-auto max-w-xl px-5 py-16" role="alert">
-      <h1 className="text-2xl font-semibold">Something went wrong</h1>
+      <h1 className="font-display text-2xl font-semibold">This page didn&apos;t load</h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
-        Try this page again. If it keeps happening, return to your dashboard to check what saved and continue there.
+        That&apos;s on us, not you. Anything you&apos;d already saved is still there. Try again, or pick up from Today.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Button onClick={reset}>Try again</Button>
-        <Button variant="outline" onClick={() => router.push("/app")}>Go to dashboard</Button>
+        <Button variant="outline" onClick={() => router.push("/app")}>Go to Today</Button>
       </div>
     </main>
   );

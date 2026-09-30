@@ -16,9 +16,12 @@ const bricolage = Bricolage_Grotesque({
   axes: ["opsz"],
 });
 
+// Mono is for small eyebrows and score math, never the first thing on screen: don't let it
+// compete with the page's CSS and body font on a slow connection.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 export const metadata: Metadata = {

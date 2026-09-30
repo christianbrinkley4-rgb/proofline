@@ -34,7 +34,7 @@ export function DefendCheck() {
       else if (file) form.set("resume", file);
       if (job.trim()) form.set("job", job);
       const res = await fetch("/api/check", { method: "POST", body: form });
-      const data = (await res.json().catch(() => ({ ok: false, error: "Something went wrong. Try again." }))) as CheckResponse;
+      const data = (await res.json().catch(() => ({ ok: false, error: "We couldn't finish the check. That's on our side. Try again in a moment." }))) as CheckResponse;
       if (!data.ok) {
         setError(data.error);
         return;
