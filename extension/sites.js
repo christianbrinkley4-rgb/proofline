@@ -302,7 +302,7 @@
   const shadow = host.attachShadow({ mode: "closed" });
   shadow.innerHTML = `
     <style>
-      :host { --bg: oklch(1 0 0); --fg: oklch(0.2 0.014 170); --muted: oklch(0.973 0.006 160); --muted-fg: oklch(0.44 0.018 168); --subtle-fg: oklch(0.56 0.016 168);
+      :host { --bg: oklch(1 0 0); --fg: oklch(0.2 0.014 170); --muted: oklch(0.973 0.006 160); --muted-fg: oklch(0.44 0.018 168); --subtle-fg: oklch(0.52 0.016 168);
         --border: oklch(0.918 0.008 160); --primary: oklch(0.255 0.035 166); --primary-fg: oklch(0.985 0.004 160); --primary-hover: oklch(0.3 0.04 166);
         --brand: oklch(0.56 0.13 158); --brand-ink: oklch(0.44 0.1 160); --brand-soft: oklch(0.962 0.034 158); --pending-ink: oklch(0.5 0.11 60); --pending-soft: oklch(0.975 0.035 85);
         --destructive: oklch(0.577 0.245 27.3); --ink: oklch(0.235 0.034 166); --ink-fg: oklch(0.975 0.008 160); --ink-muted: oklch(0.76 0.03 162); }

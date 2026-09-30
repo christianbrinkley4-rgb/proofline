@@ -11,7 +11,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
   }, [error]);
 
   return (
-    <main className="mx-auto max-w-xl px-5 py-16" role="alert">
+    <div className="mx-auto max-w-xl px-5 py-16" role="alert">
       <h1 className="font-display text-2xl font-semibold">This page didn&apos;t load</h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
         That&apos;s on us, not you. Anything you&apos;d already saved is still there. Try again, or pick up from Today.
@@ -20,6 +20,6 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         <Button onClick={reset}>Try again</Button>
         <Button variant="outline" onClick={() => router.push("/app")}>Go to Today</Button>
       </div>
-    </main>
+    </div>
   );
 }

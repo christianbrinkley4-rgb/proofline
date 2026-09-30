@@ -18,6 +18,7 @@ import type { Template } from "@/lib/resume/templates";
 import type { LintCheck } from "@/lib/review/linter";
 import type { ModelReview } from "@/lib/review/model";
 import { cn } from "@/lib/utils";
+import { onTabListKeyDown } from "@/components/shared/tab-keys";
 
 export type TailorResumeView = {
   resumeId: string;
@@ -269,7 +270,7 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
         </div>
 
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-background lg:sticky lg:top-6 lg:max-h-[calc(100dvh-8rem)]">
-          <div role="tablist" aria-label="Resume reasoning" className="flex gap-1 overflow-x-auto border-b p-2">
+          <div role="tablist" aria-label="Resume reasoning" onKeyDown={onTabListKeyDown} className="flex gap-1 overflow-x-auto border-b p-2">
             {(
               [
                 ["review", `Review${blockingFails.length ? ` (${blockingFails.length} blocking)` : ""}`],
@@ -281,7 +282,9 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
                 key={id}
                 role="tab"
                 type="button"
+                id={`tailor-tab-${id}`}
                 aria-selected={panel === id}
+                tabIndex={panel === id ? 0 : -1}
                 aria-controls="tailor-panel"
                 onClick={() => setPanel(id)}
                 className={cn("rounded-md px-2.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors pointer-coarse:py-2.5", panel === id ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}
@@ -290,7 +293,7 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
               </button>
             ))}
           </div>
-          <div id="tailor-panel" role="tabpanel" className="scroll-thin space-y-2.5 overflow-y-auto p-3">
+          <div id="tailor-panel" role="tabpanel" aria-labelledby={`tailor-tab-${panel}`} className="scroll-thin space-y-2.5 overflow-y-auto p-3">
             {panel === "review" && (
               <ReviewList resume={resume} showOnPage={showOnPage} fixHref={fixHref} editHere={(q) => startEdit(lineFor(q)?.bulletId)} canEditHere={(q) => Boolean(lineFor(q)?.bulletId)} reviewing={reviewing} />
             )}

@@ -26,9 +26,9 @@ export default async function GuidePage({ params }: Params) {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">
+      <main id="main" tabIndex={-1} className="flex-1">
         <article className={`${container} max-w-2xl py-14 sm:py-20`}>
-          <Link href="/guides" className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+          <Link href="/guides" className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-3.5" aria-hidden="true" />
             All guides
           </Link>

@@ -39,7 +39,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
 
   return (
     <div className="flex min-h-dvh">
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
+      <aside aria-label="Sidebar" className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
         <Link href="/app" className="flex h-14 items-center gap-2 px-5">
           <LogoMark className="size-5" />
           <span className="font-display text-[16px] font-semibold">{site.name}</span>
@@ -79,7 +79,7 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
           <UserMenu user={user} compact />
         </header>
 
-        <main className="relative isolate flex-1 pb-36 md:pb-24">
+        <main id="main" tabIndex={-1} className="relative isolate flex-1 pb-36 md:pb-24">
           {/* A little morning light at the top of every page. */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 atmosphere-soft opacity-45 [mask-image:linear-gradient(to_bottom,black,transparent)]" />
           {children}

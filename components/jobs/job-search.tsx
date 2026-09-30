@@ -151,7 +151,7 @@ export function JobSearch({
           e.preventDefault();
           run(query);
         }}
-        className="flex items-center gap-2 rounded-xl border bg-background p-1.5 pl-4 shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25"
+        className="flex items-center gap-2 rounded-xl border border-field bg-background p-1.5 pl-4 shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25"
       >
         <Search className="size-4 shrink-0 text-subtle-foreground" />
         <input

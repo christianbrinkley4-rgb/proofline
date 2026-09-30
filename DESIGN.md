@@ -13,6 +13,7 @@ Tokens live in [`app/globals.css`](app/globals.css). Use the semantic Tailwind c
 | Tertiary text | `text-subtle-foreground` | Meta lines, labels, timestamps |
 | Surfaces | `bg-background`, `bg-muted` | Pages, panels, stages |
 | Lines | `border` (default), `border-border-strong` | Dividers, cards, hover borders |
+| Field outlines | `border-field` | Text fields, selects, checkboxes, and any box that wraps an input. 3:1 on the page, so people can find the field (WCAG 1.4.11). Native inputs, selects, and textareas get it automatically. |
 | **Accent** | `bg-brand`, `text-brand-ink`, `bg-brand-soft` | "Confirmed", fit bars, finished steps, focus rings |
 | **Pending** | `bg-pending`, `text-pending-ink`, `bg-pending-soft` | Something waiting on the user: an unconfirmed fact, the "why" only they can write, a follow-up that's due |
 | **Ink** | `bg-ink`, `text-ink-foreground`, `text-ink-muted` | Primary buttons (via `bg-primary`), step numbers, the current step, the dark coach band |
@@ -23,6 +24,17 @@ Rules:
 - One accent. If a green element doesn't mean "confirmed" or "worth your time", make it neutral.
 - Amber is a status, not a second brand color.
 - Primary buttons are deep forest ink (`bg-primary`), never green.
+
+### Accessibility
+
+Target WCAG 2.1 AA, checked with `node scripts/a11y-audit.mjs` (axe-core on every page, keyboard focus, tap targets, overflow; light and dark, desktop, 375px, and 320px with `--sizes narrow`). Rules the audit found worth writing down:
+
+- Every text token passes 4.5:1 on `bg-background` and `bg-muted`. `text-brand` is for icons and large text only (4.4:1 on white); use `text-brand-ink` for small green text.
+- Never remove a focus outline without replacing it. `focus-visible:outline-none` needs a ring, an outline, or a `focus-within` ring on the wrapper.
+- Tap targets are at least 24px tall. Back links and text buttons get `min-h-6`.
+- A `role="tablist"` uses `onTabListKeyDown` (`components/shared/tab-keys.ts`) and `tabIndex={selected ? 0 : -1}` on each tab.
+- One `<main id="main" tabIndex={-1}>` per page, so the skip link in `app/layout.tsx` works. Two landmarks of the same kind need different `aria-label`s.
+- Headings don't skip levels; footer column titles are `h2`.
 
 ### Dark mode
 

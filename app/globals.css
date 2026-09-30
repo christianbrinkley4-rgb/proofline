@@ -38,6 +38,7 @@
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
+  --color-field: var(--field-border);
   --color-ring: var(--ring);
 
   --color-brand: var(--brand);
@@ -192,13 +193,15 @@
   --secondary-foreground: oklch(0.255 0.035 166);
   --muted: oklch(0.973 0.006 160);
   --muted-foreground: oklch(0.44 0.018 168);
-  --subtle-foreground: oklch(0.56 0.016 168);
+  --subtle-foreground: oklch(0.52 0.016 168);
   --accent: oklch(0.965 0.007 160);
   --accent-foreground: oklch(0.255 0.035 166);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: oklch(0.53 0.22 27);
   --border: oklch(0.918 0.008 160);
   --border-strong: oklch(0.868 0.011 160);
   --input: oklch(0.905 0.009 160);
+  /* Outline of a text field, select, or checkbox: at least 3:1 on the page (WCAG 1.4.11). */
+  --field-border: oklch(0.65 0.012 165);
   --ring: oklch(0.56 0.13 158);
 
   /* the one accent */
@@ -261,6 +264,7 @@
   --border: oklch(0.27 0.01 166);
   --border-strong: oklch(0.34 0.012 166);
   --input: oklch(0.32 0.012 166);
+  --field-border: oklch(0.5 0.012 166);
   --ring: oklch(0.72 0.13 158);
 
   --brand: oklch(0.72 0.13 158);
@@ -298,6 +302,16 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /* The skip link moves focus here; the whole page doesn't need a ring. */
+  #main:focus {
+    outline: none;
+  }
+  /* A field's outline is how people find it, so it gets 3:1 contrast (WCAG 1.4.11). */
+  input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="range"]),
+  select,
+  textarea {
+    border-color: var(--field-border);
   }
   html {
     @apply font-sans;

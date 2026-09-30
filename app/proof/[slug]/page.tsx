@@ -27,7 +27,7 @@ export default async function ProofPage({ params }: { params: Promise<{ slug: st
           <span className="text-[12.5px] text-subtle-foreground">Shared by the candidate</span>
         </div>
       </header>
-      <main className={`${container} max-w-3xl py-12 sm:py-16`}>{view.state === "ok" ? <Proof view={view} /> : <Unavailable view={view} />}</main>
+      <main id="main" tabIndex={-1} className={`${container} max-w-3xl py-12 sm:py-16`}>{view.state === "ok" ? <Proof view={view} /> : <Unavailable view={view} />}</main>
     </div>
   );
 }

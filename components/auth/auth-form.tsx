@@ -126,7 +126,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
               At least 8 characters.
             </p>
           ) : (
-            <Link href="/forgot-password" className="inline-block pt-1 text-[12.5px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+            <Link href="/forgot-password" className="inline-block min-h-6 pt-1 text-[12.5px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
               Forgot your password?
             </Link>
           )}

@@ -38,7 +38,7 @@ export default async function KitPage({ params }: PageProps<"/app/jobs/[id]/kit"
   const sent = readSent(application?.sent);
 
   const back = (
-    <Link href={`/app/jobs/${id}/packet`} className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+    <Link href={`/app/jobs/${id}/packet`} className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
       <ArrowLeft className="size-3.5" />
       Back to the packet
     </Link>

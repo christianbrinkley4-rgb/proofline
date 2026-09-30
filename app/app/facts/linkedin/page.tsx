@@ -21,7 +21,7 @@ export default async function LinkedInPage() {
 
   return (
     <PageBody className="max-w-3xl">
-      <Link href="/app/facts" className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+      <Link href="/app/facts" className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-3.5" />
         My facts
       </Link>

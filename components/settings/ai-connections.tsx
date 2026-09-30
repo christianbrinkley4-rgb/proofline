@@ -8,6 +8,7 @@ import { createTokenAction, revokeTokenAction } from "@/app/app/settings/actions
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { onTabListKeyDown } from "@/components/shared/tab-keys";
 
 export type TokenView = { id: string; name: string; prefix: string; createdAt: string; lastUsedAt: string | null };
 
@@ -96,13 +97,14 @@ export function AiConnections({ tokens, mcpUrl }: { tokens: TokenView[]; mcpUrl:
       )}
 
       <div className="rounded-lg border">
-        <div role="tablist" aria-label="Set up with" className="flex gap-1 border-b p-1.5">
+        <div role="tablist" aria-label="Set up with" onKeyDown={onTabListKeyDown} className="flex gap-1 border-b p-1.5">
           {CLIENTS.map((c) => (
             <button
               key={c}
               role="tab"
               type="button"
               aria-selected={client === c}
+              tabIndex={client === c ? 0 : -1}
               onClick={() => setClient(c)}
               className={cn("rounded-md px-2.5 py-1 text-[12.5px]", client === c ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground")}
             >

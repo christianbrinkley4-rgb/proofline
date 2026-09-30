@@ -28,7 +28,7 @@ export function JobDetailsEditor({
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="mt-2 text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+      <button type="button" onClick={() => setOpen(true)} className="mt-2 min-h-6 text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
         Fix title, company, or place
       </button>
     );

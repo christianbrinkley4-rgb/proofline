@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Proofline",
   "short_name": "Proofline",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Fit scores on LinkedIn, Indeed, and Handshake jobs. Fills Greenhouse and Lever forms from facts you confirmed in Proofline.",
   "action": {
     "default_title": "Proofline",

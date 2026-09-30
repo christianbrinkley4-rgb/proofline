@@ -42,7 +42,7 @@ export default async function ResumePage({ params }: PageProps<"/app/resumes/[id
 
   return (
     <PageBody className="max-w-7xl">
-      <Link href={job ? `/app/jobs/${job.id}` : "/app/resumes"} className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+      <Link href={job ? `/app/jobs/${job.id}` : "/app/resumes"} className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-3.5" />
         {job ? "Back to the job" : "All resumes"}
       </Link>

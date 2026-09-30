@@ -15,7 +15,7 @@ export default function GuidesPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">
+      <main id="main" tabIndex={-1} className="flex-1">
         <section className={`${container} max-w-3xl py-16 sm:py-24`}>
           <p className="inline-flex items-center gap-2 font-mono text-[12px] tracking-wide text-brand-ink uppercase">
             <span aria-hidden="true" className="h-px w-5 bg-brand" />

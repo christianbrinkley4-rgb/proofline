@@ -19,6 +19,7 @@ import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { findVoiceIssues, findWeakOpener } from "@/lib/voice/rules";
 import { FactChip } from "./parts";
+import { onTabListKeyDown } from "@/components/shared/tab-keys";
 
 export type PendingState = "pending" | "confirmed" | "removed";
 
@@ -139,7 +140,7 @@ export function TailorView({ job, pending, hours, onConfirm, onRemove, onUndo }:
 
         {/* Reasoning panel */}
         <aside className="flex min-h-0 flex-col border-t lg:border-t-0 lg:border-l">
-          <div role="tablist" aria-label="Resume reasoning" className="flex gap-1 border-b p-2">
+          <div role="tablist" aria-label="Resume reasoning" onKeyDown={onTabListKeyDown} className="flex gap-1 border-b p-2">
             {(
               [
                 ["why", "Why this works"],
@@ -152,6 +153,7 @@ export function TailorView({ job, pending, hours, onConfirm, onRemove, onUndo }:
                 role="tab"
                 type="button"
                 aria-selected={panel === id}
+                tabIndex={panel === id ? 0 : -1}
                 onClick={() => setPanel(id)}
                 className={cn(
                   "rounded-md px-2.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors",

@@ -129,7 +129,7 @@ export function ChipInput({
 
   return (
     <div>
-      <div className="flex min-h-11 flex-wrap items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
+      <div className="flex min-h-11 flex-wrap items-center gap-1.5 rounded-lg border border-field bg-background px-2 py-1.5 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
         {value.map((item) => (
           <span key={item} className="inline-flex items-center gap-0.5 rounded-md bg-muted py-0.5 pr-0.5 pl-2 text-[13px]">
             {item}

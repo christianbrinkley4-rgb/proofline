@@ -13,7 +13,7 @@ export default function CheckPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">
+      <main id="main" tabIndex={-1} className="flex-1">
         <section className="relative isolate overflow-hidden atmosphere grain">
           <div className={`${container} relative max-w-3xl pt-14 pb-10 sm:pt-20`}>
             <p className="inline-flex items-center gap-2 font-mono text-[12px] tracking-wide text-brand-ink uppercase">

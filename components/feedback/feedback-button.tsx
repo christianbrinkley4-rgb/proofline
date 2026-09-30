@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
 import { Check, LoaderCircle, MessageSquareText, X } from "lucide-react";
 import { sendFeedbackMessageAction } from "@/app/app/feedback/message-actions";
@@ -18,6 +18,7 @@ export function FeedbackButton() {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -33,9 +34,10 @@ export function FeedbackButton() {
     setStatus("sent");
   }
 
-  const close = () => {
+  const close = (returnFocus = false) => {
     setOpen(false);
     if (status === "sent") setStatus("idle");
+    if (returnFocus) trigger.current?.focus();
   };
 
   return (
@@ -44,11 +46,14 @@ export function FeedbackButton() {
         <div
           role="dialog"
           aria-label="Send feedback"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") close(true);
+          }}
           className="mb-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border bg-background p-4 shadow-lift motion-safe:animate-view-in"
         >
           <div className="flex items-center justify-between">
             <h2 className="text-[14px] font-semibold">Send feedback</h2>
-            <button type="button" onClick={close} aria-label="Close feedback" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted">
+            <button type="button" onClick={() => close(true)} aria-label="Close feedback" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted">
               <X className="size-4" />
             </button>
           </div>
@@ -87,6 +92,7 @@ export function FeedbackButton() {
         </div>
       )}
       <button
+        ref={trigger}
         type="button"
         onClick={() => (open ? close() : setOpen(true))}
         aria-expanded={open}

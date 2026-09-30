@@ -57,7 +57,7 @@ export default async function TodayPage() {
         <section className="mt-10">
           <div className="flex items-baseline justify-between">
             <h2 className="text-[15px] font-semibold tracking-tight">Your latest jobs</h2>
-            <Link href="/app/jobs" className="text-[12.5px] text-muted-foreground hover:text-foreground">
+            <Link href="/app/jobs" className="inline-flex min-h-6 items-center text-[12.5px] text-muted-foreground hover:text-foreground">
               See all
             </Link>
           </div>

@@ -134,7 +134,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
 
   return (
     <PageBody className="max-w-6xl">
-      <Link href="/app/jobs" className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+      <Link href="/app/jobs" className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-3.5" />
         All jobs
       </Link>
@@ -210,7 +210,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
             </div>
           </section>
 
-          <aside className="space-y-4">
+          <aside aria-label="Strengths and gaps" className="space-y-4">
             <Notes title="Strengths" icon="check" items={fit.strengths} empty="Confirm more of what you've done to see strengths here." />
             <Notes title="Gaps" icon="minus" items={fit.gaps} empty="Nothing obvious." />
             <Notes title="What this role rewards" icon="spark" items={rewards} />

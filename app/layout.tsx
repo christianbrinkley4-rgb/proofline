@@ -55,6 +55,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <a
+          href="#main"
+          className="sr-only rounded-md bg-foreground px-3 py-2 text-[14px] font-medium text-background focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-3 focus:py-2"
+        >
+          Skip to content
+        </a>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -86,7 +86,7 @@ export function FeedFilters({ filters }: { filters: Filters }) {
               name="minScore"
               defaultValue={String(filters.minScore)}
               onChange={apply}
-              className="h-9 rounded-lg border border-input bg-background px-2.5 text-[13.5px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-9 rounded-lg border border-field bg-background px-2.5 text-[13.5px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               {MIN_SCORES.map((score) => (
                 <option key={score} value={score}>

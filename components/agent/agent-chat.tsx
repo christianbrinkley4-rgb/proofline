@@ -181,7 +181,7 @@ export function AgentChat({ initial, mode, targetRole, hasApplications }: {
           void send(input);
         }}
       >
-        <div className="flex items-end gap-2 rounded-xl border bg-background px-3 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25">
+        <div className="flex items-end gap-2 rounded-xl border border-field bg-background px-3 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25">
           <textarea
             aria-label="Message your agent"
             value={input}

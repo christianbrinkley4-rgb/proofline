@@ -25,7 +25,7 @@ export function StoryStart({ name }: { name: string }) {
   if (mode) {
     return (
       <section id="start" className="mt-8">
-        <button type="button" onClick={() => setMode(null)} className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={() => setMode(null)} className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3.5" />
           Choose another way
         </button>

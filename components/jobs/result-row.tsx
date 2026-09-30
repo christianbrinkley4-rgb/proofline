@@ -55,7 +55,7 @@ export function ResultRow({ result }: { result: JobResult }) {
     <li className="group relative">
       <Link
         href={`/app/jobs/${result.jobId}`}
-        className="flex items-center gap-3.5 px-4 py-3 pr-24 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none sm:px-5"
+        className="flex items-center gap-3.5 px-4 py-3 pr-24 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:px-5"
       >
         <CompanyAvatar name={result.company} className="hidden sm:grid" />
         <span className="min-w-0 flex-1">
@@ -99,7 +99,7 @@ export function ResultRow({ result }: { result: JobResult }) {
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="Not for me"
-            className="grid size-8 place-items-center rounded-md text-subtle-foreground outline-none hover:bg-background hover:text-foreground"
+            className="grid size-8 place-items-center rounded-md text-subtle-foreground outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring hover:text-foreground"
           >
             <X className="size-4" />
           </DropdownMenuTrigger>

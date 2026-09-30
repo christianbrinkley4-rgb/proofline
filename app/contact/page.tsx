@@ -10,7 +10,7 @@ export default function ContactPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">
+      <main id="main" tabIndex={-1} className="flex-1">
         <section className={`${container} max-w-2xl py-16 sm:py-24`}>
           <h1 className="font-display text-[36px] leading-tight font-semibold sm:text-[46px]">Talk to us</h1>
           <p className="mt-4 text-[16px] leading-7 text-muted-foreground">

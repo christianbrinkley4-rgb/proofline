@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
+    <main id="main" tabIndex={-1} className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
       <Link href="/" aria-label="Home">
         <Logo />
       </Link>

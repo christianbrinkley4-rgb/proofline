@@ -33,11 +33,11 @@ export function SiteFooter() {
         <div className="grid grid-cols-2 gap-10 sm:gap-16">
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <h3 className="text-[13px] font-medium">{col.title}</h3>
-              <ul className="mt-3 space-y-2">
+              <h2 className="text-[13px] font-medium">{col.title}</h2>
+              <ul className="mt-2 space-y-1">
                 {col.links.map((l) => (
                   <li key={l.href}>
-                    <a href={l.href} className="text-[14px] text-muted-foreground transition-colors hover:text-foreground">
+                    <a href={l.href} className="inline-block py-0.5 text-[14px] leading-6 text-muted-foreground transition-colors hover:text-foreground">
                       {l.label}
                     </a>
                   </li>

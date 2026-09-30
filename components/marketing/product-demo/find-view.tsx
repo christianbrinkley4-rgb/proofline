@@ -35,7 +35,7 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
               <button
                 type="button"
                 onClick={() => onOpenJob(job.id)}
-                className="group flex w-full items-center gap-3.5 px-4 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none sm:px-5"
+                className="group flex w-full items-center gap-3.5 px-4 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:px-5"
               >
                 <CompanyAvatar name={job.company} className="hidden sm:grid" />
                 <span className="min-w-0 flex-1">

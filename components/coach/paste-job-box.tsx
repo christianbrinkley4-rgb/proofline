@@ -90,7 +90,7 @@ export function PasteJobBox({
         submit();
       }}
     >
-      <div className="rounded-2xl border border-border-strong bg-background p-2 shadow-xs transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25">
+      <div className="rounded-2xl border border-field bg-background p-2 shadow-xs transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25">
         <div className="flex items-start gap-3 px-2 pt-2">
           <ClipboardPaste className="mt-1 size-4 shrink-0 text-subtle-foreground" />
           <textarea

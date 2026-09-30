@@ -3,7 +3,7 @@
   --foreground: oklch(0.2 0.014 170);
   --muted: oklch(0.973 0.006 160);
   --muted-foreground: oklch(0.44 0.018 168);
-  --subtle-foreground: oklch(0.56 0.016 168);
+  --subtle-foreground: oklch(0.52 0.016 168);
   --border: oklch(0.918 0.008 160);
   --border-strong: oklch(0.868 0.011 160);
   --primary: oklch(0.255 0.035 166);

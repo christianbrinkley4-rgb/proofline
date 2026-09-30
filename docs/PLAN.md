@@ -4,6 +4,21 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## September 30 accessibility audit (WCAG 2.1 AA)
+
+`node scripts/a11y-audit.mjs` runs axe-core (WCAG 2.1 A and AA plus best practices) on all 23 pages, public ones signed out and app ones signed in with a real job, kit, packet, resume, and guide. It covers light and dark, desktop and 375px. It also tabs through each page to check every stop shows focus, measures tap targets against 24px, and checks for horizontal overflow; `--sizes narrow` adds the 320px reflow width. The first run found six kinds of issue; the final run found none on all 88 page, theme, and size combinations, and none at 320px. Fixed:
+
+- **Contrast**: light `--subtle-foreground` was 4.4:1 on muted panels (now 5.1:1), and the light destructive red was 4.0:1 on its tinted badge (now 4.9:1). The extension's popup and on-page panels had the same gray and now match (extension 0.3.1).
+- **Field outlines** (1.4.11): text fields, selects, checkboxes, and input wrappers were 1.3:1 against the page. A new `--field-border` token (3.2:1 in both themes, `border-field`) is applied to them, and to every native input, select, and textarea from the base layer.
+- **Focus**: the demo's job rows and the job search rows removed the outline and only tinted the background; they now show an inset outline. The row menu button got a ring.
+- **Skip link**: "Skip to content" is the first tab stop on every page and moves focus to the page's single `<main id="main">`. The app error screen no longer nests a second `main`.
+- **Tabs**: four tab strips (tailor panel, resume workspace, landing demo, AI connections) had tab roles but no arrow keys. `onTabListKeyDown` adds Left, Right, Home, and End, with one tab stop per strip.
+- **Feedback panel**: Escape closes it and returns focus to its button.
+- **Structure**: footer column headings are `h2` (they skipped from `h1` to `h3`), the sign-in pages' logo sits in a `header` landmark, and the app sidebar and the job page's side column have distinct labels.
+- **Targets**: footer links, back links, "See all", "Fix title, company, or place", and "Forgot your password?" are at least 24px tall.
+
+Also checked by hand: every page has its own title and `lang="en"`, sign-in and reset errors use `role="alert"`, and the demo tabs and Radix dialogs already handled keys and focus. Not covered: a real screen reader session (NVDA, VoiceOver) and 200% text-only zoom; the automated scan catches only part of what those find. The rules are in `DESIGN.md` under Accessibility.
+
 ## September 30 owner's resume compared line by line (handoff item 5, local)
 
 The owner's master resume (`Christian-Brinkley-Resume.pdf`) was run through the real import (rules parser), every line saved as confirmed, a tax internship posting pasted, and `tailorBestResume` rendered to PDF, then compared with his hand-tailored Deloitte tax version. Items 1 to 4 had already closed the big gaps: both degrees, GPA, Dean's List, coursework, CPA candidate, website and LinkedIn all survive, the Front Desk role keeps its one line, and tense is consistent within each entry. Three differences remained and are fixed:

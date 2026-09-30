@@ -15,6 +15,7 @@ import type { CutItem, WhyItem } from "@/lib/resume/tailor";
 import type { Template } from "@/lib/resume/templates";
 import { cn } from "@/lib/utils";
 import { PagePreview } from "./page-preview";
+import { onTabListKeyDown } from "@/components/shared/tab-keys";
 
 type Panel = "why" | "cut" | "checks";
 
@@ -164,7 +165,7 @@ export function ResumeWorkspace({
         </div>
 
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-background lg:max-h-[calc(100dvh-8rem)] lg:sticky lg:top-6">
-          <div role="tablist" aria-label="Resume reasoning" className="flex gap-1 border-b p-2">
+          <div role="tablist" aria-label="Resume reasoning" onKeyDown={onTabListKeyDown} className="flex gap-1 border-b p-2">
             {(
               [
                 ["why", "Why this works"],
@@ -179,6 +180,7 @@ export function ResumeWorkspace({
                 id={`resume-tab-${id}`}
                 aria-controls="resume-panel"
                 aria-selected={panel === id}
+                tabIndex={panel === id ? 0 : -1}
                 onClick={() => setPanel(id)}
                 className={cn(
                   "rounded-md px-2.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors pointer-coarse:py-2.5",

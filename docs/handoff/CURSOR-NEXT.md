@@ -1,5 +1,9 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 30 accessibility pass
+
+WCAG 2.1 AA audit and fixes; see the accessibility section in `docs/PLAN.md`. Run `node scripts/a11y-audit.mjs` against the dev server before a release. The extension is now 0.3.1 (same features, readable gray text); testers replace the unzipped folder and press Reload again.
+
 ## September 30 release
 
 Commit `1a1bc22` is live at https://proofline-beta.vercel.app as Ready production deployment `dpl_5HAXjPUUUKptZurA1pzmfXctQH3V`. It ships everything since the last release: Find jobs (spec 03), the answer kit and sent record (spec 04 v1), extension 0.3.0 with Greenhouse and Lever fill (spec 04 v2, zip at `/proofline-extension.zip`), and the resume fixes from the owner's line-by-line comparison. Live checks: home and /check 200, signed-out My facts and Find jobs 307 to login, development login 404, the feed cron 401 without its secret, and the first database request ran migrations 0017 and 0018 with no errors in the logs. The Find jobs pool stays empty until the first 10:00 UTC cron run, or until the owner presses Run on the refresh-feed cron in the Vercel dashboard. Signed-in flows were verified locally with synthetic data, not on production. The Gemini 402 billing blocker is unchanged.

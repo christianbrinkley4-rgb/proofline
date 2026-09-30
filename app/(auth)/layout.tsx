@@ -6,10 +6,12 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1fr_minmax(0,40rem)]">
       <div className="flex flex-col px-4 py-6 sm:px-8">
-        <Link href="/" aria-label="Home" className="self-start">
-          <Logo />
-        </Link>
-        <main className="flex flex-1 items-center justify-center py-12">
+        <header className="self-start">
+          <Link href="/" aria-label="Proofline home" className="block rounded-md">
+            <Logo />
+          </Link>
+        </header>
+        <main id="main" tabIndex={-1} className="flex flex-1 items-center justify-center py-12">
           <div className="w-full max-w-sm">{children}</div>
         </main>
       </div>

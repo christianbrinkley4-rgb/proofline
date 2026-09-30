@@ -26,7 +26,7 @@ export default async function ComparePage({ searchParams }: PageProps<"/app/resu
   const resumes = order.flatMap((variant) => history.find((resume) => resume.variant === variant) ?? []);
   const selected = typeof select === "string" && resumes.some((r) => r.row.id === select) ? select : null;
   return <PageBody>
-    <Link href={"/app/jobs/" + id} className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3.5" /> Back to job</Link>
+    <Link href={"/app/jobs/" + id} className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3.5" /> Back to job</Link>
     <PageHeader className="mt-4" title="Choose your best evidence" description={`${job.title} at ${job.company}. Compare the latest version of each strategy, built from your confirmed history.`} />
     <div className="mt-6"><VariantCompareActions jobId={id} selected={selected} /></div>
     {resumes.length === 0 ? <div className="mt-8 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Build versions to see how your experience, skills, and keywords tell different true stories for this posting.</div> :

@@ -76,7 +76,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
 
   return (
     <PageBody className="max-w-4xl">
-      <Link href={`/app/jobs/${id}`} className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+      <Link href={`/app/jobs/${id}`} className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-3.5" />
         Back to job
       </Link>
