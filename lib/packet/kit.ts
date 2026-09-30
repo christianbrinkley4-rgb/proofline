@@ -119,11 +119,15 @@ function factSource(id: string | null | undefined, facts: Map<string, string>): 
   return text ? [{ kind: "fact", id, text }] : [];
 }
 
-/** "Christian Brinkley" to first "Christian", last "Brinkley". Middle names stay with the last name; the person reviews it. */
+const SURNAME_PARTICLES = new Set(["de", "del", "della", "da", "das", "dos", "du", "la", "le", "van", "von", "der", "den", "di", "st.", "bin", "ibn", "al"]);
+
+/** First word and surname. A middle name is left off; lowercase particles stay with the surname ("de la Cruz"). The person reviews it. */
 export function splitName(full: string | null | undefined): { first: string; last: string } {
   const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
   if (parts.length < 2) return { first: parts[0] ?? "", last: "" };
-  return { first: parts[0], last: parts.slice(1).join(" ") };
+  let start = parts.length - 1;
+  while (start > 1 && SURNAME_PARTICLES.has(parts[start - 1])) start -= 1;
+  return { first: parts[0], last: parts.slice(start).join(" ") };
 }
 
 const monthYear = (value: string | null | undefined) => (value ? formatMonth(value) : "");

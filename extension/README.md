@@ -1,6 +1,6 @@
 # Proofline browser extension
 
-A Manifest V3 extension for Chrome and Edge. On LinkedIn, Indeed, and Handshake job postings it shows the person's fit score in a small badge. From the toolbar popup a person can save the posting they're viewing, fill an application's basic fields from their Proofline profile, and mark the job Applied. It outlines every field it fills and never submits a form.
+A Manifest V3 extension for Chrome and Edge. On LinkedIn, Indeed, and Handshake job postings it shows the person's fit score in a small badge. From the toolbar popup a person can save the posting they're viewing, fill a Greenhouse or Lever application from the job's answer kit (basic fields from their profile elsewhere), and mark the job Applied, keeping the kit as a record of what they sent. It outlines every field it fills, lists them in a panel on the page, and never submits a form.
 
 ## The fit badge
 
@@ -27,11 +27,24 @@ Selectors are checked against the synthetic pages in `tests/fixtures/job-sites/`
 3. The page hands the token to `connect.js`, which passes it to `background.js`. The background worker accepts it only from Proofline's own origins and stores it in `chrome.storage.local`. The token is never shown on screen.
 4. The popup calls `/api/extension/profile`, `/api/extension/jobs`, and `/api/extension/applied` with that token. Disconnect all on the Connect page revokes every browser's token.
 
-The extension can send requests only to the origins in `host_permissions` (the beta and `localhost:3000`). Beyond the three job sites' postings, it reads a page only when the person clicks an action in the popup (`activeTab`). `storage` holds the connection and the session score cache; `scripting` runs the popup's save and fill actions on the tab the person clicked it on.
+The extension can send requests only to Proofline's origins (the beta and `localhost:3000`). Its other host permissions, `job-boards.greenhouse.io`, `boards.greenhouse.io`, and `jobs.lever.co`, exist so Fill can reach a Greenhouse form embedded in a company's career page as a frame; nothing runs on them until the person clicks Fill. Beyond the three job sites' postings, it reads a page only when the person clicks an action in the popup (`activeTab`). `storage` holds the connection and the session score cache; `scripting` runs the popup's save and fill actions on the tab the person clicked it on.
 
-## What autofill will and won't do
+## Filling from the answer kit (Greenhouse and Lever)
 
-`page-scripts.js` fills empty, visible text fields whose label matches a known field: name, email, phone, city and state, LinkedIn, website, school, degree, major, GPA, and graduation date. It skips work authorization, demographic, salary, referral, and similar questions, fields that name someone else (a reference, a manager) or a company, and anything already filled. Forms inside a cross-site frame aren't reachable; the popup says so.
+Fill asks `POST /api/extension/kit` for this tab's job. The server matches the page to a job on the person's account by its Greenhouse id (`/jobs/<id>`, `gh_jid`, or an embed's `token`) or Lever posting id (`lib/extension/kit.ts`); a job that isn't saved yet is saved from the page first. The reply is the job's answer kit (`/app/jobs/<id>/kit`) as a fill plan: only fields the kit filled from confirmed facts or saved details, plus the blanks and why.
+
+`kit-fill.js` then runs in every frame the extension may reach (`allFrames`), so an embedded Greenhouse form is filled too:
+
+- `fillFromKit` types into empty text fields matched by label: name, email, phone, location, LinkedIn, website, current company and title (only when the newest role is ongoing), school, degree, major, GPA, graduation, earliest start, cover letter text, and the form's own questions when they match a question drafted in the kit. It ticks Yes/No radios, checkboxes, and native selects for work authorization, sponsorship, citizenship (when asked), and willingness to relocate, from the person's own answers, and skips any question that names another country or asks an open question ("If not, what sponsorship would you need?").
+- It never touches self-identification, pronouns, pay, referral source, consent, attestations, prior employment, or anything else in its `NEVER` list, never fills a field that already has a value, and never types into a combobox. Greenhouse's Yes/No menus and place pickers ignore synthetic events (checked on a live form), so they're listed for the person with the kit's answer beside them.
+- `showFillPanel` draws the review panel in the top frame: every filled field with its source and a Show link, then what to choose, what to attach (resume file name from the kit), what was left blank for want of a confirmed fact, and required fields still empty. It says Proofline never submits.
+- "I submitted it" sends the kit's digest with `/api/extension/applied`, so the kit the person filled from becomes the application's record of what was sent, as with Mark submitted on the kit page. If the facts changed after the fill, the job is still marked Applied and the popup points to the kit page.
+
+Nothing in `extension/` may submit a form, call `.click()`, dispatch a submit or keyboard event, or look up a submit button; `tests/extension-no-submit.test.ts` checks every script for that. `node scripts/check-kit-fill.mjs` runs the fill against `tests/fixtures/application-forms/` (Greenhouse and Lever structures read from live forms on September 30, 2026) with a plan built by the real kit code; `--live` also fills a live Greenhouse embed and a live Lever form in a throwaway browser with every non-GET request blocked. `node scripts/check-kit-extension.mjs --job <id>` loads the unpacked extension, connects to the dev server, and runs the popup's own Fill and I submitted it against those pages, with the Greenhouse form in a cross-origin frame.
+
+## Basic fill on other sites
+
+On any other site, Fill falls back to `page-scripts.js`, which fills empty, visible text fields whose label matches a known field: name, email, phone, city and state, LinkedIn, website, school, degree, major, GPA, and graduation date. It skips work authorization, demographic, salary, referral, and similar questions, fields that name someone else (a reference, a manager) or a company, and anything already filled. Forms inside a cross-site frame aren't reachable; the popup says so.
 
 ## Develop
 

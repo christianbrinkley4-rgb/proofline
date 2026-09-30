@@ -1,8 +1,10 @@
 # Handoff to Cursor (September 28, 2026)
 
-## September 30 answer kit (spec 04 v1, committed locally, not deployed)
+## September 30 answer kit and assisted fill (spec 04, committed locally, not deployed)
 
-`/app/jobs/[id]/kit` lists every common application field filled only from confirmed facts and saved details, with copy buttons and sources inline; fields with nothing behind them are blank and say what to add. "Mark submitted" saves the exact kit to `application.sent` (migration 0018) and the tracker shows "What you sent". Proofline never submits anything. Details in `docs/PLAN.md`. Next: v2, filling Greenhouse and Lever forms from the kit in the extension, with a review panel.
+`/app/jobs/[id]/kit` lists every common application field filled only from confirmed facts and saved details, with copy buttons and sources inline; fields with nothing behind them are blank and say what to add. "Mark submitted" saves the exact kit to `application.sent` (migration 0018) and the tracker shows "What you sent". Proofline never submits anything. Details in `docs/PLAN.md`.
+
+v2 is also done locally: extension 0.3.0 fills Greenhouse and Lever forms (including Greenhouse embedded in career pages) from the kit, shows a review panel listing every field, and "I submitted it" keeps the kit as the sent record. It adds host permissions for `job-boards.greenhouse.io`, `boards.greenhouse.io`, and `jobs.lever.co`, so testers must download the new zip from the Connect page, replace the unzipped folder, and press Reload. An unpacked extension gets the new sites on Reload; a store version would ask people to accept them. Store publishing is still the owner's call.
 
 ## September 30 Find jobs feed (spec 03, committed locally, not deployed)
 

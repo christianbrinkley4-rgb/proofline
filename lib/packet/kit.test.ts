@@ -95,7 +95,7 @@ describe("answer kit", () => {
   it.each(CASES.map((c) => [c.name, c]))("%s: every filled line traces to a confirmed fact or the person's own saved answer", (_name, c) => {
     const kit = buildAnswerKit(c.input);
     const p = c.input.profile!;
-    const profileValues = new Set([p.fullName, ...p.fullName!.split(" "), p.fullName!.split(" ").slice(1).join(" "), p.contactEmail, p.phone, `${p.city}, ${p.region}`, p.linkedinUrl, p.portfolioUrl].filter(Boolean) as string[]);
+    const profileValues = new Set([p.fullName, ...p.fullName!.split(" "), p.contactEmail, p.phone, `${p.city}, ${p.region}`, p.linkedinUrl, p.portfolioUrl].filter(Boolean) as string[]);
     for (const f of kitFields(kit)) {
       if (!f.value) {
         expect(f.blank, `${f.key} is empty but not flagged`).toBeDefined();
@@ -197,7 +197,8 @@ describe("answer kit", () => {
   });
 
   it("splits names without guessing a missing last name", () => {
-    expect(splitName("Jordan Avery Lee")).toEqual({ first: "Jordan", last: "Avery Lee" });
+    expect(splitName("Jordan Avery Lee")).toEqual({ first: "Jordan", last: "Lee" });
+    expect(splitName("Juan Carlos de la Cruz")).toEqual({ first: "Juan", last: "de la Cruz" });
     expect(splitName("Cher")).toEqual({ first: "Cher", last: "" });
     expect(splitName(null)).toEqual({ first: "", last: "" });
   });

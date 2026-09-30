@@ -22,7 +22,7 @@ export const PRIVACY_POINTS = [
   },
   {
     title: "Browser extension",
-    text: "On LinkedIn, Indeed, and Handshake job pages, it reads the posting's title, company, location, and description and sends them to Proofline to work out your fit score against facts you already confirmed. The posting isn't stored unless you save the job. It never reads your messages, your profile on those sites, or your other tabs, and it does nothing on other sites until you click its toolbar button.",
+    text: "On LinkedIn, Indeed, and Handshake job pages, it reads the posting's title, company, location, and description and sends them to Proofline to work out your fit score against facts you already confirmed. The posting isn't stored unless you save the job. On a Greenhouse or Lever application, when you choose Fill, it reads the form's field labels to match them to your answer kit and types in only answers from facts you confirmed; the form's contents aren't sent to Proofline. It never submits. It never reads your messages, your profile on those sites, or your other tabs, and it does nothing on other sites until you click its toolbar button.",
   },
   {
     title: "Take it with you",

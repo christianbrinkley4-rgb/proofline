@@ -11,13 +11,13 @@ export const metadata: Metadata = { title: "Browser extension" };
 const DOES = [
   "Shows your fit score on job postings on LinkedIn, Indeed, and Handshake. Click it for knockouts first, then the math behind the score.",
   "Saves the job posting you're looking at, with its fit score, in one click.",
-  "Fills your name, contact details, school, degree, and links into an application form, and highlights every field it touched so you can check it.",
-  "Marks the job Applied on your tracker when you tell it you submitted.",
+  "On Greenhouse and Lever applications, fills the form from the job's answer kit: contact details, school, current role, links, your work authorization answers, and questions you drafted. A panel on the page lists every field it filled and what's left for you.",
+  "Marks the job Applied when you tell it you submitted, and keeps the kit it filled from as your record of what you sent.",
 ];
 
 const NEVER = [
   "Clicks submit or sends anything for you.",
-  "Answers questions about work authorization, demographics, or anything you haven't told Proofline.",
+  "Answers demographic, pay, referral, or consent questions, or anything you haven't confirmed. Those fields stay blank for you.",
   "Reads your messages, your profile on a job site, or your other tabs. On LinkedIn, Indeed, and Handshake it reads only the job posting on screen.",
   "Keeps postings you only look at. A job is saved to Proofline only when you choose to save it.",
 ];

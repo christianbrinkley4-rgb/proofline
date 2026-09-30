@@ -4,6 +4,19 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## September 30 assisted fill on Greenhouse and Lever (spec 04 v2, local)
+
+The extension (0.3.0) now fills Greenhouse and Lever applications from the job's answer kit and never submits. Details and the matching rules are in `extension/README.md`.
+
+- `POST /api/extension/kit` matches the tab to a job on the person's account by Greenhouse id (`/jobs/<id>`, `gh_jid`, embed `token`) or Lever posting id, saving the posting first if needed, and returns the kit as a fill plan (`lib/extension/kit.ts`): only filled kit fields, plus blanks with reasons. Another account can load a public posting, but its plan is built from its own facts.
+- `extension/kit-fill.js` runs in every reachable frame, so a Greenhouse form embedded in a company career page is filled (new host permissions: `job-boards.greenhouse.io`, `boards.greenhouse.io`, `jobs.lever.co`). It fills empty text fields by label, ticks Yes/No radios, checkboxes, and native selects for authorization, sponsorship, citizenship, and relocation from the person's answers, and matches the form's own questions to questions drafted in the kit. Demographics, pronouns, pay, referral, consent, attestations, prior employment, questions naming another country, and open questions are never touched. "Current company" is filled only while the newest role is ongoing.
+- Greenhouse's Yes/No menus and place pickers ignore synthetic events (tested on a live form with focus, keyboard, mouse, and pointer sequences), so the panel lists them with the kit's answer for the person to pick.
+- A review panel in the top frame lists every filled field with its source, what to choose, what to attach (the kit's resume file name), what was left blank for want of a confirmed fact, and required fields still empty.
+- "I submitted it" sends the kit's digest, so the kit the person filled from becomes the application's sent record, the same as Mark submitted on the kit page.
+- Names now split as first word and surname ("Jordan Avery Lee" is Jordan / Lee; "de la Cruz" stays together), matching the older profile fill.
+
+Verification: `tests/extension-no-submit.test.ts` fails if any extension script can submit a form, call `.click()`, dispatch a submit or keyboard event, or look up a submit button. `node scripts/check-kit-fill.mjs` passes 30 checks against Greenhouse and Lever fixtures built from live form structure, with a plan from the real kit code; `--live` filled 5 fields on a live Brex Greenhouse embed and 6 on a live Anchorage Lever form with every non-GET request blocked, and caught two rules that were then fixed (an open "what sponsorship would you require" question got a Yes/No answer, and "plan to relocate" was read as "willing to relocate"). `node scripts/check-kit-extension.mjs --job <id>` loaded the unpacked extension, connected to the dev server, and ran the popup's own Fill into a cross-origin Greenhouse frame and a Lever page, then I submitted it saved the kit as sent; no request reached the employer's site. The badge check (`check-extension.mjs`) still passes. Not verified: a real signed-in submission (never done by design), Workday (out of scope), and Chrome Web Store review of the new host permissions.
+
 ## September 30 answer kit and what you sent (spec 04 v1, local)
 
 Spec 04 (`04-one-click-prefill.md` from the owner) asked for Jobbie's speed without its autopilot: the product fills, the person submits, and nothing is guessed. v1 is the clipboard kit plus the sent record.
@@ -13,7 +26,7 @@ Spec 04 (`04-one-click-prefill.md` from the owner) asked for Jobbie's speed with
 - **Sent record**: "Mark submitted" (confirm dialog) tracks the job if needed, moves it to Applied, and saves the kit to `application.sent` (migration `0018_application_sent.sql`). The page sends the kit's digest; if facts changed since it loaded, nothing is saved and the page reloads the current kit. A second mark keeps the first record. The tracker shows "What you sent", expandable, and the kit page becomes a read-only record. Event `kit_sent`.
 - Skill questions now draft only from lines that show the asked skill (a QuickBooks answer used to borrow an Excel line); with none, the answer is left for the person.
 
-Acceptance: kit builds in about 100 to 400ms locally (test asserts under 3s); a 10-profile audit test checks every filled field has a source, every cited fact is confirmed with the same text, and every number is in the cited facts; blank-and-flagged, stale digest, exact record, and no second record are tested against PGlite. Browser: drafted a question in the kit, marked submitted, saw the record in the tracker; no overflow at 390px, light and dark. v2 (assisted fill on Greenhouse and Lever) is next.
+Acceptance: kit builds in about 100 to 400ms locally (test asserts under 3s); a 10-profile audit test checks every filled field has a source, every cited fact is confirmed with the same text, and every number is in the cited facts; blank-and-flagged, stale digest, exact record, and no second record are tested against PGlite. Browser: drafted a question in the kit, marked submitted, saw the record in the tracker; no overflow at 390px, light and dark. v2 is in the section above.
 
 ## September 29 Find jobs feed (spec 03, local)
 

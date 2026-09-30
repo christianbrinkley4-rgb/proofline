@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Proofline",
   "short_name": "Proofline",
-  "version": "0.2.0",
-  "description": "Your fit score on LinkedIn, Indeed, and Handshake jobs, from facts you confirmed in Proofline. Save jobs and fill basic fields.",
+  "version": "0.3.0",
+  "description": "Fit scores on LinkedIn, Indeed, and Handshake jobs. Fills Greenhouse and Lever forms from facts you confirmed in Proofline.",
   "action": {
     "default_title": "Proofline",
     "default_popup": "popup.html",
@@ -11,7 +11,13 @@
   },
   "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
   "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://proofline-beta.vercel.app/*", "http://localhost:3000/*"],
+  "host_permissions": [
+    "https://proofline-beta.vercel.app/*",
+    "http://localhost:3000/*",
+    "https://job-boards.greenhouse.io/*",
+    "https://boards.greenhouse.io/*",
+    "https://jobs.lever.co/*"
+  ],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
