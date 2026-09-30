@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Database, Puzzle, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Database, Palette, Puzzle, ShieldCheck, UserRound } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { YourData } from "@/components/settings/your-data";
+import { ThemeChoice } from "@/components/theme/theme-choice";
 import { requireSession } from "@/lib/auth";
 import { getProfile } from "@/lib/kb/profile";
 import { PRIVACY_POINTS } from "@/lib/privacy";
@@ -52,6 +53,17 @@ export default async function SettingsPage() {
         <Link href="/app/onboarding?step=logistics&back=/app/settings" className="mt-5 inline-flex min-h-10 items-center gap-1 text-[13px] font-medium hover:underline">
           Edit these <ArrowRight className="size-3.5" />
         </Link>
+      </section>
+
+      <section id="appearance" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <Palette className="size-4 text-brand" />
+          <h2 className="text-[16px] font-semibold">Appearance</h2>
+        </div>
+        <p className="mt-1.5 max-w-3xl text-[13.5px] leading-6 text-muted-foreground">Dark is easier on the eyes for late-night applications. This browser remembers your choice.</p>
+        <div className="mt-4">
+          <ThemeChoice />
+        </div>
       </section>
 
       <section id="extension" className="mt-5 scroll-mt-20 rounded-xl border bg-background p-5 sm:p-6">

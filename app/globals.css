@@ -236,48 +236,63 @@
   --sidebar-ring: oklch(0.56 0.13 158);
 }
 
-/* Dark tokens exist so components stay theme-safe; the marketing site ships light-only for now. */
+/*
+ * Dark mode: the same green-leaning family at night. Light stays the default;
+ * people choose dark (or "match my device") in Settings.
+ * Primary buttons invert to pale mint so the one action still reads first.
+ */
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --subtle-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --border-strong: oklch(1 0 0 / 18%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.13 158);
-  --brand: oklch(0.68 0.13 158);
-  --brand-ink: oklch(0.8 0.11 158);
-  --brand-soft: oklch(0.3 0.05 158);
+  --background: oklch(0.165 0.008 166);
+  --foreground: oklch(0.955 0.006 160);
+  --card: oklch(0.195 0.009 166);
+  --card-foreground: oklch(0.955 0.006 160);
+  --popover: oklch(0.205 0.01 166);
+  --popover-foreground: oklch(0.955 0.006 160);
+  --primary: oklch(0.93 0.025 160);
+  --primary-foreground: oklch(0.2 0.03 166);
+  --secondary: oklch(0.235 0.01 166);
+  --secondary-foreground: oklch(0.955 0.006 160);
+  --muted: oklch(0.215 0.009 166);
+  --muted-foreground: oklch(0.76 0.012 164);
+  --subtle-foreground: oklch(0.64 0.012 164);
+  --accent: oklch(0.235 0.01 166);
+  --accent-foreground: oklch(0.955 0.006 160);
+  --destructive: oklch(0.7 0.18 24);
+  --border: oklch(0.27 0.01 166);
+  --border-strong: oklch(0.34 0.012 166);
+  --input: oklch(0.32 0.012 166);
+  --ring: oklch(0.72 0.13 158);
+
+  --brand: oklch(0.72 0.13 158);
+  --brand-ink: oklch(0.8 0.12 158);
+  --brand-soft: oklch(0.27 0.045 160);
+
   --pending: oklch(0.8 0.14 75);
-  --pending-ink: oklch(0.85 0.1 80);
-  --pending-soft: oklch(0.32 0.05 75);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.68 0.13 158);
-  --sidebar-primary-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.68 0.13 158);
+  --pending-ink: oklch(0.86 0.11 82);
+  --pending-soft: oklch(0.285 0.045 75);
+
+  /* the coach band sits a touch deeper and greener than the page */
   --ink: oklch(0.2 0.03 166);
-  --ink-foreground: oklch(0.975 0.008 160);
+  --ink-foreground: oklch(0.955 0.006 160);
   --ink-muted: oklch(0.76 0.03 162);
-  --wash-mint: oklch(0.4 0.07 160 / 0.35);
-  --wash-sky: oklch(0.4 0.05 205 / 0.3);
-  --wash-sun: oklch(0.4 0.04 100 / 0.25);
+
+  --wash-mint: oklch(0.36 0.06 160 / 0.35);
+  --wash-sky: oklch(0.36 0.045 205 / 0.28);
+  --wash-sun: oklch(0.36 0.035 100 / 0.2);
+
+  --chart-1: oklch(0.72 0.13 158);
+  --chart-2: oklch(0.64 0.012 164);
+  --chart-3: oklch(0.76 0.012 164);
+  --chart-4: oklch(0.84 0.01 164);
+  --chart-5: oklch(0.92 0.008 164);
+  --sidebar: oklch(0.185 0.009 166);
+  --sidebar-foreground: oklch(0.955 0.006 160);
+  --sidebar-primary: oklch(0.93 0.025 160);
+  --sidebar-primary-foreground: oklch(0.2 0.03 166);
+  --sidebar-accent: oklch(0.235 0.01 166);
+  --sidebar-accent-foreground: oklch(0.955 0.006 160);
+  --sidebar-border: oklch(0.27 0.01 166);
+  --sidebar-ring: oklch(0.72 0.13 158);
 }
 
 @layer base {
@@ -383,6 +398,9 @@
 /* One soft shadow for raised surfaces. Never stack more. */
 @utility shadow-lift {
   box-shadow: 0 18px 50px -24px oklch(0.25 0.04 166 / 0.28);
+  .dark & {
+    box-shadow: 0 18px 50px -24px oklch(0 0 0 / 0.6);
+  }
 }
 
 /* Display type: the expressive face, tight and balanced. */

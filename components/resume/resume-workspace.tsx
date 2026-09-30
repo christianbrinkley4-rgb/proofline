@@ -241,7 +241,7 @@ export function ResumeWorkspace({
                 {checks.map((c) => (
                   <li key={c.id} className="flex gap-2.5 p-3">
                     {c.status === "pass" ? (
-                      <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-brand text-white">
+                      <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-brand text-background">
                         <Check className="size-2.5" strokeWidth={3.5} />
                       </span>
                     ) : c.status === "warn" ? (

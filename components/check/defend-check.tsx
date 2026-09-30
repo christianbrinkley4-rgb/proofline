@@ -201,7 +201,7 @@ function Results({ report }: { report: DefendReport }) {
           {report.checks.map((c) => (
             <li key={c.id} className="flex gap-3 p-4">
               {c.passed ? (
-                <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-brand text-white">
+                <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-brand text-background">
                   <Check className="size-2.5" strokeWidth={3.5} aria-hidden="true" />
                 </span>
               ) : (

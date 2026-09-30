@@ -24,6 +24,10 @@ Rules:
 - Amber is a status, not a second brand color.
 - Primary buttons are deep forest ink (`bg-primary`), never green.
 
+### Dark mode
+
+Light is the default. People choose Dark or Match my device under Settings, Appearance (`components/theme/theme-choice.tsx`, stored by next-themes). The `.dark` tokens keep the same green-leaning family; primary buttons invert to pale mint. Because every surface uses semantic tokens, new UI gets dark mode for free: never use `bg-white`, `text-black`, or palette colors like `zinc-500`. Two exceptions stay fixed on purpose: the resume page preview is always white paper, and the terminal-style search log is always dark. Check new screens in both with `node scripts/screenshots.mjs` (light and dark, desktop and 390px, with an overflow check).
+
 ## Atmosphere
 
 We used to ban gradients. We now allow one kind, on purpose: soft washes of light that make hero and coach moments feel warm instead of flat.
