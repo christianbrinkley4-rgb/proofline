@@ -72,7 +72,9 @@ function describeWindow(window: NonNullable<Requirements["gradWindow"]>): string
   const { from, to } = window;
   if (from && to && from.slice(0, 4) === to.slice(0, 4) && from.endsWith("-01") && to.endsWith("-12")) return `in ${from.slice(0, 4)}`;
   if (from && to && from !== to) return `between ${monthLabel(from)} and ${monthLabel(to)}`;
-  if (from || to) return `in ${monthLabel((from ?? to)!)}`;
+  if (from && to) return `in ${monthLabel(from)}`;
+  if (to) return `by ${monthLabel(to)}`;
+  if (from) return `in ${monthLabel(from)} or later`;
   return window.text;
 }
 

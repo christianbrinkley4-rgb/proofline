@@ -22,7 +22,12 @@ export type Requirements = {
   licensesRequired: string[];
   requiredLines: string[];
   preferredLines: string[];
+  /** Which parser read it. A stored copy from an older parser is read again. */
+  version?: number;
 };
+
+/** Bump when parseRequirements reads postings differently, so saved jobs pick up the fix. */
+export const REQUIREMENTS_VERSION = 2;
 
 const REQUIRED_HEADING =
   /^(requirements?|qualifications?|minimum qualifications|basic qualifications|required qualifications|required|what you('ll)? (need|bring)|what we('re)? looking for|who you are|you (have|bring|are)|must[- ]haves?|skills (and|&) experience|about you|your background)\b/i;
@@ -37,7 +42,9 @@ const FIELDS = [
 
 export function parseRequirements(description: string | null | undefined): Requirements {
   const text = description ?? "";
-  const lines = text.replace(/\s+(?=(?:Required|Preferred|Nice to have)\s*:)/g, "\n").replace(/([.!?])\s+(?=[A-Z])/g, "$1\n").split("\n").map((l) => l.replace(/^[•\-*·]\s*/, "").trim()).filter(Boolean);
+  const lines = text.replace(/\s+(?=(?:Required|Preferred|Nice to have)\s*:)/g, "\n").replace(/([.!?])\s+(?=[A-Z])/g, "$1\n").split("\n").map((l) => l.replace(/^[•\-*·]\s*/, "").trim()).filter(Boolean)
+    // "Proficient in Excel; QuickBooks a plus" is a requirement and a plus, not two pluses.
+    .flatMap((line) => (/;/.test(line) && /\b(preferred|a plus|nice to have|bonus)\b/i.test(line) ? line.split(/\s*;\s*/).filter(Boolean) : [line]));
 
   const requiredLines: string[] = [];
   const preferredLines: string[] = [];
@@ -122,6 +129,7 @@ export function parseRequirements(description: string | null | undefined): Requi
     licensesRequired,
     requiredLines: requiredLines.slice(0, 20),
     preferredLines: preferredLines.slice(0, 12),
+    version: REQUIREMENTS_VERSION,
   };
 }
 
@@ -132,6 +140,12 @@ const DATE = `(?:${MONTH}\\.?\\s+)?20\\d{2}`;
 export function parseGradWindow(text: string): Requirements["gradWindow"] {
   const between = text.match(new RegExp(`graduat\\w*[^.\\n]{0,40}?(?:between|from)\\s+(${DATE})\\s*(?:and|to|-|–|through)\\s*(${DATE})`, "i"));
   if (between) return { from: toMonth(between[1], "start"), to: toMonth(between[2], "end"), text: between[0] };
+  // "graduating by June 2027", "graduation no later than May 2027": only a latest date.
+  const by = text.match(new RegExp(`graduat\\w*(?:\\s+date)?[^.\\n]{0,20}?\\b(?:by|before|no later than|on or before)\\s+(${DATE})`, "i"));
+  if (by) return { from: null, to: toMonth(by[1], "end"), text: by[0] };
+  // "graduating after December 2026", "graduation no earlier than 2027": only an earliest date.
+  const after = text.match(new RegExp(`graduat\\w*(?:\\s+date)?[^.\\n]{0,20}?\\b(?:after|no earlier than|on or after)\\s+(${DATE})`, "i"));
+  if (after) return { from: toMonth(after[1], "start"), to: null, text: after[0] };
   const classOf = text.match(/class of (20\d{2})/i) ?? text.match(new RegExp(`(?:expected|anticipated)?\\s*graduation (?:date )?(?:in|of|by|:)?\\s*(${DATE})`, "i")) ?? text.match(new RegExp(`graduating (?:in )?(${DATE})`, "i"));
   if (classOf) {
     const raw = classOf[1];

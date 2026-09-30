@@ -210,7 +210,7 @@ describe("scoreFit", () => {
     const fit = scoreFit(job, { ...student, gradDate: "2029-05" });
     expect(fit.cappedBy).toBeNull();
     expect(fit.score).toBe(fit.raw);
-    expect(fit.gates[0]?.reason).toMatch(/You graduate 2029-05/);
+    expect(fit.gates[0]?.reason).toMatch(/You graduate May 2029/);
     expect(fit.points.requiredSkills).toBe(eligible.points.requiredSkills);
   });
 

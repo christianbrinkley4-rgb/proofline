@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { FitReport } from "@/lib/fit/engine";
 import { readScreens, type PostingScreens } from "@/lib/fit/knockouts";
-import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
+import { parseRequirements, REQUIREMENTS_VERSION, type Requirements } from "@/lib/fit/requirements";
 import { extractKeywords } from "./keywords";
 import { dedupeKey, detectLevel, detectMode, slugify } from "./text";
 import type { NormalizedJob } from "./types";
@@ -81,8 +81,11 @@ export async function upsertJobs(jobs: NormalizedJob[]): Promise<Map<string, Job
   return out;
 }
 
-export function requirementsOf(row: JobRow): Requirements {
-  return (row.requirements as unknown as Requirements | null) ?? parseRequirements(row.description);
+/** The stored reading, unless an older parser made it and the posting text is here to read again. */
+export function requirementsOf(row: Pick<JobRow, "requirements" | "description">): Requirements {
+  const stored = row.requirements as unknown as Requirements | null;
+  if (stored && (stored.version === REQUIREMENTS_VERSION || !row.description)) return stored;
+  return parseRequirements(row.description);
 }
 
 /** What the knockout checks read from the description, stored at ingest. Null for rows stored before that. */

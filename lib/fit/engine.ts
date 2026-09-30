@@ -2,6 +2,7 @@ import { familiesFor, ROLE_FAMILIES } from "@/lib/jobs/roles";
 import { matchKeywords, prepareKeywordText, type KeywordText } from "@/lib/jobs/keywords";
 import { isRemoteText, matchesPlace, resolvePlace } from "@/lib/jobs/locations";
 import type { JobLevel, JobMode } from "@/lib/jobs/types";
+import { formatMonth } from "@/lib/resume/parse/dates";
 import type { Requirements } from "./requirements";
 import { computeFit, ELIGIBILITY_CAP, type EligibilityGate, type FitComponentKey, type FitPoints, type FitResult } from "./rubric";
 import { extractEvidenceSkills, isHardSkill } from "./skills";
@@ -295,7 +296,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     const early = from && monthsBetween(candidate.gradDate, from) > 1;
     const late = to && monthsBetween(to, candidate.gradDate) > 1;
     if (early || late) {
-      gates.push({ reason: `Open to students graduating ${req.gradWindow.text.replace(/^graduat\w*\s*/i, "")}. You graduate ${candidate.gradDate}.`, cap: ELIGIBILITY_CAP });
+      gates.push({ reason: `Open to students graduating ${req.gradWindow.text.replace(/^graduat\w*\s*/i, "")}. You graduate ${formatMonth(candidate.gradDate) || candidate.gradDate}.`, cap: ELIGIBILITY_CAP });
     }
   }
   if (req.noSponsorship && candidate.needsSponsorship) {

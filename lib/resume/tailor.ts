@@ -2,11 +2,11 @@ import { and, eq, isNull } from "drizzle-orm";
 import { logEvent } from "@/lib/agent/events";
 import { db, schema } from "@/lib/db";
 import { extractSkills, skillCategory } from "@/lib/fit/skills";
-import { parseRequirements, type Requirements } from "@/lib/fit/requirements";
+import type { Requirements } from "@/lib/fit/requirements";
 import { ROLE_FAMILIES } from "@/lib/jobs/roles";
 import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/description";
 import { courseRelevance, postingOverlap } from "@/lib/jobs/relevance";
-import { getJobForUser } from "@/lib/jobs/store";
+import { getJobForUser, requirementsOf } from "@/lib/jobs/store";
 import { listExperiences, type Experience } from "@/lib/kb/experiences";
 import { applyLooseHonors, readEducationRecords, type EducationRecord } from "@/lib/facts/base";
 import { listFacts, type Fact } from "@/lib/kb/facts";
@@ -146,7 +146,7 @@ export async function tailorResume(
   ]);
   if (opts.jobId && !job) throw new Error("Job not found.");
   if (job && !hasUsableJobDescription(job.description)) throw new Error(JOB_DESCRIPTION_REQUIRED);
-  const req = job ? ((job.requirements as unknown as Requirements | null) ?? parseRequirements(job.description)) : null;
+  const req = job ? requirementsOf(job) : null;
   const labels = requirementLabels(req);
   const familyWords = job ? ROLE_FAMILIES.filter((f) => f.titleWords.some((w) => job.title.toLowerCase().includes(w))).flatMap((f) => f.titleWords) : [];
 

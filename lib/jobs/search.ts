@@ -15,7 +15,7 @@ import { familiesFor, titleExcluded, titleWordsFor, workdayQueriesFor } from "./
 import { fetchBoard, fetchBoardDetail, type BoardRef } from "./sources/boards";
 import { mapLimit } from "./sources/http";
 import { adzunaConfigured, planMuseSearches, searchAdzuna, searchHimalayas, searchJobicy, searchMuse, searchUsaJobs, searchWorkday, usajobsConfigured, workdayDetail } from "./sources/search-apis";
-import { saveMatches, upsertJobs, type JobRow } from "./store";
+import { requirementsOf, saveMatches, upsertJobs, type JobRow } from "./store";
 import { collapseLocations, isStale, SOURCE_RANK } from "./collapse";
 import { dedupeKey } from "./text";
 import type { JobIntent, NormalizedJob, SearchProgress, SearchStats } from "./types";
@@ -179,7 +179,7 @@ function scoreRows(
   for (const job of final) {
     const row = rows.get(`${job.source}|${job.sourceId}`);
     if (!row || dismissed.has(row.id)) continue;
-    const requirements = (row.requirements as unknown as ReturnType<typeof parseRequirements> | null) ?? parseRequirements(row.description);
+    const requirements = requirementsOf(row);
     const fit = scoreFit({ title: row.title, location: row.location, mode: row.mode, level: row.level, requirements }, candidate, index);
     scored.push({ job: row, fit, termMatch: termFits(row.title, intent.term) === "match" });
   }

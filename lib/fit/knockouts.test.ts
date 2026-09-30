@@ -82,3 +82,27 @@ describe("knockouts", () => {
     expect(parseStartDate("A starting salary of $60,000")).toBeNull();
   });
 });
+
+describe("one-sided graduation limits", () => {
+  it("reads \"graduating by June 2027\" as a latest date, not a single month", () => {
+    const posting = "Pursuing a bachelor's or master's degree in accounting, graduating by June 2027.";
+    expect(parseRequirements(posting).gradWindow).toMatchObject({ from: null, to: "2027-06" });
+    const early = checkKnockouts(job(posting), { ...candidate, gradDate: "2026-12" }).find((k) => k.key === "graduation");
+    expect(early).toMatchObject({ status: "ok", reason: "Your Dec 2026 graduation fits. They want students graduating by Jun 2027." });
+    const late = checkKnockouts(job(posting), { ...candidate, gradDate: "2028-05" }).find((k) => k.key === "graduation");
+    expect(late?.status).toBe("knockout");
+  });
+
+  it("reads \"graduation no earlier than December 2026\" as an earliest date", () => {
+    expect(parseRequirements("Expected graduation no earlier than December 2026.").gradWindow).toMatchObject({ from: "2026-12", to: null });
+  });
+});
+
+describe("a requirement and a plus on one line", () => {
+  it("keeps Excel required when the line adds \"QuickBooks a plus\"", () => {
+    const req = parseRequirements("Qualifications\n- Proficient in Excel; QuickBooks a plus\n- Strong communication skills");
+    expect(req.required).toContain("Excel");
+    expect(req.required).not.toContain("QuickBooks");
+    expect(req.preferred).toContain("QuickBooks");
+  });
+});
