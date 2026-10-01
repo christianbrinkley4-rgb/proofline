@@ -4,6 +4,15 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## October 1 Ready loop follow-through: check again, and better letter evidence (committed locally, not deployed)
+
+Found by running the loop in a browser on an isolated dev server (its own database, a stand-in review model):
+
+- **A stopped role had no way back.** The loop never retries a role that stopped for a fixable reason (it would rather start a new one than repeat a result nobody changed), and the page had no re-check. Now a "needs you" role has **Check again** (`recheckRun` in `lib/agent/loop.ts`): it runs that one role from the top, does not count toward the nine-a-day cap on new roles, and says why if it is still stopped. A role waiting only on the person's reason keeps its reason box instead.
+- **Evidence in a letter included a role's header.** Resume import saves a role's name, title, dates, and place as facts, and any 20 characters or longer could be picked as "what the person did" ("I nc state vita program."). They are excluded now (the role's `org`, `title`, `dates`, `location` fields).
+- **The tax-return line lost to a team competition for a tax job.** An experience whose own title shares the job title's subject now counts toward relevance (`titleSubject`, `lib/packet/evidence.ts`): "Volunteer Tax Preparer" for "Tax Operations Intern". Level and program words (intern, associate, summer, operations) are ignored.
+- **Seen on the way:** the stricter Ready bar immediately caught the sample account's missing email on its resume header ("Your contact line has no email. Add it under Contact details in My experience.").
+
 ## October 1 roadmap Phase 5, item 8: more boards the Ready loop can confirm open (committed locally, not deployed)
 
 The registry has 53 Greenhouse boards and 43 on other systems (13 Lever, 23 Ashby, 7 SmartRecruiters), but only Greenhouse had a live open check, so the Ready loop skipped almost half of Find jobs. `checkPostingOpen` (`lib/jobs/feed/verify-live.ts`) now covers all four. Lever and SmartRecruiters answer 404 once a posting is gone, like Greenhouse. Ashby's single-posting endpoint is private (401) and its job pages answer 200 for any id, so its public board list is read (about 2.6 MB for a large board) and the posting is open if it is on the list; a list that cannot be read, or has no list, is "unconfirmed" and never closes anything. Checked against live boards: an open and a made-up posting on each source, and a board that does not exist, all gave the right answer in under a second. Still not covered: aggregators and company portals (Workday, Adzuna, USAJobs, The Muse, Himalayas, Jobicy) have no single-posting check, which is the next step on the roadmap.

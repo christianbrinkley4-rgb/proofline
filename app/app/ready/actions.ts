@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { addReasonToRun, type AddReasonResult } from "@/lib/agent/add-reason";
 import { logEvent } from "@/lib/agent/events";
-import { runLoop, type LoopSummary } from "@/lib/agent/loop";
+import { recheckRun, runLoop, type LoopSummary, type RecheckResult } from "@/lib/agent/loop";
 import { addRule, companyRule, removeRule, titleWordRule } from "@/lib/agent/rules";
 import { requireSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
@@ -29,6 +29,21 @@ export async function runLoopAction(): Promise<{ ok: true; summary: LoopSummary 
   } catch {
     refresh();
     return { ok: false, error: "Something stopped the run. Whatever finished is saved below; try again in a minute." };
+  }
+}
+
+/** Runs one stopped role again, after the person has fixed what stopped it. Can take up to about a minute. */
+export async function recheckRunAction(runId: string): Promise<RecheckResult> {
+  const session = await requireSession();
+  const id = z.uuid().safeParse(runId);
+  if (!id.success) return { ok: false, error: "That didn't go through. Reload and try again." };
+  try {
+    const result = await recheckRun(session.user.id, session.user.email, id.data);
+    refresh();
+    return result;
+  } catch {
+    refresh();
+    return { ok: false, error: "Something stopped the check. Try again in a minute." };
   }
 }
 

@@ -8,7 +8,7 @@ import { refreshFeed } from "@/lib/jobs/feed/refresh";
 import { checkPostingOpen } from "@/lib/jobs/feed/verify-live";
 import { SourceError } from "@/lib/jobs/sources/http";
 import type { NormalizedJob } from "@/lib/jobs/types";
-import { readyBarReason, reviewFailureReason, runLoop, type LoopDeps } from "./loop";
+import { readyBarReason, recheckRun, reviewFailureReason, runLoop, type LoopDeps } from "./loop";
 
 const NOW = new Date();
 const LONG = (body: string) => `${body}\n\n${"You will join a small team, learn the close process, and work with people across the company every week. ".repeat(5)}`;
@@ -266,5 +266,58 @@ describe("the ready bar", () => {
     expect(letter).not.toHaveBeenCalled();
     const [run] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
     expect(run.reason).toBe("Bold only the job title. Keep the company and location plain.");
+  });
+});
+
+describe("checking a stopped role again", () => {
+  it("runs a role that stopped for a reason the person has since fixed, and makes it ready", async () => {
+    const userId = "loop-user-recheck";
+    await makeUser(userId);
+    await runLoop(userId, "loop@example.com", { limit: 1, deps: deps({ review: async () => failingGate() }) });
+    const [stopped] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
+    expect(stopped.status).toBe("needs_you");
+    const before = (await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) })).length;
+
+    const result = await recheckRun(userId, "loop@example.com", stopped.id, { deps: deps() });
+    expect(result).toEqual({ ok: true, status: "ready", reason: null });
+    const run = await db.query.agentRun.findFirst({ where: eq(schema.agentRun.id, stopped.id) });
+    expect(run).toMatchObject({ status: "ready", reason: null });
+    expect((run!.steps as Array<{ step: string }>).map((s) => s.step)).toEqual(["found", "live", "fit", "track", "resume", "review", "letter"]);
+    const app = await db.query.application.findFirst({ where: eq(schema.application.id, run!.applicationId!) });
+    expect(app?.resumeId).toBe(run!.resumeId);
+    // The same role, run again: no second row.
+    expect((await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) })).length).toBe(before);
+  });
+
+  it("says why when it is still stopped, and leaves the role waiting", async () => {
+    const userId = "loop-user-recheck-again";
+    await makeUser(userId);
+    await runLoop(userId, "loop@example.com", { limit: 1, deps: deps({ review: async () => failingGate() }) });
+    const [stopped] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
+    const result = await recheckRun(userId, "loop@example.com", stopped.id, { deps: deps({ review: async () => failingGate() }) });
+    expect(result).toEqual({ ok: true, status: "needs_you", reason: "The final read-through flagged a line to fix." });
+    expect((await db.query.agentRun.findFirst({ where: eq(schema.agentRun.id, stopped.id) }))?.status).toBe("needs_you");
+  });
+
+  it("closes the role for good when the employer has taken the posting down since", async () => {
+    const userId = "loop-user-recheck-closed";
+    await makeUser(userId);
+    await runLoop(userId, "loop@example.com", { limit: 1, deps: deps({ review: async () => failingGate() }) });
+    const [stopped] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
+    const result = await recheckRun(userId, "loop@example.com", stopped.id, { deps: deps({ checkLive: async () => "closed" }) });
+    expect(result).toEqual({ ok: true, status: "skipped", reason: "The employer took this posting down." });
+    await db.update(schema.job).set({ closedAt: null, listedAt: new Date() }).where(eq(schema.job.id, stopped.jobId));
+  });
+
+  it("only takes the person's own role that is still waiting", async () => {
+    const userId = "loop-user-recheck-guard";
+    await makeUser(userId);
+    await runLoop(userId, "loop@example.com", { limit: 1, deps: deps() });
+    const [ready] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
+    expect(await recheckRun(userId, "loop@example.com", ready.id, { deps: deps() })).toMatchObject({ ok: false });
+    await db.update(schema.agentRun).set({ status: "needs_you" }).where(eq(schema.agentRun.id, ready.id));
+    expect(await recheckRun("someone-else", "x@example.com", ready.id, { deps: deps() })).toMatchObject({ ok: false });
+    await db.update(schema.agentRun).set({ dismissedAt: new Date() }).where(eq(schema.agentRun.id, ready.id));
+    expect(await recheckRun(userId, "loop@example.com", ready.id, { deps: deps() })).toMatchObject({ ok: false });
   });
 });

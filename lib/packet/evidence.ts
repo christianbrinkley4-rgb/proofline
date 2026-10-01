@@ -58,8 +58,17 @@ export function recencyOf(endDate: string | null, now = new Date()): number {
   return Math.max(0.2, Math.min(1, 1 - years * 0.25));
 }
 
-/** Most useful first: what the posting asks for, then quality, then how recent. */
-export function rankEvidence(items: EvidenceInput[], labels: RequirementLabels, titleWords: string[] = [], description?: string | null): Evidence[] {
+/** Words in a job title that name the kind of work, not the level or the program. */
+const TITLE_FILLER = new Set(["intern", "interns", "internship", "associate", "assistant", "analyst", "junior", "senior", "entry", "level", "summer", "fall", "spring", "winter", "program", "coordinator", "specialist", "operations", "the", "and", "for", "co", "op", "part", "time", "full", "remote", "hybrid"]);
+
+/** The words in a job title that say what the job is about: "Tax Operations Intern" is about tax. */
+export function titleSubject(jobTitle: string | null | undefined): string[] {
+  return [...new Set((jobTitle ?? "").toLowerCase().match(/[a-z]{3,}/g) ?? [])].filter((w) => !TITLE_FILLER.has(w));
+}
+
+/** Most useful first: what the posting asks for, what the job's title is about, then quality, then how recent. */
+export function rankEvidence(items: EvidenceInput[], labels: RequirementLabels, titleWords: string[] = [], description?: string | null, jobTitle?: string | null): Evidence[] {
+  const subject = titleSubject(jobTitle);
   const ranked = items.map((item) => {
     const skills = extractSkills(item.text);
     const covers = [
@@ -68,11 +77,15 @@ export function rankEvidence(items: EvidenceInput[], labels: RequirementLabels, 
       ...skills.filter((s) => labels.mentioned.has(s) && !labels.required.has(s) && !labels.preferred.has(s)),
     ];
     const words = titleWords.filter((w) => item.text.toLowerCase().includes(w)).length;
+    // The experience's own title counts: "Volunteer Tax Preparer" is evidence for a tax job even when the line says "returns".
+    const about = new Set((`${item.title ?? ""} ${item.text} ${skills.join(" ")}`.toLowerCase().match(/[a-z]{3,}/g) ?? []));
+    const subjectHits = subject.filter((w) => about.has(w)).length;
     const relevance =
       skills.filter((s) => labels.required.has(s)).length * 3 +
       skills.filter((s) => labels.preferred.has(s)).length * 2 +
       skills.filter((s) => labels.mentioned.has(s)).length +
       Math.min(words, 2) +
+      Math.min(subjectHits, 2) * 3 +
       postingOverlap(item.text, description) * 2;
     return { ...item, covers, relevance };
   });

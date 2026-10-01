@@ -4,6 +4,7 @@ import { Check, X } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { DismissMenu } from "@/components/ready/dismiss-menu";
 import { ReasonForm } from "@/components/ready/reason-form";
+import { RecheckButton } from "@/components/ready/recheck-button";
 import { RuleList } from "@/components/ready/rule-list";
 import { RunLoopButton } from "@/components/ready/run-loop-button";
 import { CompanyAvatar } from "@/components/shared/fit";
@@ -148,6 +149,7 @@ export default async function ReadyPage() {
                       <Link href={`/app/jobs/${run.jobId}/packet#letter`}>Open the cover letter</Link>
                     </Button>
                   )}
+                  {!needsReason(run) && <RecheckButton runId={run.id} company={run.company} />}
                   <DismissMenu runId={run.id} company={run.company} />
                 </div>
               </Role>

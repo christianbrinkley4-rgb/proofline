@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findVoiceIssues } from "@/lib/voice/rules";
 import { checkCoverLetter, draftCoverLetterOffline, inSentence, letterText, roleWithNoun, skillInSentence, WHY_PLACEHOLDER, type CoverLetter } from "./cover-letter";
-import { asSentence, lowerFirst, rankEvidence, requirementLabels, selectEvidenceForLetter, type EvidenceInput } from "./evidence";
+import { asSentence, lowerFirst, rankEvidence, requirementLabels, selectEvidenceForLetter, titleSubject, type EvidenceInput } from "./evidence";
 import { interviewPrep, storyParts } from "./interview";
 
 const item = (id: string, text: string, org: string, experienceId: string, extra: Partial<EvidenceInput> = {}): EvidenceInput => ({
@@ -29,6 +29,23 @@ describe("evidence", () => {
     expect(ranked[0].id).toBe("b1");
     expect(ranked[0].covers).toContain("Account reconciliation");
     expect(ranked.at(-1)!.id).toBe("b4");
+  });
+
+  it("reads what a job title is about, leaving out the level and the program", () => {
+    expect(titleSubject("Tax Operations Intern")).toEqual(["tax"]);
+    expect(titleSubject("Summer 2027 Audit Associate (Part-Time)")).toEqual(["audit"]);
+    expect(titleSubject("Intern")).toEqual([]);
+    expect(titleSubject(null)).toEqual([]);
+  });
+
+  it("counts an experience whose own title is about the job, even when its lines never say so", () => {
+    const vita = item("v1", "Prepared 60 federal and state returns as an IRS-certified VITA volunteer, with none rejected", "NC State VITA Program", "e4", { title: "Volunteer Tax Preparer", quality: 0.85, recency: 0.87 });
+    const team = item("t1", "Led a 5-person team to 2nd place out of 18 at the regional case competition", "Beta Alpha Psi", "e3", { title: "Member", quality: 0.79 });
+    const labels = requirementLabels({ ...req, requiredGroups: [["Problem solving"]], required: ["Problem solving"], preferred: [], preferredGroups: [], mentioned: ["GAAP"] });
+    expect(rankEvidence([team, vita], labels, [], null)[0].id).toBe("t1");
+    expect(rankEvidence([team, vita], labels, [], null, "Tax Operations Intern")[0].id).toBe("v1");
+    // A job whose title says nothing about the work changes nothing.
+    expect(rankEvidence([team, vita], labels, [], null, "Summer Intern")[0].id).toBe("t1");
   });
 
   it("turns a resume line into a first-person sentence", () => {

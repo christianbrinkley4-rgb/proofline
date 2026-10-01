@@ -10,6 +10,7 @@ import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/de
 import { getJobForUser, requirementsOf, type JobRow } from "@/lib/jobs/store";
 import { roleName } from "@/lib/jobs/text";
 import { listExperiences } from "@/lib/kb/experiences";
+import { fieldOf } from "@/lib/facts/base";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { ANSWERS_V1 } from "@/lib/llm/prompts/answers.v1";
@@ -34,6 +35,7 @@ export type Packet = typeof schema.applicationPacket.$inferSelect;
 
 /** Fact categories that describe what someone did, as opposed to skills or preferences. */
 const STORY_CATEGORIES = new Set(["experience", "metric", "leadership", "project", "award"]);
+const HEADER_FIELDS = new Set<string>(["org", "title", "dates", "location"]);
 
 export type PacketContext = {
   userId: string;
@@ -78,6 +80,8 @@ export async function loadPacketContext(userId: string, jobId: string): Promise<
   }
   for (const f of facts) {
     if (cited.has(f.id) || !STORY_CATEGORIES.has(f.category) || f.content.length < 20) continue;
+    // A role's own name, title, dates, and place describe where the work happened. They are not what was done.
+    if (HEADER_FIELDS.has(fieldOf(f) ?? "")) continue;
     const exp = f.experienceId ? expById.get(f.experienceId) : undefined;
     if (f.experienceId && !exp) continue;
     items.push({
@@ -87,7 +91,7 @@ export async function loadPacketContext(userId: string, jobId: string): Promise<
   }
 
   const titleWords = ROLE_FAMILIES.filter((fam) => fam.titleWords.some((w) => job.title.toLowerCase().includes(w))).flatMap((fam) => fam.titleWords);
-  const evidence = rankEvidence(items, requirementLabels(requirements), titleWords, job.description);
+  const evidence = rankEvidence(items, requirementLabels(requirements), titleWords, job.description, job.title);
   const fit = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements }, candidate);
   const matched = fit.details.requiredSkills.matched.flatMap((m) => m.split(" or "));
   const shown = new Set(evidence.flatMap((e) => e.covers));

@@ -3,9 +3,10 @@ import { and, eq } from "drizzle-orm";
 import { db, dbReady, schema } from "@/lib/db";
 import { saveEducation, saveRole } from "@/lib/facts/base";
 import { refreshFeed } from "@/lib/jobs/feed/refresh";
+import { addFact, confirmFact } from "@/lib/kb/facts";
 import { updateProfile } from "@/lib/kb/profile";
 import type { NormalizedJob } from "@/lib/jobs/types";
-import { getPacket, readLetter, saveCoverLetter, saveWhy } from "@/lib/packet/service";
+import { getPacket, loadPacketContext, readLetter, saveCoverLetter, saveWhy } from "@/lib/packet/service";
 import { addReasonToRun } from "./add-reason";
 import { packageLetter } from "./package-letter";
 
@@ -61,6 +62,19 @@ describe("packaging the cover letter for a role", () => {
       bullets: ["Reconciled 40 vendor accounts each month in Excel", "Flagged 3 duplicate payments before the month-end review"],
     });
   }, 60_000);
+
+  it("never offers a role's name, title, dates, or place as evidence of what was done", async () => {
+    const [exp] = await db.select().from(schema.experience).where(eq(schema.experience.userId, userId)).limit(1);
+    // What resume import saves for a role's header: long enough to look like a sentence, but not one.
+    for (const [field, content] of [["title", "Volunteer Tax Preparer, NC State VITA Program"], ["dates", "January 2026 to April 2026 (spring term)"]] as const) {
+      const fact = await addFact(userId, { category: "experience", content, experienceId: exp.id, data: { field }, source: "user_stated", sourceDetail: "test" });
+      await confirmFact(userId, fact.id);
+    }
+    const ctx = await loadPacketContext(userId, jobId);
+    const texts = ctx!.evidence.map((e) => e.text);
+    expect(texts).toEqual(expect.arrayContaining(["Reconciled 40 vendor accounts each month in Excel"]));
+    expect(texts.some((t) => /Volunteer Tax Preparer|spring term/.test(t))).toBe(false);
+  });
 
   it("drafts from confirmed facts and stops for the person's own reason without spending a review", async () => {
     const fetchMock = modelSays("PASS");

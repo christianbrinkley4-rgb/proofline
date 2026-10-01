@@ -1,11 +1,11 @@
-import { and, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { scoringReady } from "@/lib/facts/base";
 import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { checkKnockouts, firstKnockout, knockoutCandidate } from "@/lib/fit/knockouts";
 import { hasUsableJobDescription } from "@/lib/jobs/description";
-import { loadFeed, type FeedItem } from "@/lib/jobs/feed/load";
+import { loadFeed } from "@/lib/jobs/feed/load";
 import { checkPostingOpen, LIVE_CHECKABLE, type LiveCheck } from "@/lib/jobs/feed/verify-live";
 import { keywordsOf, requirementsOf, saveMatches, setMatchStatus, type JobRow } from "@/lib/jobs/store";
 import { getProfile } from "@/lib/kb/profile";
@@ -129,8 +129,8 @@ async function finish(runId: string, status: Exclude<RunStatus, "running">, reas
 type RoleOutcome = Exclude<RunStatus, "running">;
 
 /** One role from the live check to the review gate. Always records where it ended. */
-async function runRole(userId: string, email: string, runId: string, job: JobRow, item: FeedItem, steps: LoopStep[], ctx: { candidate: Awaited<ReturnType<typeof loadCandidate>>; profile: Awaited<ReturnType<typeof getProfile>> }, deps: LoopDeps): Promise<RoleOutcome> {
-  steps.push(step("found", true, `Fit score ${item.score} against your confirmed facts.`, deps.now()));
+async function runRole(userId: string, email: string, runId: string, job: JobRow, score: number, steps: LoopStep[], ctx: { candidate: Awaited<ReturnType<typeof loadCandidate>>; profile: Awaited<ReturnType<typeof getProfile>> }, deps: LoopDeps): Promise<RoleOutcome> {
+  steps.push(step("found", true, `Fit score ${score} against your confirmed facts.`, deps.now()));
   const stop = async (status: Exclude<RoleOutcome, "ready">, reason: string, links: { applicationId?: string | null; resumeId?: string | null } = {}): Promise<RoleOutcome> => {
     await finish(runId, status, reason, steps, links);
     return status;
@@ -199,6 +199,44 @@ async function runRole(userId: string, email: string, runId: string, job: JobRow
   return "ready";
 }
 
+export type RecheckResult = { ok: true; status: RunStatus; reason: string | null } | { ok: false; error: string };
+
+/**
+ * Takes one role that stopped for a reason the person has since fixed (a fact
+ * confirmed, a line edited) and runs it again from the top. The loop never picks a
+ * stopped role back up on its own, because it would rather start a new one than
+ * repeat a result nobody changed. This does not count toward the daily cap of new
+ * roles; every model call it makes is still metered like any other.
+ */
+export async function recheckRun(userId: string, email: string, runId: string, opts: { deps?: Partial<LoopDeps> } = {}): Promise<RecheckResult> {
+  const deps: LoopDeps = { ...defaultDeps, ...opts.deps };
+  const [claimed] = await db
+    .update(schema.agentRun)
+    .set({ status: "running", reason: null, steps: [], resumeId: null, updatedAt: deps.now() })
+    .where(and(eq(schema.agentRun.id, runId), eq(schema.agentRun.userId, userId), eq(schema.agentRun.status, "needs_you"), isNull(schema.agentRun.dismissedAt)))
+    .returning();
+  if (!claimed) return { ok: false, error: "That role isn't waiting on you anymore. Reload the page." };
+
+  const steps: LoopStep[] = [];
+  const failed = async (reason: string): Promise<RecheckResult> => {
+    steps.push(step("resume", false, reason, deps.now()));
+    await finish(runId, "needs_you", reason, steps, { applicationId: claimed.applicationId });
+    return { ok: true, status: "needs_you", reason };
+  };
+  try {
+    const readiness = await scoringReady(userId);
+    if (!readiness.ready) return await failed(`Add your ${readiness.hasEducation ? "first role" : "school"} in My experience first. Resumes are made only from what you have confirmed.`);
+    const [job, candidate, profile] = await Promise.all([db.query.job.findFirst({ where: eq(schema.job.id, claimed.jobId) }), loadCandidate(userId), getProfile(userId)]);
+    if (!job) return await failed("This posting isn't on file anymore.");
+    const score = scoreFit({ title: job.title, location: job.location, mode: job.mode, level: job.level, requirements: requirementsOf(job), keywords: keywordsOf(job) }, candidate).score;
+    const outcome = await runRole(userId, email, runId, job, score, steps, { candidate, profile }, deps);
+    const [row] = await db.select({ reason: schema.agentRun.reason }).from(schema.agentRun).where(eq(schema.agentRun.id, runId));
+    return { ok: true, status: outcome, reason: row?.reason ?? null };
+  } catch (error) {
+    return failed(error instanceof Error ? error.message : "Something went wrong with this role.");
+  }
+}
+
 /** Roles started today, for the daily cap. */
 async function startedToday(userId: string, now: Date): Promise<number> {
   const since = new Date(now.getTime() - 864e5);
@@ -260,7 +298,7 @@ export async function runLoop(userId: string, email: string, opts: { limit?: num
     const steps: LoopStep[] = [];
     let outcome: RoleOutcome;
     try {
-      outcome = await runRole(userId, email, runId, job, item, steps, { candidate, profile }, deps);
+      outcome = await runRole(userId, email, runId, job, item.score, steps, { candidate, profile }, deps);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Something went wrong with this role.";
       steps.push(step("resume", false, reason, deps.now()));
