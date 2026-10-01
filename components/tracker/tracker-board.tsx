@@ -266,8 +266,8 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
       <div className="flex flex-wrap gap-2">
         {url && <Button asChild size="sm"><a href={url} target="_blank" rel="noreferrer">Open posting<ArrowUpRight data-icon="inline-end" /></a></Button>}
         {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId}>Fit score</Link></Button>}
-        {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "?tab=tailor"}><FileText data-icon="inline-start" />{app.resumeId ? "Linked resume" : "Tailor a resume"}</Link></Button>}
-        {app.jobId && !sent && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "/kit"}>Answer kit</Link></Button>}
+        {app.jobId && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "?tab=resume"}><FileText data-icon="inline-start" />{app.resumeId ? "Linked resume" : "Make a resume"}</Link></Button>}
+        {app.jobId && !sent && <Button asChild size="sm" variant="outline"><Link href={"/app/jobs/" + app.jobId + "/kit"}>Application answers</Link></Button>}
       </div>
       {sent && sentCounts && <section className="rounded-xl border p-4">
         <details className="group">
@@ -289,8 +289,8 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
       {insight && <section className="rounded-xl border p-4">
         <div className="flex items-baseline justify-between"><h3 className="text-sm font-semibold">Your plan for this role</h3><span className="text-sm font-medium tabular-nums">{insight.score}/100 fit</span></div>
         <p className="mt-1 text-xs text-muted-foreground">Match to your confirmed background, not a hiring prediction.</p>
-        <h4 className="mt-4 text-xs font-medium text-brand-ink">Evidence to lead with</h4>
-        <ul className="mt-2 space-y-2 text-[13px]">{(insight.strengths.length ? insight.strengths : ["Add more of your experience to reveal your strongest evidence."]).map((s) => <li key={s} className="flex gap-2"><Check className="mt-0.5 size-3.5 shrink-0 text-brand" />{s}</li>)}</ul>
+        <h4 className="mt-4 text-xs font-medium text-brand-ink">What to lead with</h4>
+        <ul className="mt-2 space-y-2 text-[13px]">{(insight.strengths.length ? insight.strengths : ["Add more of your experience to see what to lead with."]).map((s) => <li key={s} className="flex gap-2"><Check className="mt-0.5 size-3.5 shrink-0 text-brand" />{s}</li>)}</ul>
         <h4 className="mt-4 text-xs font-medium">Gaps to address</h4>
         <ul className="mt-2 space-y-2 text-[13px] text-muted-foreground">{(insight.gaps.length ? insight.gaps : ["No obvious gaps in the available posting. Check the employer's full requirements."]).map((s) => <li key={s}>{s}</li>)}</ul>
         <h4 className="mt-4 text-xs font-medium">Make your next move count</h4>

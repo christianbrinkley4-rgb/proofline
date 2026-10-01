@@ -51,9 +51,9 @@ export function FactRow({ fact, canDelete = true, multiline }: { fact: FactRowVi
       <li id={`fact-${fact.id}`} className="scroll-mt-24 rounded-lg border border-border-strong bg-background p-3">
         {fact.label && <p className="text-[12px] font-medium text-subtle-foreground">{fact.label}</p>}
         {multiline ? (
-          <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={600} className="mt-1 text-[14px] leading-6" aria-label="Edit fact" />
+          <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={600} className="mt-1 text-[14px] leading-6" aria-label="Edit this" />
         ) : (
-          <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={600} className="mt-1 h-10" aria-label="Edit fact" />
+          <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={600} className="mt-1 h-10" aria-label="Edit this" />
         )}
         {fact.verifiedAt && (
           <p className="mt-2 text-[12px] text-subtle-foreground" suppressHydrationWarning>
@@ -109,10 +109,10 @@ export function FactRow({ fact, canDelete = true, multiline }: { fact: FactRowVi
         </Button>
         {canDelete && (
           <ConfirmDelete
-            title="Delete this fact?"
+            title="Delete this?"
             description="Anything built from it comes off your resumes."
             quote={fact.text}
-            confirmLabel="Delete fact"
+            confirmLabel="Delete"
             onConfirm={() => run(() => deleteFactAction(fact.id), undefined, "Deleted.")}
           >
             <Button size="icon-sm" variant="ghost" aria-label={`Delete: ${fact.text}`} disabled={pending}>
@@ -130,7 +130,7 @@ export function DeleteRoleButton({ experienceId, name }: { experienceId: string;
   return (
     <ConfirmDelete
       title={`Delete ${name}?`}
-      description="Every fact under it goes too, and comes off your resumes."
+      description="Everything under it goes too, and comes off your resumes."
       confirmLabel="Delete all of it"
       onConfirm={() => run(() => deleteRoleAction(experienceId), undefined, `Deleted ${name}.`)}
     >
@@ -147,7 +147,7 @@ export function DeleteEducationButton({ entryId, name }: { entryId: string; name
   return (
     <ConfirmDelete
       title={`Delete ${name}?`}
-      description="Every fact under it goes too, and comes off your resumes."
+      description="Everything under it goes too, and comes off your resumes."
       confirmLabel="Delete all of it"
       onConfirm={() => run(() => deleteEducationAction(entryId), undefined, `Deleted ${name}.`)}
     >

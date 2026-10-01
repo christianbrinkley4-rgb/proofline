@@ -27,7 +27,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/resumes/[id
     const failing: ExportGateCheck[] = gate.linter
       .filter((c) => c.severity === "BLOCKING" && !c.passed)
       .map((c) => ({ id: c.id, label: c.label, detail: `${c.detail} "${c.evidence_quote}"`, blocking: true, status: "fail" as const }));
-    return blockedExportResponse(failing.length ? failing : [{ id: "review", label: "Review gate", detail: gate.reason ?? "The review hasn't passed yet.", blocking: true, status: "fail" }]);
+    return blockedExportResponse(failing.length ? failing : [{ id: "review", label: "Final check", detail: gate.reason ?? "Check it again before downloading.", blocking: true, status: "fail" }]);
   }
 
   const job = stored.row.jobId ? await db.query.job.findFirst({ where: (j, { eq }) => eq(j.id, stored.row.jobId!) }) : null;

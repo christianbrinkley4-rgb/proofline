@@ -75,10 +75,10 @@ export type TailorOutcome = { ok: true; resumeId: string; variant: VariantId } |
 export async function tailorBestResume(userId: string, job: JobRow, email: string): Promise<TailorOutcome> {
   if (!hasUsableJobDescription(job.description)) return { ok: false, error: JOB_DESCRIPTION_REQUIRED };
   const [profile, readiness] = await Promise.all([getProfile(userId), scoringReady(userId)]);
-  if (!readiness.ready) return { ok: false, error: "Add your education and one experience on My facts first. Your resume is built only from those." };
+  if (!readiness.ready) return { ok: false, error: "Add your school and one experience first. Your resume is made only from those." };
   const requirements = requirementsOf(job);
   const knockout = firstKnockout(checkKnockouts({ title: job.title, location: job.location, mode: job.mode, description: job.description, requirements }, knockoutCandidate(profile)));
-  if (knockout) return { ok: false, error: `Don't tailor for this job. ${knockout.reason}` };
+  if (knockout) return { ok: false, error: `This job has a dealbreaker for you. ${knockout.reason}` };
 
   await ensureFactBase(userId);
   const template = defaultTemplateFor(parseIntent(job.title).roles);
@@ -104,7 +104,7 @@ export async function tailorBestResume(userId: string, job: JobRow, email: strin
     });
   }
   const best = [...candidates].sort((a, b) => Number(b.ok) - Number(a.ok) || b.covered - a.covered || b.keywordHits - a.keywordHits || b.bullets - a.bullets)[0];
-  if (!best || best.bullets === 0) return { ok: false, error: "None of your facts can go on a resume yet. Add a line about what you did to one of your roles on My facts." };
+  if (!best || best.bullets === 0) return { ok: false, error: "Nothing you've confirmed can go on a resume yet. Keep at least one line for one of your roles in My experience." };
 
   const row = await saveTailoredResume(userId, job.id, best.result, { variant: best.variant, name: `${job.title} at ${job.company}` });
   await logEvent(userId, "tailor_completed", { jobId: job.id, resumeId: row.id, variant: best.variant, covered: best.covered, keywordHits: best.keywordHits });

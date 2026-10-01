@@ -28,7 +28,7 @@ import { STAGE_LABEL } from "@/lib/tracker/model";
 export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]/packet">): Promise<Metadata> {
   const session = await requireSession();
   const data = await getJobForUser(session.user.id, (await params).id);
-  return { title: data ? `Packet for ${data.job.company}` : "Application packet" };
+  return { title: data ? `Cover letter and prep for ${data.job.company}` : "Cover letter and prep" };
 }
 
 const ORDER = ["resume", "letter", "track"] as const;
@@ -82,7 +82,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
       </Link>
       <PageHeader
         className="mt-4"
-        title="Application packet"
+        title="Cover letter and prep"
         description={
           current === "done"
             ? `${job.title} at ${job.company}. Sent. Your tracker has the follow-up reminder.`
@@ -108,7 +108,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
                 ? PRIVATE_BETA
                   ? "Resume ready for this job"
                   : `${resumes.length} ${resumes.length === 1 ? "version" : "versions"} built for this job`
-                : "No tailored version yet"
+                : "No resume for this job yet"
           }
         >
           {resumes.length === 0 ? (
@@ -221,7 +221,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
             </p>
             <div className="flex flex-wrap gap-2">
               <Button size="lg" asChild>
-                <Link href={`/app/jobs/${id}/kit`}>{application?.sent ? "What you sent" : "Open the answer kit"}</Link>
+                <Link href={`/app/jobs/${id}/kit`}>{application?.sent ? "What you sent" : "Open application answers"}</Link>
               </Button>
               {applyUrl && (
                 <Button size="lg" variant="outline" asChild>

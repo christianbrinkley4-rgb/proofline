@@ -13,7 +13,7 @@ export function JourneyRail({ journey, action, title, children }: { journey: Jou
   const done = journey.current === "done";
   const heading =
     title ??
-    (done ? "Your next job" : journey.focus && journey.current !== "resume" && journey.current !== "job" ? `Your resume for ${journey.focus.company}` : "Your first tailored resume");
+    (done ? "Your next job" : journey.focus && journey.current !== "resume" && journey.current !== "job" ? `Your resume for ${journey.focus.company}` : "Your first resume for a job");
 
   return (
     <section aria-labelledby="coach-heading" className="relative isolate overflow-hidden rounded-2xl border bg-background shadow-lift">

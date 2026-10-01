@@ -99,9 +99,9 @@ function skillReasons(matched: string[], missing: string[], candidate: Candidate
   const why: Record<string, string> = {};
   for (const m of matched) {
     const evidence = evidenceFor(m, candidate, index);
-    why[m] = evidence ? `Shown by your fact ${quote(evidence)}.` : "Shown in your confirmed facts.";
+    why[m] = evidence ? `Shown by ${quote(evidence)}.` : "Shown in what you confirmed.";
   }
-  for (const m of missing) why[m] = `The posting lists it as ${kind}; none of your confirmed facts show it yet.`;
+  for (const m of missing) why[m] = `The posting lists it as ${kind}; nothing you've confirmed shows it yet.`;
   return why;
 }
 
@@ -307,10 +307,10 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     const found = matchKeywords(job.keywords, index.keywordText);
     points.keywords = round(10 * (found.matched.length / job.keywords.length));
     const why: Record<string, string> = {};
-    for (const k of found.matched) why[k] = "The posting uses it, and so do your facts.";
-    for (const k of found.missing) why[k] = "The posting uses it; your facts don't. Only add it if it's true.";
+    for (const k of found.matched) why[k] = "The posting uses it, and so does your experience.";
+    for (const k of found.missing) why[k] = "The posting uses it; your experience doesn't. Only add it if it's true.";
     details.keywords = {
-      note: `Your facts use ${found.matched.length} of the ${job.keywords.length} keywords in this posting.`,
+      note: `Your experience uses ${found.matched.length} of the ${job.keywords.length} keywords in this posting.`,
       matched: found.matched,
       missing: found.missing,
       math: `10 × ${found.matched.length}/${job.keywords.length} = ${points.keywords}`,
@@ -395,7 +395,7 @@ export function scoreFit(job: JobForFit, candidate: CandidateProfile, index = in
     ...(reqCov.missing.length ? [`The posting asks for ${reqCov.missing.slice(0, 2).join(" and ")}. Add a specific example if you have done this work. If you have not, learn or practice it before putting it on a resume.`] : []),
     ...(experienceMissing.length ? [`The posting asks for ${req.yearsExperience}+ years. Add dates for work already done; if you are short, compare roles with a lower experience requirement.`] : []),
     ...(details.education.missing.length ? [`Check the listed education requirement. Add a credential you hold, or look for roles that accept equivalent experience.`] : []),
-    ...(!candidate.confirmedText.length ? ["Describe work, projects, or volunteering on your profile so the comparison has evidence to use."] : []),
+    ...(!candidate.confirmedText.length ? ["Add work, projects, or volunteering in My experience so there's something to compare."] : []),
   ].slice(0, 4);
 
   return { ...result, points, details, gates, strengths, gaps, nextSteps, requirementsInferred: req.requiredLines.length === 0 };

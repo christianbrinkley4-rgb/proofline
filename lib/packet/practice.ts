@@ -67,9 +67,9 @@ export function practiceFeedback(answer: string, question: Pick<PrepQuestion, "c
   const said = claimNumbers(text);
   const unbacked = [...new Set(said.filter((n) => !confirmed.has(n.value) && !confirmed.has(n.value.replace(/%$/, ""))).map((n) => n.token))];
   if (unbacked.length) {
-    notes.push({ tone: "fix", text: `You said ${unbacked.map((t) => `"${t}"`).join(", ")}, which isn't in your confirmed facts. Make sure you can back it up, or add it on My facts.` });
+    notes.push({ tone: "fix", text: `You said ${unbacked.map((t) => `"${t}"`).join(", ")}, which isn't in what you confirmed. Make sure you can back it up, or add it in My experience.` });
   } else if (said.length) {
-    notes.push({ tone: "good", text: "Every number you said matches your confirmed facts." });
+    notes.push({ tone: "good", text: "Every number you said matches what you confirmed." });
   }
 
   if (question.story) {

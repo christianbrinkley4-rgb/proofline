@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export type EvidenceKind = "confirmed" | "question" | "suggestion" | "resume";
 
 const STYLE: Record<EvidenceKind, { icon: typeof Check; label: string; className: string }> = {
-  confirmed: { icon: Check, label: "Confirmed fact", className: "border-transparent bg-brand-soft text-brand-ink" },
+  confirmed: { icon: Check, label: "Confirmed", className: "border-transparent bg-brand-soft text-brand-ink" },
   question: { icon: CircleHelp, label: "Question", className: "border-dashed border-pending/70 text-pending-ink" },
   suggestion: { icon: Lightbulb, label: "Suggestion", className: "border-dashed border-border-strong text-muted-foreground" },
   resume: { icon: FileText, label: "Resume line", className: "border-transparent bg-ink text-ink-foreground" },

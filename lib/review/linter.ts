@@ -1,3 +1,4 @@
+import { EM_DASH } from "@/lib/voice/rules";
 import { extractSkills } from "@/lib/fit/skills";
 import { extractKeywords, matchKeywords } from "@/lib/jobs/keywords";
 import { toPastTense } from "@/lib/resume/polish";
@@ -230,7 +231,7 @@ export function lintResume(input: LintInput): LintCheck[] {
   // ── Content
   add("one_page", "Fits on one page", "BLOCKING", onePage(lines, input.pageCount));
 
-  const dashLines = lines.filter((l) => l.text.includes("—")).map((l) => l.text.trim());
+  const dashLines = lines.filter((l) => l.text.includes(EM_DASH)).map((l) => l.text.trim());
   add("no_em_dashes", "No em dashes", "BLOCKING", dashLines.length ? fail(dashLines, `${dashLines.length === 1 ? "A line uses" : `${dashLines.length} lines use`} an em dash. Use a comma or a period instead.`) : pass("No em dashes anywhere."));
 
   const weakOpeners = bullets
@@ -257,7 +258,7 @@ export function lintResume(input: LintInput): LintCheck[] {
     "bullets_have_numbers",
     "Every bullet has a number",
     "WARN",
-    unmeasured.length ? fail(unmeasured, `${unmeasured.length} of ${bullets.length} bullets have no number. Add how many, how much, or how often to your fact, if you know it.`) : pass(bullets.length ? `All ${bullets.length} bullets carry a number.` : "No bullets to check."),
+    unmeasured.length ? fail(unmeasured, `${unmeasured.length} of ${bullets.length} bullets have no number. Add how many, how much, or how often to the line in My experience, if you know it.`) : pass(bullets.length ? `All ${bullets.length} bullets carry a number.` : "No bullets to check."),
   );
 
   const keywords = input.keywords?.length ? input.keywords : extractKeywords(input.jobDescription);
@@ -267,7 +268,7 @@ export function lintResume(input: LintInput): LintCheck[] {
     evidence_quote: "",
     failures: [],
     detail: keywords.length
-      ? `${found.matched.length} of ${keywords.length} posting keywords appear.${found.matched.length ? ` On the page: ${found.matched.slice(0, 8).join(", ")}.` : ""}${found.missing.length ? ` Not on the page: ${found.missing.slice(0, 8).join(", ")}. Only add one if a fact of yours backs it.` : ""}`
+      ? `${found.matched.length} of ${keywords.length} posting keywords appear.${found.matched.length ? ` On the page: ${found.matched.slice(0, 8).join(", ")}.` : ""}${found.missing.length ? ` Not on the page: ${found.missing.slice(0, 8).join(", ")}. Only add one if something you did backs it up.` : ""}`
       : "The posting has no clear keywords to compare.",
   });
 
@@ -284,7 +285,7 @@ export function lintResume(input: LintInput): LintCheck[] {
     for (const n of claimNumbers(stripBold(line.text))) {
       if (!allowedNumbers.has(n.value) && !allowedNumbers.has(n.value.replace(/%$/, ""))) {
         unconfirmed.push(n.token);
-        unconfirmedWhy.push(`"${n.token}" isn't in any of your facts`);
+        unconfirmedWhy.push(`"${n.token}" isn't in anything you confirmed`);
       }
     }
     if (line.kind === "bullet") {
@@ -292,7 +293,7 @@ export function lintResume(input: LintInput): LintCheck[] {
       const best = factStems.reduce((max, set) => Math.max(max, stems.filter((s) => set.has(s)).length / Math.max(1, stems.length)), 0);
       if (stems.length && best < 0.6) {
         unconfirmed.push(bulletBody(line.text).trim());
-        unconfirmedWhy.push("a bullet no fact supports");
+        unconfirmedWhy.push("a line nothing you confirmed supports");
       }
     }
     if (line.kind === "entry") {
@@ -315,18 +316,18 @@ export function lintResume(input: LintInput): LintCheck[] {
         const backed = factText.includes(base.toLowerCase()) || (skills.length > 0 && skills.every((s) => factSkills.has(s)));
         if (!backed) {
           unconfirmed.push(item);
-          unconfirmedWhy.push(`"${item}" isn't in your facts`);
+          unconfirmedWhy.push(`"${item}" isn't in what you confirmed`);
         }
       }
     }
   }
   add(
     "no_unconfirmed_claims",
-    "Every claim matches a confirmed fact",
+    "Every claim matches something you confirmed",
     "BLOCKING",
     unconfirmed.length
-      ? fail(unconfirmed, `${unconfirmed.length === 1 ? "One claim doesn't" : `${unconfirmed.length} claims don't`} match a fact you confirmed: ${unconfirmedWhy.slice(0, 3).join("; ")}. Confirm it on My facts or take it off.`)
-      : pass("Every number and claim matches a fact you confirmed."),
+      ? fail(unconfirmed, `${unconfirmed.length === 1 ? "One claim doesn't" : `${unconfirmed.length} claims don't`} match anything you confirmed: ${unconfirmedWhy.slice(0, 3).join("; ")}. Confirm it in My experience or take it off.`)
+      : pass("Every number and claim matches something you confirmed."),
   );
 
   const banned: string[] = [];
@@ -440,7 +441,7 @@ export function lintResume(input: LintInput): LintCheck[] {
     "contact_info_complete",
     "Email and phone at the top",
     "WARN",
-    contactMissing.length && contact.trim() ? fail([contact.trim()], `Your contact line has no ${contactMissing.join(" or ")}. Add it with Edit contact details on My facts.`) : pass(contact.trim() ? "Email and phone are there." : "No contact line to check."),
+    contactMissing.length && contact.trim() ? fail([contact.trim()], `Your contact line has no ${contactMissing.join(" or ")}. Add it under Contact details in My experience.`) : pass(contact.trim() ? "Email and phone are there." : "No contact line to check."),
   );
 
   // ── Voice

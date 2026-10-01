@@ -135,8 +135,8 @@ function AnswerCard({ jobId, answer, sources }: { jobId: string; answer: Applica
           <span className="flex flex-wrap items-center gap-1">
             Based on
             {answer.sourceIds.map((id) => (
-              <span key={id} title={sources[id]?.text ?? "This evidence changed or was removed."} className={cn("rounded bg-muted px-1.5 py-0.5", !sources[id] && "bg-pending-soft text-pending-ink")}>
-                {sources[id] ? sources[id].org ?? "Your profile" : "Changed evidence"}
+              <span key={id} title={sources[id]?.text ?? "What this came from changed or was removed."} className={cn("rounded bg-muted px-1.5 py-0.5", !sources[id] && "bg-pending-soft text-pending-ink")}>
+                {sources[id] ? sources[id].org ?? "Your profile" : "Changed source"}
               </span>
             ))}
           </span>

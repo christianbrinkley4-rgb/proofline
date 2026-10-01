@@ -1,3 +1,4 @@
+import { EM_DASH, EN_DASH } from "@/lib/voice/rules";
 import { METROS, STATES } from "@/lib/jobs/locations";
 import { findDateRange } from "./dates";
 import { COLUMN_BREAK } from "./layout-text";
@@ -271,8 +272,8 @@ function parseEducation(lines: string[]): ParsedEducation[] {
       .join(", ");
     let detailText = text;
     let detailClean = clean;
-    // "UNC Greensboro — Bachelor of Science, Accounting" or the degree first, split by a dash.
-    const dashed = firstColumn.match(/^([^\d].*?)\s+[—–-]\s+([^\d].*)$/);
+    // "UNC Greensboro - Bachelor of Science, Accounting" or the degree first, split by a hyphen, en dash, or em dash.
+    const dashed = firstColumn.split(EM_DASH).join("-").split(EN_DASH).join("-").match(/^([^\d].*?)\s+-\s+([^\d].*)$/);
     const dashedDegree = dashed ? (DEGREE.test(dashed[2]) && !DEGREE.test(dashed[1]) ? 2 : DEGREE.test(dashed[1]) && !DEGREE.test(dashed[2]) ? 1 : 0) : 0;
     if (dashed && dashedDegree) {
       if (current) results.push(current);

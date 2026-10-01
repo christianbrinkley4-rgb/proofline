@@ -77,7 +77,7 @@ export function TailorPanel({ jobId, resume, blocked, autoBuild }: { jobId: stri
       <div className="rounded-2xl border bg-muted/40 p-5 text-[14px] leading-6">
         <p className="flex items-center gap-2 font-medium">
           <Lock className="size-4" />
-          Tailoring is off for this job
+          No resume for this one
         </p>
         <p className="mt-1 text-muted-foreground">{blocked}</p>
       </div>
@@ -90,14 +90,14 @@ export function TailorPanel({ jobId, resume, blocked, autoBuild }: { jobId: stri
         {building ? (
           <div role="status" className="flex flex-col items-center gap-2 text-[14px] text-muted-foreground">
             <LoaderCircle className="size-5 animate-spin" />
-            Building the best one-page version from your confirmed facts, then reviewing every line.
+            Making your one-page resume from what you confirmed, then checking every line. This takes a few seconds.
           </div>
         ) : (
           <>
-            <p className="text-[15px] font-medium">One resume for this job, built only from your confirmed facts.</p>
-            <p className="mt-1 text-[13.5px] text-muted-foreground">Then every line is checked before you can download it.</p>
-            <Button size="lg" className="mt-4" onClick={build}>
-              Build my resume
+            <p className="text-[15px] font-medium">One resume for this job, made only from what you confirmed.</p>
+            <p className="mt-1 text-[13.5px] text-muted-foreground">Every line is checked before you can download it.</p>
+            <Button size="xl" className="mt-4" onClick={build}>
+              Make my resume
             </Button>
           </>
         )}
@@ -157,7 +157,7 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
     startReview(async () => {
       const result = await rerunReviewAction(resume.resumeId).catch(() => ({ ok: false as const, error: "Couldn't reach the server. Try again." }));
       if (!result.ok) toast.error(result.error);
-      else toast(result.passed ? "Review passed. Downloads are on." : "Review finished. See what to fix.");
+      else toast(result.passed ? "Every check passed. You can download it now." : "Checked. See what to fix.");
       setPanel("review");
       router.refresh();
     });
@@ -179,10 +179,10 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
     <div>
       {resume.outdated && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-pending/40 bg-pending-soft px-4 py-3 text-[13.5px] text-pending-ink">
-          <span>Your facts changed since this version was built.</span>
+          <span>You&apos;ve changed your experience since this version was made.</span>
           <Button size="sm" variant="outline" className="bg-background" disabled={rebuilding} onClick={onRebuild}>
             {rebuilding ? <LoaderCircle className="animate-spin" /> : <RefreshCw data-icon="inline-start" />}
-            Rebuild with my current facts
+            Remake it with my changes
           </Button>
         </div>
       )}
@@ -192,62 +192,37 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {(["pdf", "docx"] as const).map((format) => (
-          <Button
-            key={format}
-            size="sm"
-            variant={format === "pdf" && resume.canExport ? "default" : "outline"}
-            disabled={!resume.canExport || downloading !== null}
-            onClick={() => download(format)}
-            aria-describedby={resume.canExport ? undefined : "export-lock"}
-          >
-            {downloading === format ? <LoaderCircle className="animate-spin" /> : resume.canExport ? <Download data-icon="inline-start" /> : <Lock data-icon="inline-start" />}
-            {format.toUpperCase()}
-          </Button>
-        ))}
-        <Button size="sm" variant="ghost" disabled={reviewing || rebuilding} onClick={rerun}>
-          {reviewing ? <LoaderCircle className="animate-spin" /> : <RefreshCw data-icon="inline-start" />}
-          Re-run review
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={tracking}
-          onClick={() =>
-            startTrack(async () => {
-              try {
-                await trackJobAction(jobId, resume.resumeId);
-                toast("On your tracker with this resume.");
-              } catch {
-                toast.error("Couldn't add it to your tracker. Try again.");
-              }
-            })
-          }
-        >
-          <SquareKanban data-icon="inline-start" />
-          Track with this resume
-        </Button>
-      </div>
-      {resume.canExport && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/30 bg-brand-soft/40 px-4 py-3 text-[13.5px] leading-5">
-          <span>
-            <span className="font-medium">Resume ready.</span> <span className="text-muted-foreground">Next, a cover letter and interview prep built from the same facts.</span>
-          </span>
-          <Button size="sm" variant="outline" className="bg-background" asChild>
-            <Link href={`/app/jobs/${jobId}/packet`}>
-              Cover letter and prep
-              <ArrowRight data-icon="inline-end" />
-            </Link>
+      {resume.canExport ? (
+        <div className="rounded-2xl border border-brand/30 bg-brand-soft/40 p-4 sm:p-5">
+          <p className="flex items-center gap-2 font-display text-[19px] font-semibold">
+            <Check className="size-5 text-brand" strokeWidth={3} aria-hidden="true" />
+            Your resume is ready
+          </p>
+          <p className="mt-1 text-[13.5px] leading-5 text-muted-foreground">One page, every line checked against what you confirmed.</p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button size="xl" disabled={downloading !== null} onClick={() => download("pdf")}>
+              {downloading === "pdf" ? <LoaderCircle className="animate-spin" /> : <Download data-icon="inline-start" />}
+              Download PDF
+            </Button>
+            <Button size="lg" variant="ghost" disabled={downloading !== null} onClick={() => download("docx")}>
+              {downloading === "docx" ? <LoaderCircle className="animate-spin" /> : null}
+              Word file instead
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-pending/40 bg-pending-soft/40 p-4 sm:p-5">
+          <p id="export-lock" className="flex items-start gap-2 text-[14px] leading-6">
+            <Lock className="mt-1 size-4 shrink-0" aria-hidden="true" />
+            <span>
+              <span className="font-medium">Almost there.</span> {resume.reason ?? "A few lines need a fix before you can download."}
+            </span>
+          </p>
+          <Button size="lg" className="mt-3" disabled={reviewing || rebuilding} onClick={rerun}>
+            {reviewing ? <LoaderCircle className="animate-spin" /> : <RefreshCw data-icon="inline-start" />}
+            Check it again
           </Button>
         </div>
-      )}
-      {resume.canExport && <ProofLink resumeId={resume.resumeId} slug={resume.shareSlug} />}
-      {!resume.canExport && resume.reason && (
-        <p id="export-lock" className="mt-2 flex items-start gap-1.5 text-[13px] text-pending-ink">
-          <Lock className="mt-0.5 size-3.5 shrink-0" />
-          Downloads unlock when the review passes. {resume.reason}
-        </p>
       )}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
@@ -264,18 +239,18 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
             <PagePreview ops={resume.ops} family={resume.family} hovered={hovered} flagged={flagged} />
           </div>
           <p className="mt-3 text-center text-[12px] text-subtle-foreground">
-            The exact page, same line breaks as the PDF. Version {resume.version}.{flagged.size > 0 && " Highlighted lines need a fix."} Select any bullet to edit it.
-            <span className="sm:hidden"> To read it full size on a phone, download it once the review passes.</span>
+            The exact page, same line breaks as the PDF.{flagged.size > 0 && " Highlighted lines need a fix."} Tap any line to edit it.
+            <span className="sm:hidden"> To read it full size on a phone, download it.</span>
           </p>
         </div>
 
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-background lg:sticky lg:top-6 lg:max-h-[calc(100dvh-8rem)]">
-          <div role="tablist" aria-label="Resume reasoning" onKeyDown={onTabListKeyDown} className="flex gap-1 overflow-x-auto border-b p-2">
+          <div role="tablist" aria-label="About this resume" onKeyDown={onTabListKeyDown} className="flex gap-1 overflow-x-auto border-b p-2">
             {(
               [
-                ["review", `Review${blockingFails.length ? ` (${blockingFails.length} blocking)` : ""}`],
-                ["why", "Why this works"],
-                ["cut", `What I cut (${resume.cuts.length})`],
+                ["review", `Checks${blockingFails.length ? ` (${blockingFails.length} to fix)` : ""}`],
+                ["why", "Why each line"],
+                ["cut", `Left off (${resume.cuts.length})`],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -325,7 +300,7 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
               ))}
             {panel === "cut" && (
               <>
-                <p className="px-1 text-[12.5px] leading-5 text-muted-foreground">What stayed off this page, and why. Everything here is still on My facts.</p>
+                <p className="px-1 text-[12.5px] leading-5 text-muted-foreground">What didn&apos;t fit on one page, and why. All of it is still saved in My experience.</p>
                 {resume.adjustments.map((a) => (
                   <div key={a} className="rounded-lg border border-dashed p-3 text-[12.5px] text-muted-foreground">
                     {a}
@@ -346,11 +321,56 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
           </div>
         </aside>
       </div>
+
+      {resume.canExport && (
+        <section aria-labelledby="next-heading" className="mt-8">
+          <h2 id="next-heading" className="text-[15px] font-semibold">
+            What&apos;s next (optional)
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border bg-background p-4">
+              <p className="text-[14px] font-medium">Keep track of it</p>
+              <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">Saves this exact resume with the job, and reminds you to follow up two weeks after you apply.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3"
+                disabled={tracking}
+                onClick={() =>
+                  startTrack(async () => {
+                    try {
+                      await trackJobAction(jobId, resume.resumeId);
+                      toast("Added to your applications with this resume.");
+                    } catch {
+                      toast.error("Couldn't add it to your applications. Try again.");
+                    }
+                  })
+                }
+              >
+                {tracking ? <LoaderCircle className="animate-spin" /> : <SquareKanban data-icon="inline-start" />}
+                Add to my applications
+              </Button>
+            </div>
+            <div className="rounded-xl border bg-background p-4">
+              <p className="text-[14px] font-medium">Cover letter and interview prep</p>
+              <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">Written from the same things you confirmed, for this job.</p>
+              <Button size="sm" variant="outline" className="mt-3" asChild>
+                <Link href={`/app/jobs/${jobId}/packet`}>
+                  Open
+                  <ArrowRight data-icon="inline-end" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+          <ProofLink resumeId={resume.resumeId} slug={resume.shareSlug} />
+        </section>
+      )}
     </div>
   );
 }
 
 const SEVERITY_ORDER = { BLOCKING: 0, WARN: 1, INFO: 2 } as const;
+const SEVERITY_LABEL = { BLOCKING: "Must fix", WARN: "Worth a look", INFO: "Note" } as const;
 
 function ReviewList({
   resume,
@@ -391,7 +411,7 @@ function ReviewList({
                 c.passed || c.severity === "INFO" ? "bg-muted text-muted-foreground" : c.severity === "BLOCKING" ? "bg-destructive/10 text-destructive" : "bg-pending-soft text-pending-ink",
               )}
             >
-              {c.severity}
+              {SEVERITY_LABEL[c.severity]}
             </span>
           </div>
           <p className="mt-0.5 text-[12.5px] leading-5 text-muted-foreground">{c.detail}</p>
@@ -415,11 +435,11 @@ function ReviewList({
   return (
     <>
       <div className={cn("rounded-lg border p-3", resume.canExport ? "border-brand/40 bg-brand-soft/50" : "border-pending/40 bg-pending-soft/50")}>
-        <p className="text-[13px] font-semibold">{resume.canExport ? "Review passed. Downloads are on." : "Downloads are locked until the review passes."}</p>
-        {resume.reviewedAt && <p className="mt-0.5 text-[12px] text-muted-foreground">Last review {new Date(resume.reviewedAt).toLocaleString()}.{resume.stale ? " Things changed since then." : ""}</p>}
+        <p className="text-[13px] font-semibold">{resume.canExport ? "Every check passed." : "Fix the lines below, then check again to download."}</p>
+        {resume.reviewedAt && <p className="mt-0.5 text-[12px] text-muted-foreground">Last checked {new Date(resume.reviewedAt).toLocaleString()}.{resume.stale ? " Things changed since then." : ""}</p>}
       </div>
 
-      <section aria-label="AI review" className="rounded-lg border p-3">
+      <section aria-label="Final read-through" className="rounded-lg border p-3">
         <p className="flex items-center gap-2 text-[13px] font-medium">
           {reviewing ? (
             <LoaderCircle className="size-4 animate-spin" />
@@ -430,17 +450,17 @@ function ReviewList({
           ) : (
             <Info className="size-4 text-muted-foreground" />
           )}
-          AI review:{" "}
+          Final read-through:{" "}
           {!resume.aiConfigured
-            ? "temporarily unavailable"
+            ? "not available right now"
             : !model
               ? "not run yet"
-              : { pass: "PASS", fail: "FAIL", unavailable: "temporarily unavailable", limit: "daily limit reached", error: "didn't finish", skipped: "waiting on the checks below" }[model.status]}
+              : { pass: "passed", fail: "found lines to fix", unavailable: "not available right now", limit: "daily limit reached", error: "didn't finish", skipped: "runs once the checks below pass" }[model.status]}
         </p>
         <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">
           {!resume.aiConfigured
-            ? "AI review is temporarily unavailable. Scoring, these checks, and your tracker all still work. A resume that already passed can still be downloaded."
-            : (model?.message ?? "Press Re-run review to check this version.")}
+            ? "An AI reads every line against what you confirmed before you download. It's not available right now. Everything else still works, and a resume that already passed can still be downloaded."
+            : (model?.message ?? "Press Check it again to check this version.")}
         </p>
         {model?.issues.map((issue) => (
           <div key={issue.quote} className="mt-2.5 rounded-md bg-muted/60 p-2.5 text-[12.5px] leading-5">
@@ -496,7 +516,7 @@ function FixLink({ quote, fixHref, editHere, canEditHere }: { quote: string; fix
     </button>
   ) : (
     <Link href={fixHref(quote)} className="font-medium underline-offset-2 hover:underline">
-      Fix in My facts
+      Fix in My experience
     </Link>
   );
 }
@@ -525,7 +545,7 @@ function EditLine({ jobId, line, onClose }: { jobId: string; line: TailorResumeV
         setError(result.error);
         return;
       }
-      toast(result.gate.passed ? "Saved and rebuilt. Review passed." : "Saved and rebuilt. See the review for what's left.");
+      toast(result.gate.passed ? "Saved. Your resume is ready to download." : "Saved. See the checks for what's left.");
       onClose();
       router.refresh();
     });
@@ -542,7 +562,7 @@ function EditLine({ jobId, line, onClose }: { jobId: string; line: TailorResumeV
         Edit this line
       </label>
       <p className="mt-0.5 text-[12.5px] leading-5 text-muted-foreground">
-        Your edit is saved to My facts in your words and used on every resume from now on. Add a number only if you could explain it in an interview.
+        Your edit is saved to My experience in your words and used on every resume from now on. Add a number only if you could explain it in an interview.
       </p>
       <Textarea id="edit-line" value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={400} autoFocus className="mt-2 text-[14px] leading-6" />
       <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-2" />
@@ -554,7 +574,7 @@ function EditLine({ jobId, line, onClose }: { jobId: string; line: TailorResumeV
       <div className="mt-3 flex flex-wrap gap-2">
         <Button type="submit" size="sm" disabled={saving || !confirmed || text.trim().length < 3 || text.trim() === original}>
           {saving ? <LoaderCircle className="animate-spin" /> : <Check data-icon="inline-start" />}
-          Save and rebuild
+          Save, it&apos;s true
         </Button>
         <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={onClose}>
           Cancel
@@ -603,11 +623,11 @@ function ProofLink({ resumeId, slug }: { resumeId: string; slug: string | null }
       {slug ? (
         <>
           <p>
-            <span className="font-medium">Proof link on.</span>{" "}
-            <span className="text-muted-foreground">Anyone with it can see each line and the fact you confirmed behind it. Your email and phone stay off it.</span>
+            <span className="font-medium">Share link on.</span>{" "}
+            <span className="text-muted-foreground">Anyone with it can see each line and what you confirmed behind it. Your email and phone stay off it.</span>
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            <input readOnly value={url} aria-label="Proof link" onFocus={(e) => e.currentTarget.select()} className="h-8 min-w-0 flex-1 rounded-md border bg-muted/40 px-2.5 font-mono text-[12px]" />
+            <input readOnly value={url} aria-label="Share link" onFocus={(e) => e.currentTarget.select()} className="h-8 min-w-0 flex-1 rounded-md border bg-muted/40 px-2.5 font-mono text-[12px]" />
             <Button size="sm" variant="outline" onClick={copy} disabled={!url}>
               Copy
             </Button>
@@ -620,11 +640,11 @@ function ProofLink({ resumeId, slug }: { resumeId: string; slug: string | null }
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span>
             <span className="font-medium">Show your work.</span>{" "}
-            <span className="text-muted-foreground">A link for recruiters with the confirmed fact behind every line. Optional.</span>
+            <span className="text-muted-foreground">A link for recruiters that shows what&apos;s behind every line.</span>
           </span>
           <Button size="sm" variant="outline" onClick={create} disabled={pending}>
             {pending ? <LoaderCircle className="animate-spin" /> : null}
-            Create a proof link
+            Make a share link
           </Button>
         </div>
       )}

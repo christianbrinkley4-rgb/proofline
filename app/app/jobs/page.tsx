@@ -39,7 +39,7 @@ export default async function JobsPage() {
 
   return (
     <PageBody className="max-w-4xl">
-      <PageHeader title="Jobs" description="Paste any job you found. You'll see the knockouts first, then your fit score with the math shown, then one tailored resume." />
+      <PageHeader title="My jobs" description="Paste any job you found. I'll check for dealbreakers, show how well you fit, and make a resume for it." />
       <PasteJobBox className="mt-8" autoFocus={rows.length === 0} />
 
       <section className="mt-10" aria-labelledby="your-jobs">

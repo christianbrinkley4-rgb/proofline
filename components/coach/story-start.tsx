@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 type Mode = "talk" | "type";
 
 const CHOICES = [
-  { id: "upload", title: "Upload a resume", text: "PDF, DOCX, or LinkedIn's Save to PDF. I'll pull out facts for you to confirm.", icon: FileUp, href: "/app/onboarding?step=upload" },
+  { id: "upload", title: "Upload a resume", text: "PDF, DOCX, or LinkedIn's Save to PDF. I'll pull out what's on it for you to check.", icon: FileUp, href: "/app/onboarding?step=upload" },
   { id: "talk", title: "Talk it out", text: "Tell me about one job, class, or project like you'd tell a friend. I'll write the bullets.", icon: Mic },
   { id: "type", title: "Type a few lines", text: "Add one experience in your own words. Rough is fine; I'll ask about the numbers.", icon: PencilLine },
 ] as const;

@@ -32,16 +32,16 @@ export default async function LinkedInPage() {
       />
       <p className="mt-4 flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] leading-5 text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />
-        Built from {kit.factCount} confirmed {kit.factCount === 1 ? "fact" : "facts"}. Change a fact on My facts and this page changes with it.
+        Made from {kit.factCount} {kit.factCount === 1 ? "thing" : "things"} you confirmed. Change something in My experience and this page changes with it.
       </p>
 
       <div className="mt-8">
         {empty ? (
           <div className="rounded-2xl border border-dashed border-border-strong p-6 text-center">
             <p className="text-[15px] font-medium">Add your school and one experience first.</p>
-            <p className="mt-1 text-[13.5px] text-muted-foreground">Your LinkedIn text is built only from facts you&apos;ve confirmed.</p>
+            <p className="mt-1 text-[13.5px] text-muted-foreground">Your LinkedIn text is made only from what you&apos;ve confirmed.</p>
             <Button size="lg" className="mt-4" asChild>
-              <Link href="/app/facts">Go to My facts</Link>
+              <Link href="/app/facts">Go to My experience</Link>
             </Button>
           </div>
         ) : (

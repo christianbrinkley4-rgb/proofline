@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileUp, ShieldCheck } from "lucide-react";
+import { FileUp, Plus, ShieldCheck } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
-import { AddFact, AddRole, DeleteEducationButton, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
+import { AddFact, DeleteEducationButton, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
+import { DraftLinesToggle } from "@/components/facts/draft-lines";
 import { FactRecall } from "@/components/facts/fact-recall";
 import { Button } from "@/components/ui/button";
 import { AddEducation } from "@/components/facts/add-education";
@@ -11,7 +12,7 @@ import { getProfile } from "@/lib/kb/profile";
 import { requireSession } from "@/lib/auth";
 import { ensureFactBase, GROUP_LABEL, loadFactBase, type FactRow as Row } from "@/lib/facts/base";
 
-export const metadata: Metadata = { title: "My facts" };
+export const metadata: Metadata = { title: "My experience" };
 
 const view = (f: Row): FactRowView => ({ id: f.id, text: f.text, label: f.label, field: f.field, verifiedAt: f.verifiedAt?.toISOString() ?? null });
 
@@ -24,9 +25,6 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
   const backHref = typeof back === "string" && back.startsWith("/app/") ? back : null;
   const experienceRoles = base.roles.filter((r) => r.group === "experience");
   const projectRoles = base.roles.filter((r) => r.group === "project");
-  const roleOptions = (roles: typeof base.roles) => roles.map((r) => ({ id: r.experience.id, name: [r.experience.title, r.experience.org].filter(Boolean).join(", ") }));
-
-  const recallRoles = base.roles.map((role) => ({ id: role.experience.id, name: [role.experience.title, role.experience.org].filter(Boolean).join(", "), lines: role.bullets.length }));
 
   return (
     <PageBody className="max-w-3xl">
@@ -37,8 +35,8 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
       )}
       <PageHeader
         className={backHref ? "mt-3" : undefined}
-        title="My facts"
-        description="Everything a resume is allowed to say about you, in your exact words. Edit a fact and it's re-confirmed; delete it and it comes off every resume."
+        title="My experience"
+        description="Everything a resume can say about you, in your words. Change a line here and it changes on every resume you make from now on."
         actions={
           <>
             <Button size="sm" variant="outline" asChild>
@@ -57,21 +55,13 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
       />
       <p className="mt-4 flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-[13px] leading-5 text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" />
-        {base.total} confirmed {base.total === 1 ? "fact" : "facts"}. Proofline never adds one for you: new facts come only from you, with the box ticked.
+        Proofline never adds anything here for you. Every line is one you kept, edited, or wrote yourself, and only these can go on a resume.
       </p>
 
-      <section className="mt-5 rounded-xl border bg-background p-4">
-        <h2 className="text-[16px] font-semibold">Remember more of what you did</h2>
-        <p className="mt-1 mb-3 text-[13px] leading-5 text-muted-foreground">We show you tasks that are common in roles like yours, one at a time. Say yes to the ones you did, add a number if you have one, and each becomes a resume line in your words. Every resume picks the lines that fit that job.</p>
-        <FactRecall roles={recallRoles} />
-      </section>
+      <RoleSection title={GROUP_LABEL.experience} roles={experienceRoles} project={false} />
+      <RoleSection title={GROUP_LABEL.project} roles={projectRoles} project />
 
-      <section className="mt-8">
-        <h2 className="border-b pb-2 text-[17px] font-semibold tracking-tight">Resume contact details</h2>
-        <ContactDetails initial={{ fullName: profile?.fullName ?? "", contactEmail: profile?.contactEmail ?? "", phone: profile?.phone ?? "", city: profile?.city ?? "", region: profile?.region ?? "", linkedinUrl: profile?.linkedinUrl ?? "", portfolioUrl: profile?.portfolioUrl ?? "" }} />
-      </section>
-
-      <Section title={GROUP_LABEL.education} empty="No education yet." count={(base.educationEntries ?? []).length}>
+      <Section title={GROUP_LABEL.education} empty="No school yet." count={(base.educationEntries ?? []).length}>
         <div className="space-y-4">
           {(base.educationEntries ?? []).map((entry) => (
             <div key={entry.id} className="rounded-xl border bg-background p-2 sm:p-3">
@@ -89,15 +79,6 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
         </div>
       </Section>
 
-      <RoleSection title={GROUP_LABEL.experience} roles={experienceRoles} project={false} roleOptions={roleOptions(experienceRoles)} />
-      <RoleSection title={GROUP_LABEL.project} roles={projectRoles} project roleOptions={roleOptions(projectRoles)} />
-
-      {base.other.length > 0 && (
-        <Section title="Other statements" count={base.other.length}>
-          <ul className="space-y-0.5">{base.other.map((f) => <FactRow key={f.id} fact={view(f)} multiline />)}</ul>
-        </Section>
-      )}
-
       <Section title={GROUP_LABEL.skill} empty="No skills yet." count={base.skill.length}>
         <ul className="space-y-0.5">{base.skill.map((f) => <FactRow key={f.id} fact={view(f)} />)}</ul>
         <div className="mt-2">
@@ -112,12 +93,25 @@ export default async function FactsPage({ searchParams }: PageProps<"/app/facts"
         </div>
       </Section>
 
-      <Section title={GROUP_LABEL.number} empty="Numbers you can stand behind: how many, how much, how often." count={base.number.length}>
-        <ul className="space-y-0.5">{base.number.map((f) => <FactRow key={f.id} fact={view(f)} multiline />)}</ul>
+      <Section title="Numbers and other details" empty="Numbers you can stand behind: how many, how much, how often." count={base.number.length + base.other.length}>
+        <ul className="space-y-0.5">
+          {base.number.map((f) => <FactRow key={f.id} fact={view(f)} multiline />)}
+          {base.other.map((f) => <FactRow key={f.id} fact={view(f)} multiline />)}
+        </ul>
         <div className="mt-2">
-          <AddFact group="number" label="Add a number" />
+          <AddFact group="number" label="Add a number or result" />
         </div>
       </Section>
+
+      <details id="contact" className="group mt-8 rounded-xl border bg-background">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[15px] font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+          Contact details on your resume
+          <span className="text-[12.5px] font-normal text-muted-foreground group-open:hidden">Name, email, phone, links</span>
+        </summary>
+        <div className="border-t px-4 pb-4">
+          <ContactDetails initial={{ fullName: profile?.fullName ?? "", contactEmail: profile?.contactEmail ?? "", phone: profile?.phone ?? "", city: profile?.city ?? "", region: profile?.region ?? "", linkedinUrl: profile?.linkedinUrl ?? "", portfolioUrl: profile?.portfolioUrl ?? "" }} />
+        </div>
+      </details>
     </PageBody>
   );
 }
@@ -135,12 +129,14 @@ function Section({ title, count, empty, children }: { title: string; count: numb
   );
 }
 
-function RoleSection({ title, roles, project, roleOptions }: { title: string; roles: Awaited<ReturnType<typeof loadFactBase>>["roles"]; project: boolean; roleOptions: Array<{ id: string; name: string }> }) {
+function RoleSection({ title, roles, project }: { title: string; roles: Awaited<ReturnType<typeof loadFactBase>>["roles"]; project: boolean }) {
   return (
     <Section title={title} count={roles.length} empty={project ? "No projects yet. Class, personal, and club projects all count." : "No roles yet. Jobs, internships, clubs, and volunteering all count."}>
       <div className="space-y-4">
         {roles.map((role) => {
           const name = [role.experience.title, role.experience.org].filter(Boolean).join(", ");
+          // A role with a start and no end is current; one with no dates at all is finished work.
+          const ended = Boolean(role.experience.endDate) || !role.experience.startDate;
           return (
             <div key={role.experience.id} className="rounded-xl border bg-background p-2 sm:p-3">
               <div className="flex items-start justify-between gap-2 px-1">
@@ -152,21 +148,26 @@ function RoleSection({ title, roles, project, roleOptions }: { title: string; ro
                   <FactRow key={f.id} fact={view(f)} canDelete={f.field !== "org"} />
                 ))}
               </ul>
-              <p className="mt-2 px-3 text-[12px] font-medium text-subtle-foreground">What you did</p>
+              <p className="mt-2 px-3 text-[12px] font-medium text-subtle-foreground">Resume lines</p>
               <ul className="space-y-0.5">
                 {role.bullets.map((f) => (
                   <FactRow key={f.id} fact={view({ ...f, label: "" })} multiline />
                 ))}
-                {role.bullets.length === 0 && <li className="px-3 py-1 text-[13px] text-muted-foreground">No lines yet.</li>}
+                {role.bullets.length === 0 && <li className="px-3 py-1 text-[13px] text-pending-ink">No lines yet, so this role shows up empty on a resume.</li>}
               </ul>
-              <div className="mt-3 px-3 pb-1"><FactRecall roles={[{ id: role.experience.id, name, lines: role.bullets.length }]} label="Find more lines for this role" /></div>
+              <div className="mt-3 flex flex-wrap items-start gap-2 px-3 pb-1">
+                <DraftLinesToggle experienceId={role.experience.id} kind={role.experience.kind} ended={ended} description={role.experience.rawNotes ?? ""} />
+                <FactRecall roles={[{ id: role.experience.id, name, lines: role.bullets.length }]} label="Ideas from similar roles" variant="outline" />
+              </div>
             </div>
           );
         })}
-        <div className="flex flex-wrap gap-2">
-          {roles.length > 0 && <AddFact group={project ? "project" : "experience"} roles={roleOptions} label={project ? "Add a line to a project" : "Add a line to a role"} />}
-          <AddRole project={project} />
-        </div>
+        <Button size="sm" variant="outline" className="bg-background" asChild>
+          <Link href={`/app/onboarding?step=${project ? "projects" : "experience"}&add=1&back=${encodeURIComponent("/app/facts")}`}>
+            <Plus data-icon="inline-start" />
+            {project ? "Add a project" : "Add a role"}
+          </Link>
+        </Button>
       </div>
     </Section>
   );

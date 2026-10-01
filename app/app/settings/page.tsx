@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   const modes = profile?.workModes.map((m) => (m === "onsite" ? "on-site" : m)).join(", ");
   return (
     <PageBody className="max-w-4xl">
-      <PageHeader title="Settings" description="Your account, what we use to check knockouts, and your data." />
+      <PageHeader title="Settings" description="Your account, what I use to spot dealbreakers, and your data." />
       {isOwner(session.user.email) && (
         <Link href="/app/owner" className="mt-6 flex min-h-11 items-center gap-2 rounded-xl border border-dashed bg-muted/40 px-4 text-[13.5px] font-medium hover:bg-muted">
           <Inbox className="size-4" />
@@ -36,7 +36,7 @@ export default async function SettingsPage() {
       <section className="mt-8 rounded-xl border bg-background p-5 sm:p-6">
         <div className="flex items-center gap-2">
           <UserRound className="size-4 text-brand" />
-          <h2 className="text-[16px] font-semibold">Account and knockout details</h2>
+          <h2 className="text-[16px] font-semibold">Account and where you can work</h2>
         </div>
         <dl className="mt-4 grid gap-3 text-[13.5px] sm:grid-cols-2">
           <div>

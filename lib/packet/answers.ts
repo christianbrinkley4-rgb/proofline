@@ -102,7 +102,7 @@ export function draftAnswerOffline(question: string, ctx: AnswerContext, wordLim
     const s = sources[0];
     answer = s
       ? `[Set the scene in a sentence: what was going on at ${s.org ?? "the time"}, and what needed to change?] ${asSentence(s.text, { org: s.org, lead: "at" })} [Close with what you learned or would do the same way again.]`
-      : "[Pick a real example from your experience. Proofline didn't find confirmed evidence that matches this question yet; add it to your profile first.]";
+      : "[Pick a real example from your experience. Proofline didn't find anything you confirmed that matches this question yet. Add it to My experience first.]";
   } else if (kind === "skill") {
     const skills = [...new Set(extractSkills(question))];
     // Only lines that show the skill asked about; another skill's line doesn't answer the question.
@@ -110,12 +110,12 @@ export function draftAnswerOffline(question: string, ctx: AnswerContext, wordLim
     sources = asked.size ? pick(ranked.length).filter((e) => extractSkills(e.text).some((s) => asked.has(s))).slice(0, 2) : pick(2);
     answer = sources.length
       ? `${sources.map((e) => asSentence(e.text, { org: e.org, lead: "at" })).join(" ")}${skills.length ? ` Those are the places I've used ${skills.map(inSentence).join(" and ")} the most.` : ""}`
-      : `[Be honest about your level with ${skills.map(inSentence).join(" and ") || "this"}. Proofline doesn't have confirmed evidence of it yet; say what you've done that's closest and how you'd get up to speed.]`;
+      : `[Be honest about your level with ${skills.map(inSentence).join(" and ") || "this"}. You haven't confirmed any experience with it yet, so say what you've done that's closest and how you'd get up to speed.]`;
   } else {
     sources = pick(2);
     answer = sources.length
       ? `${sources.map((e) => asSentence(e.text, { org: e.org, lead: "at" })).join(" ")} [Tie this back to the question in a sentence of your own.]`
-      : "[Answer in your own words. Proofline didn't find confirmed evidence that fits this question yet.]";
+      : "[Answer in your own words. Proofline didn't find anything you confirmed that fits this question yet.]";
   }
   return { question: question.trim(), answer: limit(answer, wordLimit), sourceIds: sources.map((e) => e.id), kind, wordLimit, generator: "offline" };
 }

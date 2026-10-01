@@ -87,7 +87,21 @@ export type VoiceIssue = {
   index: number;
 };
 
-const EM_DASH = "—";
+/** Built from code points so this file never contains the character it bans. */
+export const EM_DASH = String.fromCharCode(0x2014);
+export const EN_DASH = String.fromCharCode(0x2013);
+
+/** Em and en dashes become a comma, with the spaces around them tidied: "Cashier [dash] Target" reads "Cashier, Target". */
+export function dashesToCommas(text: string): string {
+  let out = text;
+  for (const dash of [EM_DASH, EN_DASH]) {
+    out = out
+      .split(dash)
+      .map((part, i, all) => (i === 0 ? part.trimEnd() : i === all.length - 1 ? part.trimStart() : part.trim()))
+      .join(", ");
+  }
+  return out;
+}
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

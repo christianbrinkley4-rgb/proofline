@@ -99,8 +99,8 @@ export type KitInput = {
 };
 
 const CONTACT_FIX = { label: "Edit contact details", href: "/app/facts" };
-const EDUCATION_FIX = { label: "Add it on My facts", href: "/app/facts" };
-const ROLE_FIX = { label: "Add it on My facts", href: "/app/facts" };
+const EDUCATION_FIX = { label: "Add it in My experience", href: "/app/facts" };
+const ROLE_FIX = { label: "Add it in My experience", href: "/app/facts" };
 
 const CONTACT = { kind: "profile", label: "Your contact details" } as const;
 const YOUR_NAME = { kind: "profile", label: "Your name as saved" } as const;
@@ -157,17 +157,17 @@ function contactGroup(input: KitInput): KitGroup {
 
 function documentsGroup(input: KitInput, facts: Map<string, string>): KitGroup {
   const { job, resume, letter } = input;
-  const tailor = { label: "Build your resume", href: `/app/jobs/${job.id}?tab=tailor` };
+  const tailor = { label: "Make your resume", href: `/app/jobs/${job.id}?tab=resume` };
   const packet = { label: "Open the cover letter", href: `/app/jobs/${job.id}/packet#letter` };
   const resumeField: KitField = resume
-    ? { key: "documents.resume", label: "Resume", value: resume.fileName, sources: [{ kind: "profile", label: resume.label }], file: { name: resume.fileName, href: `/app/jobs/${job.id}?tab=tailor` } }
+    ? { key: "documents.resume", label: "Resume", value: resume.fileName, sources: [{ kind: "profile", label: resume.label }], file: { name: resume.fileName, href: `/app/jobs/${job.id}?tab=resume` } }
     : { key: "documents.resume", label: "Resume", value: "", sources: [], blank: { kind: "not_built", reason: "No resume built for this job yet.", fix: tailor } };
 
   let letterField: KitField;
   if (!letter || letter.status === "none") {
     letterField = { key: "documents.letter", label: "Cover letter", value: "", sources: [], multiline: true, blank: { kind: "not_built", reason: "Not drafted yet. Many forms make it optional.", fix: { ...packet, label: "Draft the cover letter" } } };
   } else if (letter.blocked) {
-    letterField = { key: "documents.letter", label: "Cover letter", value: "", sources: [], multiline: true, blank: { kind: "changed", reason: "A claim in the letter no longer matches your confirmed facts. Fix it before you send it.", fix: packet } };
+    letterField = { key: "documents.letter", label: "Cover letter", value: "", sources: [], multiline: true, blank: { kind: "changed", reason: "A claim in the letter no longer matches what you confirmed. Fix it before you send it.", fix: packet } };
   } else {
     const sources: KitSource[] = [...new Set(letter.factIds)].flatMap((id) => factSource(id, facts));
     if (letter.usesOwnWords) sources.push({ kind: "yours", label: "Your reason for applying, in your words" });
@@ -177,7 +177,7 @@ function documentsGroup(input: KitInput, facts: Map<string, string>): KitGroup {
       value: letter.text,
       sources,
       multiline: true,
-      unfinished: letter.status === "needs_you" ? "Write the bracketed part in your own words on the packet page first." : undefined,
+      unfinished: letter.status === "needs_you" ? "Write the bracketed part in your own words on the cover letter page first." : undefined,
     };
   }
   return { key: "documents", title: "Documents", entries: [{ key: "documents", fields: [resumeField, letterField] }] };
@@ -202,7 +202,7 @@ function educationGroup(input: KitInput, facts: Map<string, string>): KitGroup {
         field(`${k}.degree`, "Degree", r.degree, factSource(r.factIds.degree, facts), noFact("No degree saved for this school.", EDUCATION_FIX)),
         field(`${k}.major`, "Major or discipline", r.major, factSource(r.factIds.major, facts), noFact("No major saved for this school.", EDUCATION_FIX)),
         field(`${k}.grad`, "Graduation date", r.gradMonth ? monthYear(r.gradMonth) : r.gradDate, factSource(r.factIds.grad, facts), noFact("No graduation date saved.", EDUCATION_FIX)),
-        field(`${k}.gpa`, "GPA", r.gpa, factSource(r.factIds.gpa, facts), noFact("No GPA saved. Leave it blank if the form allows, or add it on My facts.", EDUCATION_FIX)),
+        field(`${k}.gpa`, "GPA", r.gpa, factSource(r.factIds.gpa, facts), noFact("No GPA saved. Leave it blank if the form allows, or add it in My experience.", EDUCATION_FIX)),
       ];
       if (r.honors.trim()) fields.push({ key: `${k}.honors`, label: "Honors", value: r.honors.trim(), sources: r.factIds.honors.flatMap((id) => factSource(id, facts)) });
       if (r.coursework.trim()) fields.push({ key: `${k}.coursework`, label: "Coursework", value: r.coursework.replace(/^(relevant\s+)?coursework\s*:\s*/i, "").trim(), sources: factSource(r.factIds.coursework, facts) });
@@ -281,21 +281,21 @@ function eligibilityGroup(input: KitInput): KitGroup {
 /** What a person could confirm so Proofline can help with a question next time. */
 export function suggestFact(question: string): string {
   const skills = [...new Set(extractSkills(question))];
-  if (skills.length) return `You could add a fact about where you've used ${skills.slice(0, 2).join(" or ")}.`;
-  if (/\b(time|situation|example|challenge|conflict|mistake|failure)\b/i.test(question)) return "You could add a fact about the example this question asks for: what you did and what came of it.";
-  return "You could add a fact about what this question asks, in your own words.";
+  if (skills.length) return `You could add where you've used ${skills.slice(0, 2).join(" or ")}.`;
+  if (/\b(time|situation|example|challenge|conflict|mistake|failure)\b/i.test(question)) return "You could add the example this question asks for: what you did and what came of it.";
+  return "You could add what this question asks about, in your own words.";
 }
 
 function questionsGroup(input: KitInput, facts: Map<string, string>): KitGroup {
-  const fix = { label: "Redraft it on the packet page", href: `/app/jobs/${input.job.id}/packet#questions` };
+  const fix = { label: "Redraft it on the cover letter page", href: `/app/jobs/${input.job.id}/packet#questions` };
   return {
     key: "questions",
     title: "Questions from the form",
-    note: input.answers.length ? "Drafted from your confirmed facts. Each one names the facts it used." : "Paste a question from the application below and Proofline drafts an answer from your confirmed facts.",
+    note: input.answers.length ? "Drafted from what you confirmed. Each one names what it used." : "Paste a question from the application below and Proofline drafts an answer from what you confirmed.",
     entries: input.answers.map((a) => {
       const k = `questions.${a.id}`;
       if (a.sourcesChanged) {
-        return { key: k, fields: [{ key: k, label: a.question, value: "", sources: [], multiline: true, blank: { kind: "changed", reason: "A fact this answer used changed or was removed, so it's held back.", fix } }] };
+        return { key: k, fields: [{ key: k, label: a.question, value: "", sources: [], multiline: true, blank: { kind: "changed", reason: "Something this answer used changed or was removed, so it's held back.", fix } }] };
       }
       const sources: KitSource[] = a.factIds.flatMap((id) => factSource(id, facts));
       if (a.ownWords) sources.push({ kind: "yours", label: "Your own words" });
@@ -310,8 +310,8 @@ function questionsGroup(input: KitInput, facts: Map<string, string>): KitGroup {
           sources,
           multiline: true,
           ...(noEvidence && unfinished
-            ? { blank: { kind: "no_fact" as const, reason: `None of your confirmed facts answer this. ${suggestFact(a.question)}`, fix: { label: "Add a fact", href: "/app/facts" } } }
-            : unfinished ? { unfinished: "Fill in the bracketed parts in your own words on the packet page." } : {}),
+            ? { blank: { kind: "no_fact" as const, reason: `Nothing you've confirmed answers this. ${suggestFact(a.question)}`, fix: { label: "Add it", href: "/app/facts" } } }
+            : unfinished ? { unfinished: "Fill in the bracketed parts in your own words on the cover letter page." } : {}),
         }],
       };
     }),

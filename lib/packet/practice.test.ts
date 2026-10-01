@@ -21,14 +21,14 @@ describe("practice feedback", () => {
     const fb = practiceFeedback(STRONG, behavioral, FACTS);
     expect(fb.notes.every((n) => n.tone === "good")).toBe(true);
     expect(fb.notes.map((n) => n.text)).toEqual(
-      expect.arrayContaining(["It has the situation, what you did, and how it turned out.", "Every number you said matches your confirmed facts.", "You used your Oakwood Family Dental example."]),
+      expect.arrayContaining(["It has the situation, what you did, and how it turned out.", "Every number you said matches what you confirmed.", "You used your Oakwood Family Dental example."]),
     );
     expect(fb.seconds).toBeGreaterThan(30);
   });
 
   it("flags a number the person never confirmed", () => {
     const fb = practiceFeedback(STRONG.replace("$3,200", "$9,000"), behavioral, FACTS);
-    expect(fb.notes[0]).toEqual({ tone: "fix", text: expect.stringContaining('"$9,000", which isn\'t in your confirmed facts') });
+    expect(fb.notes[0]).toEqual({ tone: "fix", text: expect.stringContaining('"$9,000", which isn\'t in what you confirmed') });
   });
 
   it("asks whose work it was when it's all \"we\"", () => {

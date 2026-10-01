@@ -1,3 +1,4 @@
+import { EM_DASH } from "@/lib/voice/rules";
 import { extractKeywords, matchKeywords } from "@/lib/jobs/keywords";
 import { claimNumbers, lintResume, type LintCheck, type LintCheckId } from "@/lib/review/linter";
 import type { ParsedResume } from "@/lib/resume/parse/types";
@@ -34,7 +35,7 @@ const capitalized = (word: string) => word[0].toUpperCase() + word.slice(1).toLo
 const PUBLIC_DETAIL: Partial<Record<LintCheckId, (detail: string) => string>> = {
   bullets_have_numbers: (d) => d.replace(" to your fact, if you know it.", ", if you know it."),
   // Someone using the free check has no onboarding or Settings to go to.
-  contact_info_complete: (d) => d.replace(" Add it with Edit contact details on My facts.", " Add it to the line under your name."),
+  contact_info_complete: (d) => d.replace(" Add it under Contact details in My experience.", " Add it to the line under your name."),
 };
 
 /**
@@ -121,7 +122,7 @@ export function defendReport(parsed: ParsedResume, jobDescription = "", rawText 
     .sort((a, b) => PUBLIC_CHECKS.indexOf(a.id) - PUBLIC_CHECKS.indexOf(b.id))
     .map((c) => {
       if (c.id === "no_em_dashes" && rawText) {
-        const dashLines = rawText.split("\n").map((l) => l.trim()).filter((l) => l.includes("—"));
+        const dashLines = rawText.split("\n").map((l) => l.trim()).filter((l) => l.includes(EM_DASH));
         if (dashLines.length) return { ...c, passed: false, evidence_quote: dashLines[0], failures: dashLines, detail: `${dashLines.length === 1 ? "A line uses" : `${dashLines.length} lines use`} an em dash. Use a comma or a period instead.` };
       }
       const reword = PUBLIC_DETAIL[c.id];

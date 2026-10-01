@@ -31,7 +31,7 @@ export default async function TrackerPage({ searchParams }: { searchParams: Prom
     const steps: string[] = [];
     if (fit.details.requiredSkills.missing.length) steps.push("If you have used " + fit.details.requiredSkills.missing.slice(0, 2).join(" or ") + ", add a specific example to your profile. Otherwise, build a small project to gain that experience.");
     if (fit.strengths.length) steps.push("Prepare a short example that demonstrates: " + fit.strengths[0] + ".");
-    steps.push(app.resumeId ? "Review the attached resume against the full posting before your next conversation." : "Build the tailored resume on the job's Tailor tab and track it with that version.");
+    steps.push(app.resumeId ? "Review the attached resume against the full posting before your next conversation." : "Make a resume from this job's page, then track it with that version.");
     if (app.stage === "interview") steps.push("Prepare two stories about your work: the problem, your own contribution, and the result.");
     insights[app.id] = { score: fit.score, strengths: fit.strengths, gaps: fit.gaps, nextSteps: steps.slice(0, 4), versions: resumes.filter((r) => r.jobId === job.id).length };
   }

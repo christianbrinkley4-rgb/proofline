@@ -416,7 +416,7 @@ export async function addListFacts(userId: string, group: "skill" | "license", i
 /** Manual add from My facts. The caller has already checked the user ticked "this is true". */
 export async function addManualFact(userId: string, input: { group: FactGroup; text: string; experienceId?: string | null; entryId?: string | null; eduField?: "honors" | "coursework" | "detail" | null }) {
   const text = clean(input.text);
-  if (text.length < 2) throw new Error("Write the fact first.");
+  if (text.length < 2) throw new Error("Write it first.");
   if (input.group === "experience" || input.group === "project") {
     const experience = input.experienceId ? await getExperience(userId, input.experienceId) : undefined;
     if (!experience || experience.archivedAt) throw new Error("Pick the role or project this belongs to.");
@@ -465,13 +465,13 @@ function toYearMonth(text: string): string | null {
 /** Edit = re-confirm: the new wording supersedes the old row, and everything built on it follows. */
 export async function editFact(userId: string, factId: string, text: string): Promise<Fact> {
   const content = clean(text);
-  if (content.length < 1) throw new Error("A fact can't be empty. Delete it instead.");
+  if (content.length < 1) throw new Error("It can't be empty. Delete it instead.");
   const facts = await listFacts(userId, { states: ["confirmed", "unconfirmed", "needs_review"] });
   const old = facts.find((f) => f.id === factId);
-  if (!old) throw new Error("That fact isn't on your list anymore.");
+  if (!old) throw new Error("That isn't on your list anymore.");
   const field = fieldOf(old);
   const next = await reviseFact(userId, factId, { content: field === "bullet" ? bulletText(content) : content, data: old.data, source: "user_stated" });
-  if (!next) throw new Error("That fact changed in another tab. Reload and try again.");
+  if (!next) throw new Error("That changed in another tab. Reload and try again.");
 
   if (field === "bullet" && old.experienceId) {
     const archived = await archiveBulletsCiting(userId, factId);

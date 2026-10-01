@@ -17,7 +17,7 @@ import { readSent } from "@/lib/packet/sent";
 export async function generateMetadata({ params }: PageProps<"/app/jobs/[id]/kit">): Promise<Metadata> {
   const session = await requireSession();
   const data = await getJobForUser(session.user.id, (await params).id);
-  return { title: data ? `Answer kit for ${data.job.company}` : "Answer kit" };
+  return { title: data ? `Application answers for ${data.job.company}` : "Application answers" };
 }
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -48,7 +48,7 @@ export default async function KitPage({ params }: PageProps<"/app/jobs/[id]/kit"
     return (
       <PageBody className="max-w-3xl">
         {back}
-        <PageHeader className="mt-4" title="What you sent" description={`${sent.kit.title} at ${sent.kit.company}. Saved on ${day(sent.at)}, when you marked it submitted. It doesn't change when your facts do.`} />
+        <PageHeader className="mt-4" title="What you sent" description={`${sent.kit.title} at ${sent.kit.company}. Saved on ${day(sent.at)}, when you marked it submitted. It doesn't change when your experience does.`} />
         <div className="mt-6 flex flex-wrap gap-2">
           {application && (
             <Button variant="outline" asChild>
@@ -71,7 +71,7 @@ export default async function KitPage({ params }: PageProps<"/app/jobs/[id]/kit"
       {back}
       <PageHeader
         className="mt-4"
-        title="Answer kit"
+        title="Application answers"
         description={`${kit.title} at ${kit.company}. Keep this open next to their application form and copy each answer across. You press submit on their site; Proofline never does.`}
       />
 

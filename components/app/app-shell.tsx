@@ -18,15 +18,15 @@ import { signOut } from "@/lib/auth-client";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean };
+type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean; short?: string };
 
-// The private beta loop: facts, finding and pasting jobs (score, tailor), tracker.
+// The loop: your experience, finding or pasting a job, its resume, and your applications.
 const NAV: NavItem[] = [
-  { href: "/app", label: "Today", icon: House, mobile: true },
+  { href: "/app", label: "Home", icon: House, mobile: true },
   { href: "/app/find", label: "Find jobs", icon: Search, mobile: true },
-  { href: "/app/jobs", label: "Jobs", icon: ClipboardPaste, mobile: true },
-  { href: "/app/facts", label: "My facts", icon: ListChecks, mobile: true },
-  { href: "/app/tracker", label: "Tracker", icon: SquareKanban, mobile: true },
+  { href: "/app/jobs", label: "My jobs", icon: ClipboardPaste, mobile: true },
+  { href: "/app/facts", label: "My experience", short: "Experience", icon: ListChecks, mobile: true },
+  { href: "/app/tracker", label: "Applications", icon: SquareKanban, mobile: true },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
@@ -89,18 +89,18 @@ export function AppShell({ user, facts, children }: { user: ShellUser; facts: Sh
           aria-label="App"
           className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
         >
-          {NAV.filter((n) => n.mobile).map(({ href, label, icon: Icon }) => (
+          {NAV.filter((n) => n.mobile).map(({ href, label, short, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               aria-current={isActive(href) ? "page" : undefined}
               className={cn(
-                "flex flex-col items-center gap-1 py-2 text-[11px]",
+                "flex flex-col items-center gap-1 px-0.5 py-2 text-center text-[11px] leading-3.5",
                 isActive(href) ? "text-foreground" : "text-subtle-foreground",
               )}
             >
               <Icon className="size-5" strokeWidth={isActive(href) ? 2 : 1.75} />
-              {label}
+              {short ?? label}
             </Link>
           ))}
         </nav>
@@ -117,8 +117,8 @@ function ProfileMeter({ facts }: { facts: ShellFacts }) {
   return (
     <Link href="/app/facts" className="block rounded-md">
       <div className="flex items-center justify-between text-[12px]">
-        <span className="font-medium">My facts</span>
-        <span className="text-subtle-foreground tabular-nums">{facts.confirmed} confirmed</span>
+        <span className="font-medium">My experience</span>
+        <span className="text-subtle-foreground tabular-nums">{facts.confirmed} saved</span>
       </div>
       <div className="mt-2 flex h-1 overflow-hidden rounded-full bg-muted">
         <span className="bg-brand" style={{ width: `${(facts.confirmed / total) * 100}%` }} />
@@ -128,9 +128,9 @@ function ProfileMeter({ facts }: { facts: ShellFacts }) {
         {facts.toReview > 0 ? (
           <span className="text-pending-ink">{facts.toReview} waiting on you</span>
         ) : facts.confirmed === 0 ? (
-          "Tell us about yourself"
+          "Tell me about yourself"
         ) : (
-          "All reviewed"
+          "All checked"
         )}
       </p>
     </Link>

@@ -9,9 +9,9 @@ import { EXTENSION_TOKEN_NAME } from "@/lib/extension/service";
 export const metadata: Metadata = { title: "Browser extension" };
 
 const DOES = [
-  "Shows your fit score on job postings on LinkedIn, Indeed, and Handshake. Click it for knockouts first, then the math behind the score.",
+  "Shows your fit score on job postings on LinkedIn, Indeed, and Handshake. Click it to see any dealbreakers first, then how the score adds up.",
   "Saves the job posting you're looking at, with its fit score, in one click.",
-  "On Greenhouse and Lever applications, fills the form from the job's answer kit: contact details, school, current role, links, your work authorization answers, and questions you drafted. A panel on the page lists every field it filled and what's left for you.",
+  "On Greenhouse and Lever applications, fills the form from the job's application answers: contact details, school, current role, links, your work authorization answers, and questions you drafted. A panel on the page lists every field it filled and what's left for you.",
   "Marks the job Applied when you tell it you submitted, and keeps the kit it filled from as your record of what you sent.",
 ];
 
@@ -27,7 +27,7 @@ export default async function ExtensionPage() {
   const connected = (await listTokens(session.user.id)).filter((t) => t.name === EXTENSION_TOKEN_NAME).length;
   return (
     <PageBody className="max-w-3xl">
-      <PageHeader title="Browser extension" description="Your fit score where you already look for jobs, less typing on application forms, and a tracker that stays current. Scores use only facts you've already confirmed. Nothing new is collected." />
+      <PageHeader title="Browser extension" description="Your fit score where you already look for jobs, less typing on application forms, and a tracker that stays current. Scores use only what you've already confirmed. Nothing new is collected." />
       <div className="mt-8">
         <ConnectExtension connected={connected} />
       </div>

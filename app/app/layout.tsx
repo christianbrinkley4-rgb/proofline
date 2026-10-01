@@ -5,7 +5,7 @@ import { factCounts } from "@/lib/kb/facts";
 import { ensureProfile } from "@/lib/kb/profile";
 
 export const metadata: Metadata = {
-  title: { default: "Today", template: "%s · Proofline" },
+  title: { default: "Home", template: "%s · Proofline" },
 };
 
 export default async function AppLayout({ children }: LayoutProps<"/app">) {

@@ -147,7 +147,7 @@ describe("feed ranking", () => {
       gpa: null, gradDate: null, targetLocations: [], workModes: [], needsSponsorship: false, credentials: [],
     };
     const report = scoreFit({ title: "Staff Accountant", location: null, mode: "unknown", level: "entry", requirements: parseRequirements("Requirements:\n- Excel\n- SQL") }, candidate);
-    expect(feedReason(report, candidate, indexCandidate(candidate))).toBe('Wants Excel; your facts show it, as in "Reconciled 40 vendor accounts each month in Excel". Not in your facts yet: SQL.');
+    expect(feedReason(report, candidate, indexCandidate(candidate))).toBe('Wants Excel; your experience shows it, as in "Reconciled 40 vendor accounts each month in Excel". Not in your experience yet: SQL.');
   });
 });
 

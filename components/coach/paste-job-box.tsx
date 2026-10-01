@@ -20,11 +20,14 @@ export function PasteJobBox({
   className,
   autoFocus = false,
   compact = false,
+  submitLabel = "Check my fit",
   onIngested,
 }: {
   className?: string;
   autoFocus?: boolean;
   compact?: boolean;
+  /** What pressing go does next, in a few words. */
+  submitLabel?: string;
   /** Runs instead of opening the job, e.g. to finish onboarding first. */
   onIngested?: (jobId: string) => Promise<void> | void;
 }) {
@@ -157,7 +160,7 @@ export function PasteJobBox({
           </p>
           <Button type="submit" size="lg" disabled={pending || (!asLink && !asText)}>
             {pending ? <LoaderCircle className="animate-spin" /> : null}
-            Check my fit
+            {submitLabel}
             {!pending && <ArrowRight data-icon="inline-end" />}
           </Button>
         </div>

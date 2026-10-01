@@ -37,7 +37,7 @@ export default async function FindJobsPage({ searchParams }: { searchParams: Pro
         description={
           feed.poolSize
             ? `Internships and early-career jobs from ${feed.employers} employers, scored against your confirmed facts. Knockouts come first, and every score shows its math when you open the job.`
-            : "Internships and early-career jobs from employer boards, scored against your confirmed facts."
+            : "Internships and entry-level jobs straight from employers, scored against what you've confirmed."
         }
       />
 
@@ -79,7 +79,7 @@ export default async function FindJobsPage({ searchParams }: { searchParams: Pro
           </div>
         ) : (
           <>
-            <p className="mt-1 mb-3 text-[12.5px] text-subtle-foreground">Best fit first. Jobs with a knockout sit at the bottom, with the reason.</p>
+            <p className="mt-1 mb-3 text-[12.5px] text-subtle-foreground">Best fit first. Jobs with a dealbreaker for you sit at the bottom, with the reason.</p>
             <FeedList items={feed.items} now={now.toISOString()} />
             {feed.total > feed.items.length && shown < MAX && (
               <div className="mt-4 flex justify-center">

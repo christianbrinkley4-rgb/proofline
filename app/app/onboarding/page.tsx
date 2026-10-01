@@ -8,7 +8,7 @@ import { ONBOARDING_STEPS, type OnboardingStep } from "./steps";
 export const metadata: Metadata = { title: "Get started" };
 
 export default async function OnboardingPage({ searchParams }: PageProps<"/app/onboarding">) {
-  const { step: requested, back, import: importing } = await searchParams;
+  const { step: requested, back, import: importing, add } = await searchParams;
   const session = await requireSession();
   const userId = session.user.id;
   const profile = await ensureProfile(userId, session.user.name);
@@ -17,7 +17,10 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
 
   const isStep = (value: unknown): value is OnboardingStep => typeof value === "string" && (ONBOARDING_STEPS as readonly string[]).includes(value);
   // Older accounts may have a step name from the previous flow; start them at the top.
-  const step: OnboardingStep = isStep(requested) ? requested : isStep(profile.onboardingStep) ? profile.onboardingStep : "education";
+  // Someone left on a screen the first run no longer shows picks up at the next one it does.
+  const saved: OnboardingStep = isStep(profile.onboardingStep) ? profile.onboardingStep : "education";
+  const resumed: OnboardingStep = saved === "projects" ? "experience" : saved === "skills" || saved === "logistics" ? "job" : saved;
+  const step: OnboardingStep = isStep(requested) ? requested : resumed;
 
   const data: BetaOnboardingData = {
     step,
@@ -65,6 +68,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
     },
     hasEducation: readiness.hasEducation,
     importing: importing === "1",
+    adding: add === "1",
     returnTo: typeof back === "string" && back.startsWith("/app/") && !back.startsWith("//") ? back : null,
   };
 

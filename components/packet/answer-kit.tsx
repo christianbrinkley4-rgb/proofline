@@ -39,7 +39,7 @@ function Sources({ sources, value }: { sources: KitSource[]; value: string }) {
         <div>
           <p className="flex items-center gap-1">
             <Check className="size-3 text-brand" aria-hidden />
-            From {facts.length === 1 ? "your confirmed fact" : `${facts.length} confirmed facts`}
+            From {facts.length === 1 ? "one thing you confirmed" : `${facts.length} things you confirmed`}
           </p>
           <ul className="mt-0.5 space-y-0.5 border-l-2 border-brand/30 pl-2.5">
             {facts.slice(0, 6).map((s) => (
@@ -217,7 +217,7 @@ export function MarkSubmitted({ jobId, digest, company }: { jobId: string; diges
                   return;
                 }
                 if (result.reason === "stale") {
-                  setError("Your facts changed since this page opened, so the kit changed too. Close this, check the updated kit, then mark it again.");
+                  setError("Your experience changed since this page opened, so these answers changed too. Close this, check the updated answers, then mark it again.");
                   router.refresh();
                   return;
                 }

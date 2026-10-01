@@ -209,7 +209,7 @@ export async function tailorResume(
   const selected = new Map<string, Scored[]>();
   const cuts: CutItem[] = [];
   const selectedTexts: string[] = [];
-  for (const b of stale) cuts.push({ bulletId: b.id, text: b.text, reason: "A supporting fact changed or is no longer confirmed. Review this bullet on your profile." });
+  for (const b of stale) cuts.push({ bulletId: b.id, text: b.text, reason: "What this line came from changed or was removed. Check it in My experience." });
   expOrder.forEach(({ id }, index) => {
     const list = byExperience.get(id)!;
     const exp = expById.get(id)!;

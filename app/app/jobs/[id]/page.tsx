@@ -50,7 +50,8 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
   const data = await getJobForUser(userId, (await params).id);
   if (!data) notFound();
   const { job } = data;
-  const tab = (await searchParams).tab === "tailor" ? "tailor" : "score";
+  const requestedTab = (await searchParams).tab;
+  const tab = requestedTab === "resume" || requestedTab === "tailor" ? "tailor" : "score";
 
   const requirements = requirementsOf(job);
   const keywords = keywordsOf(job);
@@ -80,9 +81,9 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
   const modeLabel = job.mode !== "unknown" ? job.mode[0].toUpperCase() + job.mode.slice(1) : null;
 
   const tailorBlocked = knockout
-    ? `Knockout: ${knockout.reason} Tailoring is off for jobs you can't take.`
+    ? `${knockout.reason} A resume can't change that, so I won't make one for this job.`
     : !readiness.ready
-      ? "Add your education and one experience on My facts first. Your resume is built only from confirmed facts."
+      ? "Add your school and one experience first. Your resume is made only from what you've confirmed."
       : null;
 
   // The Tailor tab: the one resume, its review, and the questions that could make it stronger.
@@ -137,7 +138,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
     <PageBody className="max-w-6xl">
       <Link href="/app/jobs" className="inline-flex min-h-6 items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-3.5" />
-        All jobs
+        My jobs
       </Link>
 
       <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -177,10 +178,10 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
 
       <nav aria-label="Job sections" className="mt-6 flex gap-1 border-b">
         <TabLink href={`/app/jobs/${job.id}`} active={tab === "score"}>
-          Fit score
+          Your fit
         </TabLink>
-        <TabLink href={`/app/jobs/${job.id}?tab=tailor`} active={tab === "tailor"} locked={Boolean(tailorBlocked)}>
-          Tailor
+        <TabLink href={`/app/jobs/${job.id}?tab=resume`} active={tab === "tailor"} locked={Boolean(tailorBlocked)}>
+          Your resume
         </TabLink>
       </nav>
 
@@ -204,16 +205,29 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
                   </span>
                 </div>
               </div>
-              <p className="max-w-56 text-[12px] leading-4 text-muted-foreground sm:text-right">How your confirmed facts line up with this posting. Not your chance of being hired.</p>
+              <p className="max-w-56 text-[12px] leading-4 text-muted-foreground sm:text-right">How what you&apos;ve confirmed lines up with this posting. It isn&apos;t your chance of being hired.</p>
             </div>
+            {tailorBlocked ? (
+              <p className="mt-4 flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-5 text-muted-foreground">
+                <Lock className="mt-0.5 size-4 shrink-0" />
+                {tailorBlocked}
+              </p>
+            ) : (
+              <Button size="xl" className="mt-4 w-full sm:w-auto" asChild>
+                <Link href={`/app/jobs/${job.id}?tab=resume`}>
+                  Make my resume for this job
+                  <ArrowRight data-icon="inline-end" />
+                </Link>
+              </Button>
+            )}
             <div className="mt-4 overflow-hidden rounded-2xl border bg-background">
               <ScoreBreakdown points={fit.points} details={fit.details} />
             </div>
           </section>
 
           <aside aria-label="Strengths and gaps" className="space-y-4">
-            <Notes title="Strengths" icon="check" items={fit.strengths} empty="Confirm more of what you've done to see strengths here." />
-            <Notes title="Gaps" icon="minus" items={fit.gaps} empty="Nothing obvious." />
+            <Notes title="Strengths" icon="check" items={fit.strengths} empty="Add more of what you've done to see strengths here." />
+            <Notes title="Missing" icon="minus" items={fit.gaps} empty="Nothing obvious." />
             <Notes title="What this role rewards" icon="spark" items={rewards} />
             <div className="rounded-2xl border bg-muted/40 p-4">
               <h3 className="flex items-center gap-1.5 text-[13px] font-semibold">
@@ -222,19 +236,6 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
               </h3>
               <p className="mt-1.5 text-[13.5px] leading-6 text-muted-foreground">{cross.text}</p>
             </div>
-            {tailorBlocked ? (
-              <p className="flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-5 text-muted-foreground">
-                <Lock className="mt-0.5 size-4 shrink-0" />
-                {tailorBlocked}
-              </p>
-            ) : (
-              <Button size="xl" className="w-full" asChild>
-                <Link href={`/app/jobs/${job.id}?tab=tailor`}>
-                  Tailor my resume for this job
-                  <ArrowRight data-icon="inline-end" />
-                </Link>
-              </Button>
-            )}
           </aside>
         </div>
       ) : (
@@ -243,10 +244,10 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
           {!tailorBlocked && (
             <section aria-labelledby="gaps-heading">
               <h2 id="gaps-heading" className="font-display text-[22px] font-semibold">
-                Make it stronger
+                Make it stronger (optional)
               </h2>
               <p className="mt-1 mb-4 max-w-2xl text-[14px] leading-6 text-muted-foreground">
-                Things this posting asks for that your facts don&apos;t show yet. Answer only with what&apos;s true; nothing is added until you confirm it.
+                This posting asks for these and your resume doesn&apos;t show them yet. Answer only if it&apos;s true. Nothing is added until you confirm it.
               </p>
               <GapQuestions jobId={job.id} gaps={gaps} declined={declinedHere} places={places} />
             </section>

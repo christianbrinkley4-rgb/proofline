@@ -8,18 +8,18 @@ import { RoleRecall } from "@/components/profile/role-recall";
 
 type Role = { id: string; name: string; lines: number };
 
-export function FactRecall({ roles, label = "Find more resume lines" }: { roles: Role[]; label?: string }) {
+export function FactRecall({ roles, label = "Find more resume lines", variant = "default" }: { roles: Role[]; label?: string; variant?: "default" | "outline" }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(roles[0]?.id ?? "");
   const role = roles.find((item) => item.id === selected) ?? roles[0];
   const count = roles.reduce((total, item) => total + item.lines, 0);
   return <>
-    <Button type="button" size="sm" onClick={() => setOpen(true)}><Plus data-icon="inline-start" />{label}</Button>
+    <Button type="button" size="sm" variant={variant} className={variant === "outline" ? "bg-background" : undefined} onClick={() => setOpen(true)}><Plus data-icon="inline-start" />{label}</Button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Find more resume lines</DialogTitle>
-          <DialogDescription>Pick a role. We&apos;ll show one common task at a time: say yes to the ones you did, and skip the rest.</DialogDescription>
+          <DialogTitle>Ideas from similar roles</DialogTitle>
+          <DialogDescription>Tasks that are common in roles like yours, one at a time. Say yes to the ones you did and skip the rest.</DialogDescription>
         </DialogHeader>
         <p className="text-[13px] text-muted-foreground">{count} {count === 1 ? "line" : "lines"} saved so far. Each resume uses the ones that fit the job.</p>
         {role ? <>

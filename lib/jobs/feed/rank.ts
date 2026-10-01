@@ -79,12 +79,12 @@ export function feedReason(fit: FitReport, candidate: CandidateProfile, index: C
   if (matched.length) {
     const top = matched.slice(0, 2);
     const evidence = evidenceFor(matched[0], candidate, index);
-    const gap = missing.length ? ` Not in your facts yet: ${missing[0]}.` : "";
-    return `Wants ${listOf(top)}; your facts show ${top.length > 1 ? "both" : "it"}${evidence ? `, as in "${clip(evidence)}"` : ""}.${gap}`;
+    const gap = missing.length ? ` Not in your experience yet: ${missing[0]}.` : "";
+    return `Wants ${listOf(top)}; your experience shows ${top.length > 1 ? "both" : "it"}${evidence ? `, as in "${clip(evidence)}"` : ""}.${gap}`;
   }
   const role = fit.details.experience.matched[0];
-  if (role) return `Your ${role} experience is the same kind of work.${missing.length ? ` Not in your facts yet: ${listOf(missing.slice(0, 2))}.` : ""}`;
-  if (missing.length) return `Wants ${listOf(missing.slice(0, 2))}, which your facts don't show yet.`;
+  if (role) return `Your ${role} experience is the same kind of work.${missing.length ? ` Not in your experience yet: ${listOf(missing.slice(0, 2))}.` : ""}`;
+  if (missing.length) return `Wants ${listOf(missing.slice(0, 2))}, which your experience doesn't show yet.`;
   const field = fit.details.education.matched[0];
   if (field) return `No specific skills listed; your ${field} studies match what they ask for.`;
   return "No specific skills listed, so the score rests on your background, studies, and location.";

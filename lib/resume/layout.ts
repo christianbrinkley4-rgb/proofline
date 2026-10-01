@@ -1,3 +1,4 @@
+import { EM_DASH } from "@/lib/voice/rules";
 import { PDFDocument, StandardFonts, type PDFFont } from "pdf-lib";
 import type { ResumeDocument } from "./document";
 import type { Template } from "./templates";
@@ -45,7 +46,7 @@ const REPLACE: Record<string, string> = {
   "‐": "-", "‑": "-", "‒": "-", "−": "-", "→": "->", "←": "<-", "≤": "<=", "≥": ">=",
   "≈": "~", " ": " ", " ": " ", " ": " ", " ": " ", " ": " ", "★": "*", "✓": "", "✔": "",
 };
-const WINANSI_EXTRA = new Set("€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ");
+const WINANSI_EXTRA = new Set(`€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–${EM_DASH}˜™š›œžŸ`);
 
 export function sanitize(text: string): string {
   let out = "";

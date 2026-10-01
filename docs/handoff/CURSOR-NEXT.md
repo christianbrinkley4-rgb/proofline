@@ -1,5 +1,9 @@
 # Handoff to Cursor (September 28, 2026)
 
+## September 30 simplification pass
+
+Onboarding is three screens, roles get recommended resume lines (Keep, Edit, Drop), and the interface drops internal words. Signup to a downloaded resume went from 10 screens and 13 clicks (with an empty role) to 6 screens and 9 clicks (with two real lines). Details, the jargon table, and what was flagged: `docs/SIMPLIFY-AUDIT.md`. Committed locally, not deployed.
+
 ## September 30 owner's report (live)
 
 The extension's "Couldn't reach Proofline", duplicate schools after a resume import, and the confusing Add some facts card (now Find more resume lines) are fixed and deployed (latest `dpl_8VajmD1FED1kDRjcWv8ebBt3n3ww`), along with posting-reading and resume-checker bugs found by walking a new account through import, fit, tailoring, and the answer kit, and Find jobs ranking, the LinkedIn kit, and the free check found on the owner's live account. Details and the posting-reading fixes found on the way are in `docs/PLAN.md` under "owner's report". Testers don't need a new extension zip; Try again on the badge (or reloading the job page) works. Duplicate schools already saved in an account stay until deleted on My facts.

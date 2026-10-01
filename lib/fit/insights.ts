@@ -71,7 +71,7 @@ export async function crossPostingInsight(userId: string): Promise<CrossInsight>
   }
   const [top] = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   if (!top || top[1] < 2) {
-    return { text: `Across your ${saved} saved roles, no single required skill keeps coming up missing. Your facts cover the common asks; the fastest gains now are numbers in your bullets.`, skill: null, count: 0, saved };
+    return { text: `Across your ${saved} saved roles, no single required skill keeps coming up missing. Your experience covers the common asks; the fastest gains now are numbers in your bullets.`, skill: null, count: 0, saved };
   }
   const [skill, count] = top;
   return {

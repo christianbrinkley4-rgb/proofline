@@ -69,7 +69,7 @@ export function LinkedInKitView({ kit }: { kit: LinkedInKit }) {
             text={kit.about}
             limit={LINKEDIN_LIMITS.about}
             multiline
-            hint="Everything here comes from your facts. The highlighted line is yours to write: what you want to do next."
+            hint="Everything here comes from what you confirmed. The highlighted line is yours to write: what you want to do next."
           />
         </div>
       </section>
@@ -82,12 +82,12 @@ export function LinkedInKitView({ kit }: { kit: LinkedInKit }) {
             {kit.roles.map((role) => (
               <div key={role.id} className="rounded-xl border bg-muted/30 p-3 sm:p-4">
                 <p className="text-[14.5px] font-semibold">{[role.title, role.org].filter(Boolean).join(", ")}</p>
-                <p className="mt-0.5 text-[13px] text-muted-foreground">{[role.dates, role.location].filter(Boolean).join(" · ") || "Add the dates on My facts"}</p>
+                <p className="mt-0.5 text-[13px] text-muted-foreground">{[role.dates, role.location].filter(Boolean).join(" · ") || "Add the dates in My experience"}</p>
                 <div className="mt-3">
                   {role.description ? (
                     <CopyField label="Description" text={role.description} limit={LINKEDIN_LIMITS.description} multiline />
                   ) : (
-                    <p className="text-[13px] text-muted-foreground">No lines for this role yet. Add what you did on My facts.</p>
+                    <p className="text-[13px] text-muted-foreground">No lines for this role yet. Add what you did in My experience.</p>
                   )}
                 </div>
               </div>

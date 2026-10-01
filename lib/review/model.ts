@@ -102,13 +102,13 @@ export async function modelReview(
 ): Promise<ModelReview> {
   const key = process.env.PROOFLINE_REVIEW_KEY?.trim();
   const model = process.env.PROOFLINE_REVIEW_MODEL?.trim() || DEFAULT_REVIEW_MODEL;
-  if (!key) return { status: "unavailable", issues: [], model: null, message: "AI review is temporarily unavailable. Your checks above still ran." };
+  if (!key) return { status: "unavailable", issues: [], model: null, message: "The final read-through is temporarily unavailable. Your other checks still ran." };
 
   try {
     if (opts.chargeAccount !== false) await reserveModelCredits(userId, "review.gate");
   } catch (error) {
-    if (error instanceof ModelQuotaError) return { status: "limit", issues: [], model, message: `${error.message} Your checks above still ran.` };
-    return { status: "error", issues: [], model, message: "AI review couldn't start. Try again in a minute." };
+    if (error instanceof ModelQuotaError) return { status: "limit", issues: [], model, message: `${error.message} Your other checks still ran.` };
+    return { status: "error", issues: [], model, message: "The final read-through couldn't start. Try again in a minute." };
   }
 
   const prompt = buildReviewInput(input);
@@ -134,12 +134,12 @@ export async function modelReview(
     return {
       ...settled,
       model,
-      message: settled.status === "pass" ? "AI review passed." : `AI review found ${settled.issues.length} ${settled.issues.length === 1 ? "line" : "lines"} to fix.`,
+      message: settled.status === "pass" ? "An AI read every line against what you confirmed and found nothing to fix." : `An AI read every line against what you confirmed and found ${settled.issues.length} ${settled.issues.length === 1 ? "line" : "lines"} to fix.`,
     };
   } catch (error) {
     // Visible in the host's function logs; the file log below is off in production. Never includes the key.
     console.error("[review.gate] failed:", error instanceof Error ? error.message : String(error));
     await logLlmCall({ purpose: "review.gate", promptVersion: REVIEW_PROMPT_VERSION, model, ms: Date.now() - started, input: prompt, error: error instanceof Error ? error.message : String(error) });
-    return { status: "error", issues: [], model, message: "AI review didn't finish. Re-run the review in a minute; your checks above still count." };
+    return { status: "error", issues: [], model, message: "The final read-through didn't finish. Check it again in a minute. Your other checks still count." };
   }
 }

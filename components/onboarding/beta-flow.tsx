@@ -13,11 +13,10 @@ import {
   saveRoleStepAction,
   type StepResult,
 } from "@/app/app/onboarding/beta-actions";
-import { importedRoleHasOneLine, linesForRoleForm, roleStepHint } from "./role-step";
-import { ABOUT_SCREENS, PROGRESS_STEPS, type OnboardingStep } from "@/app/app/onboarding/steps";
+import { FIRST_RUN, PROGRESS_STEPS, type OnboardingStep } from "@/app/app/onboarding/steps";
 import { PasteJobBox } from "@/components/coach/paste-job-box";
-import { RoleRecall } from "@/components/profile/role-recall";
 import { ConfirmBox } from "@/components/facts/confirm-box";
+import { DraftLines } from "@/components/facts/draft-lines";
 import { SearchableInput } from "@/components/shared/searchable-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +24,7 @@ import { cn } from "@/lib/utils";
 import type { DraftResponse } from "@/app/api/onboarding/resume-draft/route";
 import { Textarea } from "@/components/ui/textarea";
 import { confirmedEducationDetails, newToAccount, type ResumeDraft, type RoleDraft } from "@/lib/onboarding/draft";
+import { countableRoleLines, isProjectKind } from "./role-step";
 import { ChipInput, Field, PillChoice } from "./parts";
 
 export type BetaOnboardingData = {
@@ -37,18 +37,12 @@ export type BetaOnboardingData = {
   licenses: string[];
   logistics: { workAuthorization: string; targetLocations: string[]; workModes: Array<"remote" | "hybrid" | "onsite">; openToRelocate: "" | "yes" | "no"; availableFrom: string };
   hasEducation: boolean;
-  /** Came from My facts to import a resume into an account that already has facts. */
+  /** Came from My experience to import a resume into an account that already has some. */
   importing: boolean;
-  /** Came from a knockout or Settings to fix one thing: go back there after it. */
+  /** Came from My experience to add one role: open the form straight away. */
+  adding: boolean;
+  /** Came from a must-have warning or Settings to fix one thing: go back there after it. */
   returnTo: string | null;
-};
-
-const SCREEN_TITLE: Record<(typeof ABOUT_SCREENS)[number], string> = {
-  education: "Education",
-  experience: "Experience",
-  projects: "Projects",
-  skills: "Skills and licenses",
-  logistics: "Where and when you can work",
 };
 
 export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
@@ -82,13 +76,10 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
   const doneWithDraft = (key: string) => {
     if (storedDraft) setDraft({ ...storedDraft, roles: storedDraft.roles.filter((r) => r.key !== key) });
   };
-  const isProject = (kind: string) => kind === "project" || kind === "research";
-  const aboutIndex = (ABOUT_SCREENS as readonly string[]).indexOf(step);
-  const progress = step === "job" ? 1 : 0;
+  const progress = FIRST_RUN.indexOf(step === "projects" ? "experience" : step);
 
   // A resume adds only the schools and roles this account doesn't have yet.
-  const readDraft = (next: ResumeDraft) =>
-    setDraft(newToAccount(next, { schools: data.education, roles: data.roles }));
+  const readDraft = (next: ResumeDraft) => setDraft(newToAccount(next, { schools: data.education, roles: data.roles }));
 
   const go = (next: OnboardingStep) => {
     if (data.importing && next === "job") {
@@ -108,56 +99,42 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
     window.scrollTo({ top: 0 });
     router.refresh();
   };
-  const hasRole = data.roles.some((r) => r.kind !== "project" && r.kind !== "research");
+  const hasRole = data.roles.length > 0;
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-12">
-      <ol aria-label="Progress" className="grid grid-cols-3 gap-1.5">
-        {PROGRESS_STEPS.map((s, i) => (
-          <li key={s.id}>
-            <span className="block h-1 overflow-hidden rounded-full bg-muted">
-              <span className={cn("block h-full rounded-full transition-[width] duration-500", i < progress ? "w-full bg-brand" : i === progress ? "w-1/2 bg-ink" : "w-0")} />
-            </span>
-            <span className={cn("mt-1.5 block text-[11.5px] leading-4", i === progress ? "font-medium text-foreground" : "text-subtle-foreground")}>
-              <span className="tabular-nums">{i + 1}.</span> {s.label}
-            </span>
-          </li>
-        ))}
-      </ol>
+      {progress >= 0 && !data.returnTo && !data.importing && (
+        <ol aria-label="Progress" className="grid grid-cols-3 gap-1.5">
+          {PROGRESS_STEPS.map((s, i) => (
+            <li key={s.id} aria-current={i === progress ? "step" : undefined}>
+              <span className="block h-1 overflow-hidden rounded-full bg-muted">
+                <span className={cn("block h-full rounded-full transition-[width] duration-500", i < progress ? "w-full bg-brand" : i === progress ? "w-1/2 bg-ink" : "w-0")} />
+              </span>
+              <span className={cn("mt-1.5 block text-[11.5px] leading-4", i === progress ? "font-medium text-foreground" : "text-subtle-foreground")}>
+                <span className="tabular-nums">{i + 1}.</span> {s.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
 
       <div key={step} className="mt-8 motion-safe:animate-view-in">
-        {aboutIndex >= 0 && (
-          <p className="text-[12.5px] font-medium text-brand-ink">
-            Step 1 · {SCREEN_TITLE[step as (typeof ABOUT_SCREENS)[number]]} <span className="font-normal text-subtle-foreground">({aboutIndex + 1} of {ABOUT_SCREENS.length})</span>
-          </p>
-        )}
         {step === "education" && <EducationScreen key={draft ? "draft" : "blank"} data={data} draft={draft} onDraft={readDraft} onDone={() => go("experience")} />}
-        {step === "experience" && (
-          <RoleScreen
-            key="experience"
-            project={false}
-            roles={data.roles.filter((r) => r.kind !== "project" && r.kind !== "research")}
-            drafts={draft?.roles.filter((r) => !isProject(r.kind)) ?? []}
+        {(step === "experience" || step === "projects") && (
+          <ExperienceScreen
+            key={step}
+            project={step === "projects"}
+            startOpen={data.adding}
+            roles={data.roles}
+            drafts={draft?.roles ?? []}
             onDraftSaved={doneWithDraft}
             onBack={() => go("education")}
-            onContinue={hasRole ? () => go("projects") : null}
+            onContinue={hasRole ? () => go("job") : null}
           />
         )}
-        {step === "projects" && (
-          <RoleScreen
-            key="projects"
-            project
-            roles={data.roles.filter((r) => r.kind === "project" || r.kind === "research")}
-            drafts={draft?.roles.filter((r) => isProject(r.kind)) ?? []}
-            onDraftSaved={doneWithDraft}
-            onBack={() => go("experience")}
-            onContinue={() => go("skills")}
-            onSkip={() => go("skills")}
-          />
-        )}
-        {step === "skills" && <ListsScreen data={data} draft={draft} onBack={() => go("projects")} onDone={() => go("logistics")} onSkip={() => go("logistics")} />}
-        {step === "logistics" && <LogisticsScreen data={data} onBack={() => go("skills")} onDone={() => go("job")} onSkip={() => go("job")} />}
-        {step === "job" && <JobScreen onBack={() => go("logistics")} needs={!data.hasEducation ? "education" : !hasRole ? "experience" : null} onFix={go} />}
+        {step === "skills" && <ListsScreen data={data} draft={draft} onBack={() => go("experience")} onDone={() => go("job")} onSkip={() => go("job")} />}
+        {step === "logistics" && <LogisticsScreen data={data} onBack={() => go("experience")} onDone={() => go("job")} onSkip={() => go("job")} />}
+        {step === "job" && <JobScreen onBack={() => go("experience")} needs={!data.hasEducation ? "education" : !hasRole ? "experience" : null} onFix={go} />}
       </div>
     </div>
   );
@@ -166,13 +143,13 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
 function Heading({ title, hint }: { title: string; hint: string }) {
   return (
     <>
-      <h1 className="mt-1 font-display text-[28px] leading-tight font-semibold sm:text-[34px]">{title}</h1>
+      <h1 className="font-display text-[28px] leading-tight font-semibold sm:text-[34px]">{title}</h1>
       <p className="mt-2 text-[15px] leading-6 text-muted-foreground">{hint}</p>
     </>
   );
 }
 
-function Nav({ onBack, backHref, onSkip, children }: { onBack?: () => void; backHref?: string; onSkip?: () => void; children?: React.ReactNode }) {
+function Nav({ onBack, backHref, onSkip, skipLabel = "Skip for now", children }: { onBack?: () => void; backHref?: string; onSkip?: () => void; skipLabel?: string; children?: React.ReactNode }) {
   return (
     <div className="mt-8 flex flex-wrap items-center gap-2 border-t pt-5">
       {backHref ? (
@@ -191,7 +168,7 @@ function Nav({ onBack, backHref, onSkip, children }: { onBack?: () => void; back
       <div className="ml-auto flex flex-wrap items-center gap-2">
         {onSkip && (
           <Button variant="ghost" type="button" onClick={onSkip}>
-            Skip for now
+            {skipLabel}
           </Button>
         )}
         {children}
@@ -221,137 +198,213 @@ function useSave() {
   return { pending, error, save };
 }
 
+/** Screen 1. School and graduation are all it needs; everything else waits in "More details". */
 function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardingData; draft: ResumeDraft | null; onDraft: (d: ResumeDraft) => void; onDone: () => void }) {
   // What they've already saved wins; the resume fills only what's still empty.
   const [v, setV] = useState(() =>
     draft ? (Object.fromEntries(Object.entries(data.basics).map(([k, value]) => [k, value || draft.basics[k as keyof typeof data.basics]])) as typeof data.basics) : data.basics,
   );
   const [entries, setEntries] = useState(() => initialSchools(data, draft));
-  const [confirmed, setConfirmed] = useState(false);
+  const merge = (saved: string[], read: string[] = []) => [...saved, ...read.filter((x) => !saved.some((y) => y.toLowerCase() === x.toLowerCase()))];
+  const [skills, setSkills] = useState<string[]>(() => merge(data.skills, draft?.skills));
+  const [licenses, setLicenses] = useState<string[]>(() => merge(data.licenses, draft?.licenses));
   const { pending, error, save } = useSave();
   const set = (key: keyof typeof v) => (value: string) => setV((x) => ({ ...x, [key]: value }));
   const setEntry = (index: number, key: keyof EduForm, value: string) => setEntries((list) => list.map((entry, i) => (i === index ? { ...entry, [key]: value } : entry)));
+  // Anything already filled in (from a resume or an earlier visit) is shown, never saved unseen.
+  const [more] = useState(
+    () =>
+      Boolean(v.phone || v.contactEmail || v.linkedinUrl || v.portfolioUrl || v.city || v.region) ||
+      entries.length > 1 ||
+      entries.some((e) => e.gpa || e.honors || e.coursework || e.details.length) ||
+      skills.length > 0 ||
+      licenses.length > 0,
+  );
+  const listsChanged = skills.length !== data.skills.length || licenses.length !== data.licenses.length;
+  const first = entries[0];
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         const filled = entries.filter((entry) => entry.school.trim());
-        save(
-          () =>
-            saveEducationStepAction({
-              fullName: v.fullName,
-              phone: v.phone,
-              city: v.city,
-              region: v.region,
-              contactEmail: v.contactEmail,
-              linkedinUrl: v.linkedinUrl,
-              portfolioUrl: v.portfolioUrl,
-              entries: filled.map((entry) => ({ ...entry, entryId: entry.entryId || undefined, details: confirmedEducationDetails(entry.details) })),
-              confirmed: confirmed as true,
-            }),
-          onDone,
-        );
+        save(async () => {
+          const saved = await saveEducationStepAction({
+            fullName: v.fullName,
+            phone: v.phone,
+            city: v.city,
+            region: v.region,
+            contactEmail: v.contactEmail,
+            linkedinUrl: v.linkedinUrl,
+            portfolioUrl: v.portfolioUrl,
+            entries: filled.map((entry) => ({ ...entry, entryId: entry.entryId || undefined, details: confirmedEducationDetails(entry.details) })),
+            confirmed: true,
+          });
+          if (!saved.ok || !listsChanged) return saved;
+          return saveListsStepAction({ skills, licenses, confirmed: true });
+        }, onDone);
       }}
     >
       {data.importing ? (
-        <Heading title="Import from your resume" hint="We add the schools, roles, and skills you haven't saved yet, for you to check on each screen. What's already on My facts stays as it is." />
+        <Heading title="Import from your resume" hint="I'll add the schools, roles, and skills you haven't saved yet, for you to check. What's already saved stays as it is." />
       ) : (
-        <Heading title={`Hi ${data.firstName}. Tell us about yourself.`} hint="Add each school you want on your resume. Honors and coursework are optional. Only what you type here is saved." />
+        <Heading title={`Hi ${data.firstName}. Let's start with school.`} hint="Just your school and when you graduate. Expected is fine. Everything else is optional." />
       )}
       {((!data.hasEducation && data.roles.length === 0) || data.importing) && <ResumeImport draft={draft} onDraft={onDraft} importing={data.importing} />}
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Field label="School" htmlFor="school-0">
+            <SearchableInput id="school-0" kind="schools" value={first.school} onChange={(value) => setEntry(0, "school", value)} required maxLength={200} />
+          </Field>
+        </div>
+        <Field label="Graduation month" hint="Expected is fine." htmlFor="gradDate-0">
+          <Input id="gradDate-0" type="month" value={first.gradDate} onChange={(e) => setEntry(0, "gradDate", e.target.value)} required className="h-10" />
+        </Field>
         <Field label="Name on your resume" htmlFor="fullName">
           <Input id="fullName" value={v.fullName} onChange={(e) => set("fullName")(e.target.value)} required maxLength={120} className="h-10" />
         </Field>
-        <Field label="Phone" hint="Optional, but recruiters look for it." htmlFor="phone">
-          <Input id="phone" type="tel" value={v.phone} onChange={(e) => set("phone")(e.target.value)} maxLength={40} className="h-10" />
+        <Field label="Degree" hint="Optional. B.S., B.A., Associate's" htmlFor="degree-0">
+          <SearchableInput id="degree-0" kind="degrees" value={first.degree} onChange={(value) => setEntry(0, "degree", value)} maxLength={120} />
         </Field>
-        <div className="sm:col-span-2">
-          <Field label="Email on your resume" hint="Optional. This is the address on the resume. Your sign-in email stays separate. Leave it blank and the resume shows no email." htmlFor="contactEmail">
-            <Input id="contactEmail" type="email" autoComplete="email" value={v.contactEmail} onChange={(e) => set("contactEmail")(e.target.value)} maxLength={254} className="h-10" />
-          </Field>
-        </div>
-        <Field label="LinkedIn" hint="Optional." htmlFor="linkedinUrl">
-          <Input id="linkedinUrl" value={v.linkedinUrl} onChange={(e) => set("linkedinUrl")(e.target.value)} maxLength={300} className="h-10" />
-        </Field>
-        <Field label="Website" hint="Optional. A personal site or GitHub." htmlFor="portfolioUrl">
-          <Input id="portfolioUrl" value={v.portfolioUrl} onChange={(e) => set("portfolioUrl")(e.target.value)} maxLength={300} className="h-10" />
-        </Field>
-        <Field label="City" htmlFor="city">
-          <Input id="city" value={v.city} onChange={(e) => set("city")(e.target.value)} maxLength={80} className="h-10" />
-        </Field>
-        <Field label="State" htmlFor="region">
-          <Input id="region" value={v.region} onChange={(e) => set("region")(e.target.value)} maxLength={80} className="h-10" />
+        <Field label="Major" hint="Optional, but it helps me find jobs that fit." htmlFor="major-0">
+          <SearchableInput id="major-0" kind="fields" value={first.major} onChange={(value) => setEntry(0, "major", value)} maxLength={160} />
         </Field>
       </div>
-      <div className="mt-6 space-y-4">
-        {entries.map((entry, index) => (
-          <div key={entry.entryId || `new-${index}`} className="rounded-xl border bg-background p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-[14px] font-medium">{entries.length > 1 ? `School ${index + 1}` : "School"}</p>
-              {entries.length > 1 && (
-                <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setEntries((list) => list.filter((_, i) => i !== index))}>
-                  Remove
-                </Button>
-              )}
+
+      <details open={more} className="group mt-6 rounded-xl border bg-background">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[14px] font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+          More details (optional)
+          <span className="text-[12.5px] font-normal text-muted-foreground group-open:hidden">GPA, honors, phone, LinkedIn, skills</span>
+        </summary>
+        <div className="space-y-5 border-t p-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="GPA" hint="Leave it off if it's under 3.0." htmlFor="gpa-0">
+              <Input id="gpa-0" inputMode="decimal" value={first.gpa} onChange={(e) => setEntry(0, "gpa", e.target.value)} maxLength={4} placeholder="3.6" className="h-10" />
+            </Field>
+            <Field label="Honors" hint="Dean's List, scholarships." htmlFor="honors-0">
+              <Input id="honors-0" value={first.honors} onChange={(e) => setEntry(0, "honors", e.target.value)} maxLength={300} className="h-10" />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Coursework" hint="Classes you'd want an employer to see." htmlFor="coursework-0">
+                <Textarea id="coursework-0" value={first.coursework} onChange={(e) => setEntry(0, "coursework", e.target.value)} maxLength={600} rows={2} className="text-[14px] leading-6" />
+              </Field>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Field label="School" htmlFor={`school-${index}`}>
-                  <SearchableInput id={`school-${index}`} kind="schools" value={entry.school} onChange={(value) => setEntry(index, "school", value)} required maxLength={200} />
-                </Field>
-              </div>
-              <Field label="Degree" hint="For example B.S. or Associate's" htmlFor={`degree-${index}`}>
-                <SearchableInput id={`degree-${index}`} kind="degrees" value={entry.degree} onChange={(value) => setEntry(index, "degree", value)} maxLength={120} />
-              </Field>
-              <Field label="Major" htmlFor={`major-${index}`}>
-                <SearchableInput id={`major-${index}`} kind="fields" value={entry.major} onChange={(value) => setEntry(index, "major", value)} maxLength={160} />
-              </Field>
-              <Field label="Graduation (expected is fine)" htmlFor={`gradDate-${index}`}>
-                <Input id={`gradDate-${index}`} type="month" value={entry.gradDate} onChange={(e) => setEntry(index, "gradDate", e.target.value)} required className="h-10" />
-              </Field>
-              <Field label="GPA" hint="Optional. Leave it off if it's under 3.0." htmlFor={`gpa-${index}`}>
-                <Input id={`gpa-${index}`} inputMode="decimal" value={entry.gpa} onChange={(e) => setEntry(index, "gpa", e.target.value)} maxLength={4} placeholder="3.6" className="h-10" />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Honors" hint="Optional. Dean's List, or leave it blank." htmlFor={`honors-${index}`}>
-                  <Input id={`honors-${index}`} value={entry.honors} onChange={(e) => setEntry(index, "honors", e.target.value)} maxLength={300} className="h-10" />
-                </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <Field label="Coursework" hint="Optional. The classes you want listed." htmlFor={`coursework-${index}`}>
-                  <Textarea id={`coursework-${index}`} value={entry.coursework} onChange={(e) => setEntry(index, "coursework", e.target.value)} maxLength={600} rows={2} className="text-[14px] leading-6" />
-                </Field>
-              </div>
-              {entry.details.length > 0 && <div className="space-y-3 sm:col-span-2">
-                <p className="text-[13px] text-muted-foreground">Other lines from this education entry. Check each one before it is saved.</p>
-                {entry.details.map((detail, detailIndex) => <div key={detailIndex} className="rounded-lg border p-3">
-                  <Input aria-label={`Education detail ${index + 1}, line ${detailIndex + 1}`} value={detail.text} maxLength={200} onChange={(e) => setEntries((all) => all.map((school, i) => i === index ? { ...school, details: school.details.map((line, j) => j === detailIndex ? { text: e.target.value, confirmed: false } : line) } : school))} />
-                  <ConfirmBox checked={detail.confirmed} onChange={(checked) => setEntries((all) => all.map((school, i) => i === index ? { ...school, details: school.details.map((line, j) => j === detailIndex ? { ...line, confirmed: checked } : line) } : school))} className="mt-2" />
-                </div>)}
-              </div>}
-            </div>
+            <EducationDetails entry={first} index={0} setEntries={setEntries} />
           </div>
-        ))}
-        {entries.length < 6 && (
-          <Button type="button" size="sm" variant="outline" onClick={() => setEntries((list) => [...list, blankEdu()])}>
-            <Plus data-icon="inline-start" />
-            Add another school
-          </Button>
-        )}
-      </div>
-      <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-6" />
+
+          {entries.slice(1).map((entry, offset) => {
+            const index = offset + 1;
+            return (
+              <div key={entry.entryId || `new-${index}`} className="rounded-xl border p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <p className="text-[14px] font-medium">School {index + 1}</p>
+                  <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setEntries((list) => list.filter((_, i) => i !== index))}>
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <Field label="School" htmlFor={`school-${index}`}>
+                      <SearchableInput id={`school-${index}`} kind="schools" value={entry.school} onChange={(value) => setEntry(index, "school", value)} required maxLength={200} />
+                    </Field>
+                  </div>
+                  <Field label="Degree" htmlFor={`degree-${index}`}>
+                    <SearchableInput id={`degree-${index}`} kind="degrees" value={entry.degree} onChange={(value) => setEntry(index, "degree", value)} maxLength={120} />
+                  </Field>
+                  <Field label="Major" htmlFor={`major-${index}`}>
+                    <SearchableInput id={`major-${index}`} kind="fields" value={entry.major} onChange={(value) => setEntry(index, "major", value)} maxLength={160} />
+                  </Field>
+                  <Field label="Graduation month" htmlFor={`gradDate-${index}`}>
+                    <Input id={`gradDate-${index}`} type="month" value={entry.gradDate} onChange={(e) => setEntry(index, "gradDate", e.target.value)} required className="h-10" />
+                  </Field>
+                  <Field label="GPA" htmlFor={`gpa-${index}`}>
+                    <Input id={`gpa-${index}`} inputMode="decimal" value={entry.gpa} onChange={(e) => setEntry(index, "gpa", e.target.value)} maxLength={4} className="h-10" />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="Honors" htmlFor={`honors-${index}`}>
+                      <Input id={`honors-${index}`} value={entry.honors} onChange={(e) => setEntry(index, "honors", e.target.value)} maxLength={300} className="h-10" />
+                    </Field>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Field label="Coursework" htmlFor={`coursework-${index}`}>
+                      <Textarea id={`coursework-${index}`} value={entry.coursework} onChange={(e) => setEntry(index, "coursework", e.target.value)} maxLength={600} rows={2} className="text-[14px] leading-6" />
+                    </Field>
+                  </div>
+                  <EducationDetails entry={entry} index={index} setEntries={setEntries} />
+                </div>
+              </div>
+            );
+          })}
+          {entries.length < 6 && (
+            <Button type="button" size="sm" variant="outline" onClick={() => setEntries((list) => [...list, blankEdu()])}>
+              <Plus data-icon="inline-start" />
+              Add another school
+            </Button>
+          )}
+
+          <div className="grid gap-4 border-t pt-5 sm:grid-cols-2">
+            <Field label="Phone" hint="Recruiters look for it." htmlFor="phone">
+              <Input id="phone" type="tel" value={v.phone} onChange={(e) => set("phone")(e.target.value)} maxLength={40} className="h-10" />
+            </Field>
+            <Field label="Email on your resume" hint="Blank means no email on the resume." htmlFor="contactEmail">
+              <Input id="contactEmail" type="email" autoComplete="email" value={v.contactEmail} onChange={(e) => set("contactEmail")(e.target.value)} maxLength={254} className="h-10" />
+            </Field>
+            <Field label="LinkedIn" htmlFor="linkedinUrl">
+              <Input id="linkedinUrl" value={v.linkedinUrl} onChange={(e) => set("linkedinUrl")(e.target.value)} maxLength={300} className="h-10" />
+            </Field>
+            <Field label="Website" hint="A personal site or GitHub." htmlFor="portfolioUrl">
+              <Input id="portfolioUrl" value={v.portfolioUrl} onChange={(e) => set("portfolioUrl")(e.target.value)} maxLength={300} className="h-10" />
+            </Field>
+            <Field label="City" htmlFor="city">
+              <Input id="city" value={v.city} onChange={(e) => set("city")(e.target.value)} maxLength={80} className="h-10" />
+            </Field>
+            <Field label="State" htmlFor="region">
+              <Input id="region" value={v.region} onChange={(e) => set("region")(e.target.value)} maxLength={80} className="h-10" />
+            </Field>
+          </div>
+
+          <div className="space-y-4 border-t pt-5">
+            <Field label="Skills and tools" hint="Only ones you'd be fine being asked about. Press Enter after each." htmlFor="skills">
+              <ChipInput id="skills" value={skills} onChange={setSkills} placeholder="Excel, QuickBooks, Spanish" />
+            </Field>
+            <Field label="Licenses and certificates" htmlFor="licenses">
+              <ChipInput id="licenses" value={licenses} onChange={setLicenses} placeholder="Food Handler Certificate, CPR" />
+            </Field>
+          </div>
+        </div>
+      </details>
+
       <ErrorLine error={error} />
       <Nav backHref={data.importing ? "/app/facts" : "/app"}>
-        <Button type="submit" size="lg" disabled={pending || !confirmed}>
+        <Button type="submit" size="lg" disabled={pending}>
           {pending ? <LoaderCircle className="animate-spin" /> : null}
-          Continue
+          Save and continue
           {!pending && <ArrowRight data-icon="inline-end" />}
         </Button>
       </Nav>
-      <p className="mt-3 text-[12.5px] text-subtle-foreground">Education and one experience are the minimum to score a job. Everything after that can be skipped.</p>
+      <p className="mt-3 text-[12.5px] text-subtle-foreground sm:text-right">Saving confirms these details are right. You can change them any time.</p>
     </form>
+  );
+}
+
+/** Lines from a resume's education section that don't fit a field. Each one needs its own tick. */
+function EducationDetails({ entry, index, setEntries }: { entry: EduForm; index: number; setEntries: React.Dispatch<React.SetStateAction<EduForm[]>> }) {
+  if (!entry.details.length) return null;
+  const setDetail = (detailIndex: number, patch: Partial<EduForm["details"][number]>) =>
+    setEntries((all) => all.map((school, i) => (i === index ? { ...school, details: school.details.map((line, j) => (j === detailIndex ? { ...line, ...patch } : line)) } : school)));
+  return (
+    <div className="space-y-3 sm:col-span-2">
+      <p className="text-[13px] text-muted-foreground">Other lines from your resume for this school. Only the ones you tick are saved.</p>
+      {entry.details.map((detail, detailIndex) => (
+        <div key={detailIndex} className="rounded-lg border p-3">
+          <Input aria-label={`Education detail ${index + 1}, line ${detailIndex + 1}`} value={detail.text} maxLength={200} onChange={(e) => setDetail(detailIndex, { text: e.target.value, confirmed: false })} />
+          <ConfirmBox checked={detail.confirmed} onChange={(checked) => setDetail(detailIndex, { confirmed: checked })} className="mt-2">
+            Keep this line. It&apos;s true.
+          </ConfirmBox>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -381,98 +434,135 @@ function initialSchools(data: BetaOnboardingData, draft: ResumeDraft | null): Ed
   }];
 }
 
-const ROLE_KINDS = [
+const KINDS = [
   { value: "work", label: "Job" },
   { value: "internship", label: "Internship" },
   { value: "leadership", label: "Club or leadership" },
   { value: "volunteer", label: "Volunteering" },
-] as const;
-const PROJECT_KINDS = [
   { value: "project", label: "Project" },
-  { value: "research", label: "Research" },
 ] as const;
 
-function RoleScreen({
+type RoleForm = { kind: string; org: string; title: string; startDate: string; endDate: string; description: string };
+type ActiveRole = { id: string; name: string; kind: string; ended: boolean; description: string; imported: string[] };
+
+/**
+ * Screen 2. One role at a time: title, place, dates, and what they did in plain
+ * words. Saving drafts recommended lines from that, and the person keeps, edits,
+ * or drops each one. Jobs, clubs, volunteering, and projects all go here.
+ */
+function ExperienceScreen({
   project,
+  startOpen,
   roles,
   drafts,
   onDraftSaved,
   onBack,
   onContinue,
-  onSkip,
 }: {
   project: boolean;
+  startOpen: boolean;
   roles: BetaOnboardingData["roles"];
   /** Roles read from their resume and not saved yet. */
   drafts: RoleDraft[];
   onDraftSaved: (key: string) => void;
   onBack: () => void;
-  /** Null until at least one experience is saved: that's the minimum to score. */
+  /** Null until one role is saved: that's the minimum for a resume. */
   onContinue: (() => void) | null;
-  onSkip?: () => void;
 }) {
   const router = useRouter();
-  const blank = { kind: project ? "project" : "work", org: "", title: "", startDate: "", endDate: "", bullets: ["", ""], importedOneLine: false };
-  const fromDraft = (d: RoleDraft) => {
-    const importedOneLine = !project && importedRoleHasOneLine(d.kind, d.bullets);
-    return { kind: d.kind, org: d.org, title: d.title, startDate: d.startDate, endDate: d.endDate, importedOneLine, bullets: linesForRoleForm(d.bullets, project, importedOneLine) };
-  };
+  const blank: RoleForm = { kind: project ? "project" : "work", org: "", title: "", startDate: "", endDate: "", description: "" };
+  const fromDraft = (d: RoleDraft): RoleForm => ({ kind: d.kind, org: d.org, title: d.title, startDate: d.startDate, endDate: d.endDate, description: "" });
   const [editing, setEditing] = useState<RoleDraft | null>(roles.length === 0 ? drafts[0] ?? null : null);
-  const [v, setV] = useState(() => (editing ? fromDraft(editing) : blank));
-  const [open, setOpen] = useState(roles.length === 0);
-  const [confirmed, setConfirmed] = useState(false);
+  const [v, setV] = useState<RoleForm>(() => (editing ? fromDraft(editing) : blank));
+  const [open, setOpen] = useState(roles.length === 0 || startOpen);
+  const [active, setActive] = useState<ActiveRole | null>(null);
+  const [kept, setKept] = useState(0);
+  const { pending, error, save } = useSave();
+  const isProject = isProjectKind(v.kind);
   const review = (d: RoleDraft) => {
     setEditing(d);
     setV(fromDraft(d));
-    setConfirmed(false);
+    setActive(null);
     setOpen(true);
   };
-  const { pending, error, save } = useSave();
-  const kinds = project ? PROJECT_KINDS : ROLE_KINDS;
 
-  const submit = () =>
+  const submit = () => {
+    const imported = editing ? countableRoleLines(editing.bullets) : [];
+    let saved = "";
     save(
-      () => saveRoleStepAction({ ...v, kind: v.kind as "work", bullets: v.bullets, confirmed: confirmed as true }),
+      async () => {
+        const result = await saveRoleStepAction({ kind: v.kind as "work", org: v.org, title: v.title, startDate: v.startDate, endDate: v.endDate, description: v.description, bullets: [], confirmed: true });
+        if (result.ok) saved = result.experienceId;
+        return result.ok ? { ok: true } : result;
+      },
       () => {
         if (editing) onDraftSaved(editing.key);
-        const next = drafts.find((d) => d.key !== editing?.key);
-        setConfirmed(false);
-        if (next) review(next);
-        else {
-          setEditing(null);
-          setV(blank);
-          setOpen(false);
-        }
+        // A project with no dates is finished work; a role with a start and no end is current.
+        const ended = Boolean(v.endDate) || !v.startDate;
+        setActive({ id: saved, name: [v.title, v.org].filter(Boolean).join(", "), kind: v.kind, ended, description: v.description, imported });
+        setKept(0);
+        setEditing(null);
+        setV(blank);
+        setOpen(false);
         router.refresh();
       },
     );
+  };
+
+  const nextDraft = drafts.find((d) => d.key !== editing?.key);
+  const saved = roles.filter((r) => r.id !== active?.id);
 
   return (
     <div>
       <Heading
-        title={project ? "Any projects?" : "Where have you worked?"}
-        hint={roleStepHint(project, v.importedOneLine)}
+        title={project ? "Any projects?" : "What have you done so far?"}
+        hint={
+          project
+            ? "Class projects, personal builds, research, or club work. Tell me what you did and I'll draft the resume lines."
+            : "Jobs, internships, clubs, volunteering, and class projects all count. Start with the one you'd most want an employer to see. I'll draft the resume lines."
+        }
       />
-      {roles.length > 0 && (
+
+      {saved.length > 0 && (
         <ul className="mt-6 space-y-2">
-          {roles.map((r) => (
-            <li key={r.id} className="rounded-lg border bg-background p-3 text-[14px]">
-              <div className="flex items-center gap-2">
-              <Check className="size-4 shrink-0 text-brand" strokeWidth={3} />
+          {saved.map((r) => (
+            <li key={r.id} className="flex items-center gap-2 rounded-lg border bg-background p-3 text-[14px]">
+              <Check className="size-4 shrink-0 text-brand" strokeWidth={3} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
               <span className="shrink-0 text-[12.5px] text-muted-foreground">
                 {r.lines} {r.lines === 1 ? "line" : "lines"}
               </span>
-              </div>
-              <RoleRecall experienceId={r.id} name={r.name} />
             </li>
           ))}
         </ul>
       )}
 
-      {drafts.some((d) => d.key !== editing?.key) && (
+      {active && (
+        <section aria-labelledby="active-role" className="mt-6 rounded-2xl border bg-background p-4 shadow-lift sm:p-5">
+          <p className="flex items-center gap-1.5 text-[12.5px] font-medium text-brand-ink">
+            <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />
+            Saved
+          </p>
+          <h2 id="active-role" className="mt-0.5 font-display text-[19px] font-semibold">
+            {active.name}
+          </h2>
+          <DraftLines
+            key={active.id}
+            className="mt-4"
+            experienceId={active.id}
+            kind={active.kind}
+            ended={active.ended}
+            description={active.description}
+            imported={active.imported}
+            autoDraft
+            onKeptChange={setKept}
+          />
+        </section>
+      )}
+
+      {nextDraft && !open && (
         <div className="mt-6 rounded-xl border border-dashed border-border-strong p-4">
-          <p className="text-[13px] font-medium">From your resume, not saved yet</p>
+          <p className="text-[13px] font-medium">Also on your resume, not saved yet</p>
           <ul className="mt-2 space-y-1.5">
             {drafts
               .filter((d) => d.key !== editing?.key)
@@ -480,7 +570,7 @@ function RoleScreen({
                 <li key={d.key} className="flex items-center gap-2 text-[14px]">
                   <span className="min-w-0 flex-1 truncate">{[d.title, d.org].filter(Boolean).join(", ")}</span>
                   <Button size="sm" variant="outline" type="button" onClick={() => review(d)}>
-                    Review
+                    Add this one
                   </Button>
                 </li>
               ))}
@@ -498,52 +588,40 @@ function RoleScreen({
         >
           {editing && (
             <p className="rounded-lg bg-brand-soft/60 px-3 py-2 text-[13px] leading-5 text-brand-ink">
-              Read from your resume. Check every line, fix anything that isn&apos;t exactly right, then confirm.
-              {editing.extraLines > 0 && ` Your resume had ${editing.extraLines} more ${editing.extraLines === 1 ? "line" : "lines"} for this role; add ${editing.extraLines === 1 ? "it" : "them"} on My facts afterward.`}
+              Read from your resume. Fix anything that isn&apos;t exactly right. You&apos;ll check its lines one by one next.
             </p>
           )}
-          <PillChoice label="Kind" options={kinds} value={[v.kind as (typeof kinds)[number]["value"]]} onChange={(next) => next[0] && setV((x) => ({ ...x, kind: next[0] }))} />
+          <PillChoice label="What kind" options={KINDS} value={[v.kind as (typeof KINDS)[number]["value"]]} onChange={(next) => next[0] && setV((x) => ({ ...x, kind: next[0] }))} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={project ? "Project name" : "Company or organization"} htmlFor="org">
-              <Input id="org" value={v.org} onChange={(e) => setV((x) => ({ ...x, org: e.target.value }))} required maxLength={160} className="h-10" />
-            </Field>
-            <Field label={project ? "Your role (optional)" : "Your title"} htmlFor="title">
+            <Field label={isProject ? "Your role (optional)" : "Your title"} htmlFor="title">
               <SearchableInput id="title" kind="roles" value={v.title} onChange={(title) => setV((x) => ({ ...x, title }))} maxLength={160} />
             </Field>
-            <Field label={project ? "Start (optional)" : "Start"} htmlFor="start">
-              <Input id="start" type="month" value={v.startDate} onChange={(e) => setV((x) => ({ ...x, startDate: e.target.value }))} className="h-10" />
+            <Field label={isProject ? "Project name" : "Where"} hint={isProject ? undefined : "Company, club, or organization"} htmlFor="org">
+              <Input id="org" value={v.org} onChange={(e) => setV((x) => ({ ...x, org: e.target.value }))} required maxLength={160} className="h-10" />
+            </Field>
+            <Field label={isProject ? "Start (optional)" : "Start"} htmlFor="start">
+              <Input id="start" type="month" value={v.startDate} onChange={(e) => setV((x) => ({ ...x, startDate: e.target.value }))} required={!isProject} className="h-10" />
             </Field>
             <Field label="End" hint="Leave blank if you're still there." htmlFor="end">
               <Input id="end" type="month" value={v.endDate} onChange={(e) => setV((x) => ({ ...x, endDate: e.target.value }))} className="h-10" />
             </Field>
           </div>
-          <div className="space-y-2">
-            <p className="text-[13px] font-medium">What you remember doing (optional)</p>
-            <p className="text-[13px] leading-5 text-muted-foreground">Save the role even if you cannot think of a line yet. We will ask about possible tasks next.</p>
-            {v.bullets.map((b, i) => (
-              <Input
-                key={i}
-                value={b}
-                onChange={(e) => setV((x) => ({ ...x, bullets: x.bullets.map((y, j) => (j === i ? e.target.value : y)) }))}
-                maxLength={400}
-                aria-label={`Line ${i + 1}`}
-                placeholder={i === 0 ? (project ? "Built a budget tracker in Google Sheets for my club" : "Answered about 60 patient calls a day") : i === 1 ? (project ? "12 members used it to log $4,000 in dues" : "Scheduled appointments for 3 dentists") : ""}
-                className="h-10"
-              />
-            ))}
-            {v.bullets.length < 4 && (
-              <button type="button" onClick={() => setV((x) => ({ ...x, bullets: [...x.bullets, ""] }))} className="inline-flex min-h-10 items-center gap-1 text-[13px] font-medium underline-offset-4 hover:underline">
-                <Plus className="size-3.5" />
-                Add another line
-              </button>
-            )}
-          </div>
-          <ConfirmBox checked={confirmed} onChange={setConfirmed} />
+          <Field label={editing ? "Anything your resume left out? (optional)" : "What did you do there?"} hint="Plain words are fine. Put in any numbers you remember." htmlFor="describe">
+            <Textarea
+              id="describe"
+              value={v.description}
+              onChange={(e) => setV((x) => ({ ...x, description: e.target.value }))}
+              rows={3}
+              maxLength={4000}
+              placeholder={isProject ? "Built a budget tracker in Google Sheets so 12 club members could log dues" : "Worked the register, about 50 customers a shift. Restocked shelves and trained 2 new hires."}
+              className="text-[14px] leading-6"
+            />
+          </Field>
           <ErrorLine error={error} />
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={pending || !confirmed}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="submit" size="lg" disabled={pending}>
               {pending ? <LoaderCircle className="animate-spin" /> : null}
-              {project ? "Save this project" : "Save this role"}
+              {v.description.trim() || editing?.bullets.length ? "Save and draft my lines" : "Save this role"}
             </Button>
             {(roles.length > 0 || editing) && (
               <Button
@@ -559,24 +637,26 @@ function RoleScreen({
               </Button>
             )}
           </div>
+          <p className="text-[12.5px] text-subtle-foreground">Saving confirms the title, place, and dates are right.</p>
         </form>
       ) : (
-        <Button variant="outline" className="mt-4 bg-background" onClick={() => setOpen(true)}>
+        <Button variant="outline" className="mt-4 bg-background" onClick={() => (nextDraft ? review(nextDraft) : setOpen(true))}>
           <Plus data-icon="inline-start" />
-          {project ? "Add another project" : "Add another role"}
+          Add another
         </Button>
       )}
 
-      <Nav onBack={onBack} onSkip={onSkip && roles.length === 0 ? onSkip : undefined}>
-        {onContinue ? (
+      <Nav onBack={onBack}>
+        {onContinue && !open && (
           <Button size="lg" type="button" onClick={onContinue} disabled={pending}>
             Continue
             <ArrowRight data-icon="inline-end" />
           </Button>
-        ) : (
-          <span className="text-[12.5px] text-muted-foreground">Save one experience to continue. It&apos;s the minimum to score a job.</span>
         )}
       </Nav>
+      {active && kept === 0 && !open && (
+        <p className="mt-3 text-[12.5px] text-subtle-foreground sm:text-right">Keep at least one line so this role has something under it on your resume. Drafts you don&apos;t keep aren&apos;t saved.</p>
+      )}
     </div>
   );
 }
@@ -585,7 +665,6 @@ function ListsScreen({ data, draft, onBack, onDone, onSkip }: { data: BetaOnboar
   const merge = (saved: string[], read: string[] = []) => [...saved, ...read.filter((x) => !saved.some((y) => y.toLowerCase() === x.toLowerCase()))];
   const [skills, setSkills] = useState<string[]>(() => merge(data.skills, draft?.skills));
   const [licenses, setLicenses] = useState<string[]>(() => merge(data.licenses, draft?.licenses));
-  const [confirmed, setConfirmed] = useState(false);
   const { pending, error, save } = useSave();
   const changed = skills.length !== data.skills.length || licenses.length !== data.licenses.length;
 
@@ -594,7 +673,7 @@ function ListsScreen({ data, draft, onBack, onDone, onSkip }: { data: BetaOnboar
       onSubmit={(e) => {
         e.preventDefault();
         if (!changed) return onDone();
-        save(() => saveListsStepAction({ skills, licenses, confirmed: confirmed as true }), onDone);
+        save(() => saveListsStepAction({ skills, licenses, confirmed: true }), onDone);
       }}
     >
       <Heading title="Skills and licenses" hint="Only list what you'd be comfortable being asked about in an interview. Press Enter after each one." />
@@ -606,10 +685,10 @@ function ListsScreen({ data, draft, onBack, onDone, onSkip }: { data: BetaOnboar
           <ChipInput id="licenses" value={licenses} onChange={setLicenses} placeholder="Food Handler Certificate, CPR" />
         </Field>
       </div>
-      {changed && <ConfirmBox checked={confirmed} onChange={setConfirmed} className="mt-6" />}
+      <p className="mt-6 text-[12.5px] text-subtle-foreground">Saving confirms you have these.</p>
       <ErrorLine error={error} />
       <Nav onBack={onBack} onSkip={onSkip}>
-        <Button type="submit" size="lg" disabled={pending || (changed && !confirmed)}>
+        <Button type="submit" size="lg" disabled={pending}>
           {pending ? <LoaderCircle className="animate-spin" /> : null}
           Continue
           {!pending && <ArrowRight data-icon="inline-end" />}
@@ -647,7 +726,7 @@ function LogisticsScreen({ data, onBack, onDone, onSkip }: { data: BetaOnboardin
     >
       <Heading
         title="Where and when can you work?"
-        hint="These never go on a resume. They let us warn you before you tailor for a job you can't take: a graduation window, a visa rule, a location, or a start date."
+        hint="This never goes on a resume. It lets me warn you about a job you can't take, like one that needs a visa you don't have or a city you can't move to."
       />
       <div className="mt-6 space-y-6">
         <Field label="Work authorization in the U.S.">
@@ -678,6 +757,8 @@ function LogisticsScreen({ data, onBack, onDone, onSkip }: { data: BetaOnboardin
   );
 }
 
+
+/** Screen 3. Paste a job, then go straight to the resume made for it. */
 function JobScreen({ onBack, needs, onFix }: { onBack: () => void; needs: "education" | "experience" | null; onFix: (step: OnboardingStep) => void }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -696,9 +777,9 @@ function JobScreen({ onBack, needs, onFix }: { onBack: () => void; needs: "educa
   if (needs) {
     return (
       <div>
-        <Heading title="One thing first" hint={needs === "education" ? "Add your education so your fit can be scored." : "Add one experience so your fit can be scored. A job, club, or volunteer role all count."} />
+        <Heading title="One thing first" hint={needs === "education" ? "Add your school so I know what to put on your resume." : "Add one job, club, volunteer role, or project. A resume needs something under Experience."} />
         <Button className="mt-6" size="lg" onClick={() => onFix(needs)}>
-          {needs === "education" ? "Add education" : "Add an experience"}
+          {needs === "education" ? "Add your school" : "Add an experience"}
           <ArrowRight data-icon="inline-end" />
         </Button>
       </div>
@@ -707,11 +788,10 @@ function JobScreen({ onBack, needs, onFix }: { onBack: () => void; needs: "educa
 
   return (
     <div>
-      <p className="text-[12.5px] font-medium text-brand-ink">Step 2 · Paste your first job</p>
-      <Heading title="Paste a job you want" hint="A link from LinkedIn, Indeed, Handshake, or any company site, or the whole posting. Next you'll see the knockouts and your fit score." />
-      <PasteJobBox className="mt-6" autoFocus onIngested={finish((id) => `/app/jobs/${id}`)} />
+      <Heading title="Paste a job you want" hint="Copy the link from LinkedIn, Indeed, Handshake, or a company site, or paste the whole posting. I'll make a one-page resume for it from what you just told me." />
+      <PasteJobBox className="mt-6" autoFocus submitLabel="Make my resume" onIngested={finish((id) => `/app/jobs/${id}?tab=resume`)} />
       <ErrorLine error={error} />
-      <Nav onBack={onBack} onSkip={() => void finish(() => "/app")()}>
+      <Nav onBack={onBack} onSkip={() => void finish(() => "/app/find")()} skipLabel="Help me find one">
         {pending && <LoaderCircle className="size-4 animate-spin text-muted-foreground" />}
       </Nav>
     </div>

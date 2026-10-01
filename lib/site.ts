@@ -4,7 +4,7 @@ export const site = {
   name: "Proofline",
   tagline: "The job search, start to offer.",
   description:
-    "Paste any job. Proofline checks the knockouts, scores your fit with the math shown, and builds one reviewed, one-page resume for it using only facts you've confirmed.",
+    "Paste any job. Proofline checks for dealbreakers, shows how well you fit, and makes a one-page resume for it using only what you've confirmed.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://proofline.app",
   routes: {
     signUp: "/signup",

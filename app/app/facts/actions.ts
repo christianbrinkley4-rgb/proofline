@@ -29,7 +29,7 @@ async function run(fn: (userId: string) => Promise<unknown>): Promise<FactAction
 
 const AddSchema = z.object({
   group: z.enum(FACT_GROUPS),
-  text: z.string().trim().min(2, "Write the fact first.").max(600, "Keep one fact under 600 characters."),
+  text: z.string().trim().min(2, "Write it first.").max(600, "Keep it under 600 characters."),
   experienceId: z.uuid().nullable().optional(),
   entryId: z.string().trim().max(80).optional(),
   eduField: z.enum(["honors", "coursework", "detail"]).optional(),
@@ -46,7 +46,7 @@ export async function addFactAction(input: z.input<typeof AddSchema>) {
 
 const EditSchema = z.object({
   factId: z.uuid(),
-  text: z.string().trim().min(1, "A fact can't be empty. Delete it instead.").max(600),
+  text: z.string().trim().min(1, "It can't be empty. Delete it instead.").max(600),
   confirmed: z.literal(true, CONFIRM_REQUIRED),
 });
 

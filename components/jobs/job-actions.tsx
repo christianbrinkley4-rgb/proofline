@@ -34,7 +34,7 @@ export function JobActions({ jobId, saved: initiallySaved, tracked = false }: { 
         onClick={() =>
           startTransition(async () => {
             await trackJobAction(jobId);
-            toast("Added to your tracker.", { action: { label: "Open", onClick: () => router.push("/app/tracker") } });
+            toast("Added to your applications.", { action: { label: "Open", onClick: () => router.push("/app/tracker") } });
           })
         }
       >

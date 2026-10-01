@@ -39,7 +39,7 @@ export function PasteJob({ initial, onCancel, captured = false }: { initial?: { 
       <p className="text-[12.5px] leading-5 text-muted-foreground sm:col-span-2">
         {captured
           ? "Check the company, title, location, and description captured from the page. Add anything missing before you score and save it."
-          : "For jobs on Handshake, LinkedIn, or anywhere we can't open: copy the posting and paste it here. You'll get a fit score, tailored resumes, and a packet like any other job."}
+          : "For jobs on Handshake, LinkedIn, or anywhere we can't open: copy the posting and paste it here. You'll get a fit score, a resume, and a cover letter like any other job."}
       </p>
       <label className="space-y-1.5 text-[12.5px]">
         <span>Company</span>

@@ -52,7 +52,7 @@ export function jobDocumentImprovementSteps(input: {
     steps.push({
       id: "letter-no-evidence",
       title: "Give the letter one specific proof point",
-      detail: "The letter has no confirmed example connected to this posting. Add a truthful task or project to your profile, then use that evidence to explain why you fit this role.",
+      detail: "The letter has no confirmed example connected to this posting. Add a true task or project to My experience, then use it to explain why you fit this role.",
       href: "/app/profile",
     });
   }

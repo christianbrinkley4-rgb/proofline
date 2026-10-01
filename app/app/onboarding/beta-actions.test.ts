@@ -11,6 +11,7 @@ vi.mock("@/lib/facts/base", () => ({
   scoringReady: vi.fn(),
 }));
 vi.mock("@/lib/kb/profile", () => ({ updateProfile: vi.fn() }));
+vi.mock("@/lib/kb/experiences", () => ({ updateExperience: vi.fn() }));
 
 import { saveRole } from "@/lib/facts/base";
 import { importedRoleHasOneLine, linesForRoleForm, roleStepHint } from "@/components/onboarding/role-step";
@@ -36,7 +37,7 @@ describe("saveRoleStepAction", () => {
   it("saves an imported role that already has one line, and does not write a second", async () => {
     const result = await saveRoleStepAction({ ...oneLine, importedOneLine: true });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, experienceId: "exp-1" });
     expect(saveRole).toHaveBeenCalledTimes(1);
     expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([LINE]);
   });
@@ -44,7 +45,7 @@ describe("saveRoleStepAction", () => {
   it("lets a typed role start with one remembered line", async () => {
     const result = await saveRoleStepAction(oneLine);
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, experienceId: "exp-1" });
     expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([LINE]);
   });
 
@@ -52,13 +53,13 @@ describe("saveRoleStepAction", () => {
     const second = "Scheduled appointments for 3 dentists";
     const result = await saveRoleStepAction({ ...oneLine, bullets: [LINE, second] });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, experienceId: "exp-1" });
     expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([LINE, second]);
   });
 
   it("allows a role without task lines but still requires explicit confirmation", async () => {
     const empty = await saveRoleStepAction({ ...oneLine, importedOneLine: true, bullets: ["", "ab"] });
-    expect(empty).toEqual({ ok: true });
+    expect(empty).toEqual({ ok: true, experienceId: "exp-1" });
     expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual([]);
     vi.mocked(saveRole).mockClear();
 
@@ -77,7 +78,7 @@ describe("saveRoleStepAction", () => {
       bullets: ["Built a budget tracker for the club"],
     });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, experienceId: "exp-1" });
     expect(vi.mocked(saveRole).mock.calls[0][1].bullets).toEqual(["Built a budget tracker for the club"]);
   });
 });

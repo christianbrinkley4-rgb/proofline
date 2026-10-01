@@ -6,12 +6,13 @@ import { countableRoleLines, isProjectKind } from "@/components/onboarding/role-
 import { requireSession } from "@/lib/auth";
 import { addListFacts, saveEducation, saveRole, scoringReady } from "@/lib/facts/base";
 import { OptionalContactEmail } from "@/lib/resume/header-contact";
+import { updateExperience } from "@/lib/kb/experiences";
 import { updateProfile } from "@/lib/kb/profile";
 import { ONBOARDING_STEPS, type OnboardingStep } from "./steps";
 
 export type StepResult = { ok: true } | { ok: false; error: string };
 
-const CONFIRM = "Tick the box to confirm this is true and in your own words.";
+const CONFIRM = "Confirm these details are right before saving.";
 const Month = z.union([z.literal(""), z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Pick a month.")]);
 
 async function run(fn: (userId: string) => Promise<unknown>): Promise<StepResult> {
@@ -79,23 +80,32 @@ const RoleSchema = z.object({
   title: z.string().trim().max(160),
   startDate: Month,
   endDate: Month,
-  bullets: z.array(z.string().trim().max(400)).max(4),
+  bullets: z.array(z.string().trim().max(400)).max(4).default([]),
+  /** What the role involved, in their words. Kept to draft lines from; never on a resume. */
+  description: z.string().trim().max(4000).optional(),
   confirmed: z.literal(true, CONFIRM),
   /** Set only when a resume import already had one line for this role. */
   importedOneLine: z.boolean().optional(),
 });
 
-/** Save the confirmed role first; task recall can supply the initial lines afterward. */
-export async function saveRoleStepAction(input: z.input<typeof RoleSchema>) {
-  return run(async (userId) => {
+/**
+ * Saves the role (title, place, dates) the person typed and pressed save on. Its
+ * resume lines come next, as recommended lines they keep, edit, or drop.
+ */
+export async function saveRoleStepAction(input: z.input<typeof RoleSchema>): Promise<{ ok: true; experienceId: string } | { ok: false; error: string }> {
+  let experienceId = "";
+  const result = await run(async (userId) => {
     const v = RoleSchema.parse(input);
     const bullets = countableRoleLines(v.bullets);
     const isProject = isProjectKind(v.kind);
     if (!isProject && !v.title) throw new Error("Add your title.");
     if (!isProject && !v.startDate) throw new Error("Add when you started.");
     if (v.startDate && v.endDate && v.startDate > v.endDate) throw new Error("The end date is before the start date.");
-    await saveRole(userId, { ...v, bullets });
+    const saved = await saveRole(userId, { ...v, bullets });
+    experienceId = saved.id;
+    if (v.description) await updateExperience(userId, saved.id, { rawNotes: v.description });
   });
+  return result.ok ? { ok: true, experienceId } : result;
 }
 
 const ListsSchema = z.object({
@@ -109,7 +119,6 @@ export async function saveListsStepAction(input: z.input<typeof ListsSchema>) {
     const v = ListsSchema.parse(input);
     await addListFacts(userId, "skill", v.skills);
     await addListFacts(userId, "license", v.licenses);
-    await updateProfile(userId, { onboardingStep: "logistics" });
   });
 }
 

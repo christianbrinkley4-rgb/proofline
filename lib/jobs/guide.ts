@@ -36,7 +36,7 @@ export function applicationGuide(job: JobRow, req: Requirements, school?: string
 
   steps.push({ id: "apply", label: `Apply on ${portal.name}`, detail: portal.account, href: job.url });
 
-  const materials = ["Your tailored one-page resume (PDF)"];
+  const materials = ["Your one-page resume for this job (PDF)"];
   if (/cover letter/i.test(text)) materials.push(/cover letter[^.\n]{0,40}(optional|encouraged)/i.test(text) ? "A cover letter (optional here, but a short specific one helps)" : "A cover letter (they ask for one)");
   if (/transcript/i.test(text)) materials.push("An unofficial transcript");
   if (/writing sample/i.test(text)) materials.push("A writing sample");

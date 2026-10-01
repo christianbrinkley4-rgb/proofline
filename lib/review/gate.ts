@@ -66,7 +66,7 @@ export async function runGate(userId: string, stored: StoredResume): Promise<Gat
   const linter = lint(inputs);
   const blocked = blockingFailures(linter);
   const model: ModelReview = blocked.length
-    ? { status: "skipped", issues: [], model: null, message: "The AI review runs once every blocking check above passes." }
+    ? { status: "skipped", issues: [], model: null, message: "The final read-through runs once everything marked Must fix is fixed." }
     : await modelReview(userId, {
         requirements: inputs.requirements,
         // The contact line isn't needed for the review, so it never leaves the database.
@@ -105,14 +105,14 @@ export async function gateStatus(userId: string, stored: StoredResume, layout?: 
   const review = saved && saved.version === 1 && saved.fingerprint === inputs.fingerprint ? saved : null;
   const blocked = blockingFailures(linter);
   const reason = blocked.length
-    ? `Fix ${blocked.length === 1 ? "the blocking check" : `${blocked.length} blocking checks`} first: ${blocked.map((c) => c.label.toLowerCase()).join("; ")}.`
+    ? `Fix ${blocked.length === 1 ? "one thing" : `${blocked.length} things`} first: ${blocked.map((c) => c.label.toLowerCase()).join("; ")}.`
     : !review
       ? saved
-        ? "Your facts or this resume changed since the last review. Run the review again."
-        : "Run the review to unlock downloads."
+        ? "You changed something since the last check. Check it again to download."
+        : "Check it to download."
       : review.model.status !== "pass"
         ? review.model.status === "fail"
-          ? "The AI review flagged lines to fix."
+          ? "The final read-through found lines to fix. They're highlighted on the page."
           : review.model.message
         : null;
   return { review, linter, stale: Boolean(saved && !review), canExport: reason === null, reason, lines: resumeLines(stored.document) };

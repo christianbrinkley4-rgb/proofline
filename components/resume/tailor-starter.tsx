@@ -11,14 +11,14 @@ const JOB_STEPS = [
   "Reading what the posting asks for",
   "Ranking your confirmed bullets against it",
   "Fitting the best ones on one page",
-  "Checking every claim against your facts",
+  "Checking every line against what you confirmed",
 ];
 
 const GENERAL_STEPS = [
   "Gathering your confirmed bullets",
   "Ranking them by strength",
   "Fitting the best ones on one page",
-  "Checking every claim against your facts",
+  "Checking every line against what you confirmed",
 ];
 
 /** Kicks off tailoring from the client, so link prefetching can never create a resume by accident. */
@@ -53,7 +53,7 @@ export function TailorStarter({ jobId, jobLabel, variant, template }: { jobId: s
 
   return (
     <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col justify-center px-4">
-      <p className="font-mono text-[12px] text-subtle-foreground">{jobLabel ? "Tailoring for" : "Building"}</p>
+      <p className="font-mono text-[12px] text-subtle-foreground">{jobLabel ? "Making a resume for" : "Making"}</p>
       <h1 className="mt-2 text-[22px] leading-snug font-semibold tracking-tight">{jobLabel ?? "Your general resume"}</h1>
       {error ? (
         <div role="alert" className="mt-6 rounded-lg border bg-muted/40 p-4 text-[14px] leading-6">

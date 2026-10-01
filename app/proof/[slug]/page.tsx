@@ -126,7 +126,7 @@ const WORDING: Record<ProofBullet["wording"], (first: string) => string> = {
   own: (first) => `Written by ${first}`,
   uploaded: (first) => `From the resume ${first} uploaded`,
   rules: () => `Worded by ${site.name} from the facts below; nothing added`,
-  ai: () => "Worded with AI help from the facts below; every number checked",
+  ai: () => "Worded with AI help from what they confirmed below; every number checked",
 };
 
 const ORIGIN: Record<ProofSource["origin"], (first: string) => string> = {

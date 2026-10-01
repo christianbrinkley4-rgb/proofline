@@ -33,14 +33,14 @@ export default async function TodayPage() {
 
   return (
     <PageBody className="max-w-4xl">
-      <PageHeader title={greeting(profile?.fullName || session.user.name)} description="Paste a job, check the knockouts and your fit, then build one reviewed resume for it." />
+      <PageHeader title={greeting(profile?.fullName || session.user.name)} description="Paste a job you want and I'll make a one-page resume for it from what you've told me." />
 
       {!onboarded || !readiness.ready ? (
         <section className="mt-8 rounded-2xl border bg-background p-5 shadow-lift sm:p-6">
           <p className="text-[12px] font-medium text-brand-ink">Start here</p>
-          <h2 className="mt-1 font-display text-[22px] font-semibold">{profile?.onboardingStep ? "Pick up where you left off" : "Tell us about yourself"}</h2>
+          <h2 className="mt-1 font-display text-[22px] font-semibold">{profile?.onboardingStep ? "Pick up where you left off" : "Your first resume in a few minutes"}</h2>
           <p className="mt-1 max-w-xl text-[14px] leading-6 text-muted-foreground">
-            Your education and one experience, in your own words. That&apos;s enough to score a job. Everything you enter becomes a fact you confirm, and only your facts reach a resume.
+            Tell me your school and one thing you&apos;ve done, like a job, club, or class project. I&apos;ll draft the resume lines, you keep the true ones, and only those go on a resume.
           </p>
           <Button size="lg" className="mt-4" asChild>
             <Link href="/app/onboarding">
@@ -81,19 +81,19 @@ export default async function TodayPage() {
         <Link href="/app/facts" className="rounded-xl border bg-background p-4 transition-colors hover:bg-muted/40">
           <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
             <ListChecks className="size-4" />
-            My facts
+            My experience
           </span>
           <span className="mt-1 block font-display text-[26px] font-semibold tabular-nums">{facts.confirmed}</span>
-          <span className="text-[12.5px] text-muted-foreground">confirmed, in your words</span>
+          <span className="text-[12.5px] text-muted-foreground">lines and details you confirmed</span>
         </Link>
         <Link href="/app/tracker" className="rounded-xl border bg-background p-4 transition-colors hover:bg-muted/40">
           <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
             <SquareKanban className="size-4" />
-            Tracker
+            Applications
           </span>
           <span className="mt-1 block font-display text-[26px] font-semibold tabular-nums">{stats.applications}</span>
           <span className={stats.dueFollowUps ? "text-[12.5px] font-medium text-pending-ink" : "text-[12.5px] text-muted-foreground"}>
-            {stats.dueFollowUps ? `${stats.dueFollowUps} follow-up${stats.dueFollowUps === 1 ? "" : "s"} due` : "applications sent"}
+            {stats.dueFollowUps ? `${stats.dueFollowUps} follow-up${stats.dueFollowUps === 1 ? "" : "s"} due` : "applications tracked"}
           </span>
         </Link>
       </section>

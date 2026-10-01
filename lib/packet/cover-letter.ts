@@ -216,14 +216,14 @@ export function checkCoverLetter(letter: CoverLetter, factTextById: Map<string, 
     id: "evidence",
     ok: !stale && unsupported.length === 0,
     blocking: true,
-    label: "Every claim traces to a confirmed fact",
+    label: "Every claim comes from something you confirmed",
     detail: stale
-      ? "A fact this letter used changed or is no longer confirmed. Redraft the letter."
+      ? "Something this letter used changed or was removed. Redraft the letter."
       : unsupported.length
-        ? `These numbers aren't in the facts they cite: ${[...new Set(unsupported)].join(", ")}.`
+        ? `These numbers aren't in what you confirmed: ${[...new Set(unsupported)].join(", ")}.`
         : letter.generator === "user"
           ? "You edited this letter, so it's in your words. Read it once more before you send it."
-          : "Each number appears in a confirmed fact.",
+          : "Each number is one you confirmed.",
   });
 
   const voice = findVoiceIssues(all);

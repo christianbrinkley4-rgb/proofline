@@ -32,7 +32,7 @@ const NEW_KINDS = [
  */
 export function GapQuestions({ jobId, gaps, declined, places }: { jobId: string; gaps: GapQuestion[]; declined: string[]; places: Place[] }) {
   if (!gaps.length && !declined.length) {
-    return <p className="rounded-xl border border-dashed p-4 text-[13.5px] text-muted-foreground">Your confirmed facts already cover what this posting names. Nothing to ask.</p>;
+    return <p className="rounded-xl border border-dashed p-4 text-[13.5px] text-muted-foreground">What you&apos;ve confirmed already covers what this posting names. Nothing to ask.</p>;
   }
   return (
     <div className="space-y-3">
@@ -84,7 +84,7 @@ function GapCard({ jobId, gap, places, defaultOpen }: { jobId: string; gap: GapQ
           <p className="mt-1.5 text-[15px] font-medium">
             The posting asks for {inSentence(gap.skill)}. Have you done anything like it?
           </p>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">If you have, say where and what you did. Your words become a fact only when you confirm them.</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">If you have, say where and what you did. Your words go on a resume only when you confirm them.</p>
         </div>
         {!open && (
           <div className="flex shrink-0 gap-1.5">

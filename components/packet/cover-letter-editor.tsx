@@ -15,7 +15,7 @@ export type SourceView = { id: string; text: string; org: string | null };
 
 const PURPOSE: Record<LetterParagraph["purpose"], string> = {
   opening: "Opening",
-  evidence: "Evidence",
+  evidence: "What you did",
   fit: "Fit",
   motivation: "Why this job",
   closing: "Closing",
@@ -64,7 +64,7 @@ export function CoverLetterEditor({
         setSaved(next);
         setSavedWhy(why);
         setConfirmRedraft(false);
-        toast("Drafted from your confirmed evidence.");
+        toast("Drafted from what you confirmed.");
         router.refresh();
       } catch {
         toast.error("Couldn't draft the letter. Please try again.");
@@ -186,8 +186,8 @@ export function CoverLetterEditor({
                         {p.sourceIds.map((id) => {
                           const s = sources[id];
                           return (
-                            <span key={id} title={s?.text ?? "This evidence changed or was removed."} aria-label={s ? `${s.org ?? "Your profile"}: ${s.text}` : "Changed evidence"} className={cn("rounded bg-muted px-1.5 py-0.5", !s && "bg-pending-soft text-pending-ink")}>
-                              {s ? s.org ?? "Your profile" : "Changed evidence"}
+                            <span key={id} title={s?.text ?? "What this came from changed or was removed."} aria-label={s ? `${s.org ?? "Your profile"}: ${s.text}` : "Changed source"} className={cn("rounded bg-muted px-1.5 py-0.5", !s && "bg-pending-soft text-pending-ink")}>
+                              {s ? s.org ?? "Your profile" : "Changed source"}
                             </span>
                           );
                         })}

@@ -130,7 +130,7 @@ describe("answer kit", () => {
     const kit = buildAnswerKit(CASES[2].input);
     const resume = kitFields(kit).find((f) => f.key === "documents.resume");
     expect(resume?.blank?.kind).toBe("not_built");
-    expect(resume?.blank?.fix.href).toBe(`/app/jobs/${CASES[2].input.job.id}?tab=tailor`);
+    expect(resume?.blank?.fix.href).toBe(`/app/jobs/${CASES[2].input.job.id}?tab=resume`);
   });
 
   it("drops a role line whose fact is no longer confirmed, or whose number isn't in its fact", () => {
@@ -151,7 +151,7 @@ describe("answer kit", () => {
     expect(changed.blank?.kind).toBe("changed");
     expect(none.value).toBe("");
     expect(none.blank?.kind).toBe("no_fact");
-    expect(none.blank?.reason).toMatch(/You could add a fact about the example this question asks for/);
+    expect(none.blank?.reason).toMatch(/You could add the example this question asks for/);
   });
 
   it("cites the facts behind a drafted answer", () => {
