@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { DismissMenu } from "@/components/ready/dismiss-menu";
+import { ReasonForm } from "@/components/ready/reason-form";
 import { RuleList } from "@/components/ready/rule-list";
 import { RunLoopButton } from "@/components/ready/run-loop-button";
 import { CompanyAvatar } from "@/components/shared/fit";
@@ -16,7 +17,10 @@ export const metadata: Metadata = { title: "Ready to apply" };
 // A run confirms postings live and reviews up to three resumes.
 export const maxDuration = 120;
 
-const STEP_LABEL: Record<string, string> = { found: "Matched", live: "Still open", fit: "Fit check", track: "Tracker", resume: "Resume", review: "Review" };
+const STEP_LABEL: Record<string, string> = { found: "Matched", live: "Still open", fit: "Fit check", track: "Tracker", resume: "Resume", review: "Resume review", letter: "Cover letter" };
+
+/** A role is waiting on the one sentence only the person can write. */
+const needsReason = (run: RunItem) => run.steps.some((s) => s.step === "letter" && !s.ok && s.needs === "why");
 
 function Trail({ steps }: { steps: RunItem["steps"] }) {
   return (
@@ -75,7 +79,7 @@ export default async function ReadyPage() {
     <PageBody className="max-w-4xl">
       <PageHeader
         title="Ready to apply"
-        description="Proofline takes the best-fitting open jobs, confirms each posting is still live, builds the resume from your confirmed facts, and runs the review. You read it and apply yourself."
+        description="Proofline takes the best-fitting open jobs, confirms each posting is still live, builds the resume and the cover letter from your confirmed facts, and reviews both. The one thing it asks you for is why you want each job, in your own words. You read everything and apply yourself."
       />
 
       <div className="mt-6">
@@ -100,16 +104,19 @@ export default async function ReadyPage() {
         </h2>
         {ready.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed p-5 text-[14px] text-muted-foreground">
-            Nothing ready yet. Run it above and the roles that pass review will wait here, already saved to Applications.
+            Nothing ready yet. Run it above and the roles where the resume and the cover letter both pass review will wait here, already saved to Applications.
           </p>
         ) : (
           <ul className="mt-3 divide-y rounded-2xl border bg-background">
             {ready.map((run) => (
               <Role key={run.id} run={run}>
-                <p className="mt-2 text-[13px] text-muted-foreground">The resume passed review against your facts and this posting. Read it, then fill in the application.</p>
+                <p className="mt-2 text-[13px] text-muted-foreground">The resume and the cover letter both passed review against your facts and this posting. Read them, then fill in the application.</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button asChild size="sm">
                     <Link href={`/app/jobs/${run.jobId}?tab=resume`}>Read the resume</Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/app/jobs/${run.jobId}/packet#letter`}>Read the cover letter</Link>
                   </Button>
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/app/jobs/${run.jobId}/kit`}>Application answers</Link>
@@ -131,10 +138,16 @@ export default async function ReadyPage() {
             {needsYou.map((run) => (
               <Role key={run.id} run={run}>
                 <p className="mt-2 rounded-lg border border-pending/40 bg-pending-soft px-3 py-2 text-[13px] text-pending-ink">{run.reason}</p>
+                {needsReason(run) && <ReasonForm runId={run.id} company={run.company} />}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/app/jobs/${run.jobId}?tab=resume`}>Open the resume</Link>
                   </Button>
+                  {run.steps.some((s) => s.step === "letter") && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/app/jobs/${run.jobId}/packet#letter`}>Open the cover letter</Link>
+                    </Button>
+                  )}
                   <DismissMenu runId={run.id} company={run.company} />
                 </div>
               </Role>

@@ -15,34 +15,41 @@ import { blockingFailures } from "@/lib/review/linter";
 import { runGate, type GateResult } from "@/lib/review/gate";
 import { trackJob } from "@/lib/tracker/service";
 import { dealBreakerMatches } from "./learn";
+import { packageLetter, type LetterOutcome } from "./package-letter";
 import { logEvent } from "./events";
 
 /**
  * The assisted loop for one person: take the best-fitting open roles from the feed
  * and, for each one, check the posting is still live, check it against their
  * dealbreakers and standing rules, save it to the tracker, build the resume from
- * confirmed facts, and run the review gate. Every stage is written down as it
+ * confirmed facts, run the review gate, then draft the cover letter and review it the
+ * same way. Every stage is written down as it
  * happens, so the person reads why a role is ready or why it stopped.
  *
  * It never submits anything and never writes a fact. A role is "ready" when its
- * resume passed review; the person still reads it, fills in the application, and
- * presses the button themselves.
+ * resume and its cover letter both passed review; the person still reads them, fills
+ * in the application, and presses the button themselves. The one thing it cannot do
+ * for them is say why they want the job, so a role waiting on that is "needs you".
  */
 
-export type StepName = "found" | "live" | "fit" | "track" | "resume" | "review";
-export type LoopStep = { step: StepName; ok: boolean; note: string; at: string };
+export type StepName = "found" | "live" | "fit" | "track" | "resume" | "review" | "letter";
+export type LoopStep = { step: StepName; ok: boolean; note: string; at: string; /** The person has to write something before this step can pass. */ needs?: "why" };
 
 export type RunStatus = "running" | "ready" | "needs_you" | "skipped" | "unconfirmed";
 
-/** Roles taken all the way through resume and review in one pass. Each review is one model call. */
+/** Roles taken all the way through resume, letter, and review in one pass. Each role is two review model calls. */
 export const ROLES_PER_RUN = 3;
 /** Roles started per person per day, so a stuck loop can't spend the review budget. */
 export const ROLES_PER_DAY = 9;
 /** A run still marked running after this long crashed; the role can be picked up again. */
 const STALE_RUNNING_MS = 10 * 60_000;
 
-/** Stop starting new roles after this long, inside the function's time limit. */
-const RUN_TIME_MS = 100_000;
+/**
+ * Stop starting new roles after this long. A role can make two review calls of up to
+ * 25 seconds each, so one that starts at the deadline still ends inside the page's
+ * 120 second limit.
+ */
+const RUN_TIME_MS = 60_000;
 
 const SOURCE_LABEL: Record<string, string> = { greenhouse: "Greenhouse" };
 
@@ -50,6 +57,7 @@ export type LoopDeps = {
   checkLive: (source: JobRow["source"], sourceId: string) => Promise<LiveCheck>;
   tailor: (userId: string, job: JobRow, email: string) => Promise<TailorOutcome>;
   review: (userId: string, resumeId: string) => Promise<GateResult | null>;
+  letter: (userId: string, jobId: string) => Promise<LetterOutcome>;
   now: () => Date;
 };
 
@@ -60,6 +68,7 @@ const defaultDeps: LoopDeps = {
     const stored = await getResume(userId, resumeId);
     return stored ? runGate(userId, stored) : null;
   },
+  letter: packageLetter,
   now: () => new Date(),
 };
 
@@ -165,8 +174,16 @@ async function runRole(userId: string, email: string, runId: string, job: JobRow
     steps.push(step("review", false, reason, deps.now()));
     return stop("needs_you", reason, { applicationId: application.id, resumeId: built.resumeId });
   }
-  steps.push(step("review", true, "Passed the review against your facts and this posting.", deps.now()));
+  steps.push(step("review", true, "The resume passed the review against your facts and this posting.", deps.now()));
+  // The resume is good whatever happens to the letter, so it goes on the tracker now.
   application = await trackJob(userId, job.id, { resumeId: built.resumeId });
+
+  const letter = await deps.letter(userId, job.id);
+  if (!letter.ok) {
+    steps.push({ ...step("letter", false, letter.reason, deps.now()), ...(letter.needs ? { needs: letter.needs } : {}) });
+    return stop("needs_you", letter.reason, { applicationId: application.id, resumeId: built.resumeId });
+  }
+  steps.push(step("letter", true, "The cover letter passed the review against your facts and this posting.", deps.now()));
   await finish(runId, "ready", null, steps, { applicationId: application.id, resumeId: built.resumeId });
   return "ready";
 }

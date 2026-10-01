@@ -127,6 +127,48 @@ export function findVoiceIssues(text: string): VoiceIssue[] {
   return issues.sort((a, b) => a.index - b.index);
 }
 
+/**
+ * Phrases that make a cover letter read as if a template wrote it. They are kept
+ * out of the shared list because a resume or a page of site copy can use some of
+ * them truthfully; in a letter they are the first thing a recruiter skips.
+ */
+export const LETTER_FILLER = [
+  "passionate",
+  "passion for",
+  "excited to",
+  "excited about",
+  "thrilled",
+  "eager to",
+  "i am writing to",
+  "innovative",
+  "dynamic",
+  "fast-paced",
+  "hit the ground running",
+  "perfect fit",
+  "great fit",
+  "ideal candidate",
+  "perfect candidate",
+  "utilize",
+  "utilizes",
+  "utilized",
+  "utilizing",
+  "meaningful impact",
+  "wealth of experience",
+  "skill set",
+  "i am confident that",
+  "esteemed",
+] as const;
+
+const letterFillerPattern = new RegExp(
+  `(?<![\\w-])(${LETTER_FILLER.map(escapeRegExp).join("|")})(?![\\w-])`,
+  "gi",
+);
+
+/** Every cover-letter cliché in `text`, lowercased, in order of appearance. */
+export function findLetterFiller(text: string): string[] {
+  return [...text.matchAll(letterFillerPattern)].map((m) => m[0].toLowerCase());
+}
+
 /** The weak opener a bullet starts with, or null if it opens with an acceptable verb. */
 export function findWeakOpener(bullet: string): string | null {
   const normalized = bullet.trim().toLowerCase();

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { findVoiceIssues } from "@/lib/voice/rules";
+import { findLetterFiller, findVoiceIssues } from "@/lib/voice/rules";
 import { verifyBullet } from "@/lib/resume/verify";
 import { formatMonth } from "@/lib/resume/parse/dates";
 import { skillCategory } from "@/lib/fit/skills";
@@ -226,13 +226,13 @@ export function checkCoverLetter(letter: CoverLetter, factTextById: Map<string, 
           : "Each number is one you confirmed.",
   });
 
-  const voice = findVoiceIssues(all);
+  const voice = [...findVoiceIssues(all).map((v) => (v.rule === "em-dash" ? "em dash" : v.match)), ...findLetterFiller(all)];
   checks.push({
     id: "voice",
     ok: voice.length === 0,
     blocking: false,
     label: "Sounds like a person",
-    detail: voice.length ? `Consider rewording: ${[...new Set(voice.map((v) => (v.rule === "em-dash" ? "em dash" : v.match)))].join(", ")}.` : "No filler words or em dashes.",
+    detail: voice.length ? `Consider rewording: ${[...new Set(voice)].join(", ")}.` : "No filler words or em dashes.",
   });
 
   const words = all.split(/\s+/).filter(Boolean).length;

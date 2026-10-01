@@ -587,6 +587,8 @@ export const applicationPacket = pgTable(
     /** CoverLetter from lib/packet/cover-letter.ts. */
     coverLetter: jsonb("cover_letter").$type<Record<string, unknown>>(),
     coverLetterAt: timestamp("cover_letter_at", { withTimezone: true }),
+    /** LetterGateResult from lib/review/letter-gate.ts: the last review of this exact letter, with a fingerprint. */
+    letterReview: jsonb("letter_review").$type<Record<string, unknown>>(),
     /** Practice answers by question id. */
     interviewNotes: jsonb("interview_notes").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
     /** Drafts for the application form's own questions (ApplicationAnswer[] from lib/packet/answers.ts). */

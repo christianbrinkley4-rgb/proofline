@@ -56,6 +56,7 @@ const deps = (over: Partial<LoopDeps> = {}): Partial<LoopDeps> => ({
     return { ok: true, resumeId: row.id, variant: "experience" };
   },
   review: async () => passingGate(),
+  letter: async () => ({ ok: true }),
   ...over,
 });
 
@@ -77,7 +78,7 @@ describe("the assisted loop", () => {
     expect(runs).toHaveLength(3);
     for (const run of runs) {
       expect(run.status).toBe("ready");
-      expect((run.steps as Array<{ step: string; ok: boolean }>).map((s) => s.step)).toEqual(["found", "live", "fit", "track", "resume", "review"]);
+      expect((run.steps as Array<{ step: string; ok: boolean }>).map((s) => s.step)).toEqual(["found", "live", "fit", "track", "resume", "review", "letter"]);
       expect(run.resumeId).not.toBeNull();
       const app = await db.query.application.findFirst({ where: eq(schema.application.id, run.applicationId!) });
       expect(app).toMatchObject({ stage: "saved", resumeId: run.resumeId });
@@ -129,6 +130,29 @@ describe("the assisted loop", () => {
     expect(runs.every((r) => r.status === "needs_you" && r.reason === "The final read-through flagged a line to fix." && r.applicationId && r.resumeId)).toBe(true);
     const app = await db.query.application.findFirst({ where: eq(schema.application.id, runs[0].applicationId!) });
     expect(app?.resumeId).toBeNull();
+  });
+
+  it("stops at the cover letter when it needs the person's own reason, and keeps the passing resume on the tracker", async () => {
+    const userId = "loop-user-letter";
+    await makeUser(userId);
+    const reason = "Add one or two sentences on why you want this job. That part has to be in your own words.";
+    const summary = await runLoop(userId, "loop@example.com", { limit: 1, deps: deps({ letter: async () => ({ ok: false, reason, needs: "why" }) }) });
+    expect(summary).toMatchObject({ ready: 0, needsYou: 1 });
+    const [run] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
+    expect(run).toMatchObject({ status: "needs_you", reason });
+    const steps = run.steps as Array<{ step: string; ok: boolean; needs?: string }>;
+    expect(steps.at(-1)).toMatchObject({ step: "letter", ok: false, needs: "why" });
+    expect(steps.filter((s) => s.step === "review")).toHaveLength(1);
+    const app = await db.query.application.findFirst({ where: eq(schema.application.id, run.applicationId!) });
+    expect(app?.resumeId).toBe(run.resumeId);
+  });
+
+  it("does not call the letter step for a role whose resume failed review", async () => {
+    const userId = "loop-user-resume-first";
+    await makeUser(userId);
+    const letter = vi.fn(async () => ({ ok: true as const }));
+    await runLoop(userId, "loop@example.com", { limit: 1, deps: deps({ review: async () => failingGate(), letter }) });
+    expect(letter).not.toHaveBeenCalled();
   });
 
   it("records an error in one role without losing the others", async () => {

@@ -35,6 +35,8 @@ describe("evidence", () => {
     expect(asSentence("Reconciled 40+ accounts", { org: "Oakwood", lead: "at" })).toBe("At Oakwood, I reconciled 40+ accounts.");
     expect(asSentence("Built a tracker", { lead: "also" })).toBe("I also built a tracker.");
     expect(asSentence("I organized a food drive for 120 families.")).toBe("I organized a food drive for 120 families.");
+    // A line that already names the organization is not introduced with it a second time.
+    expect(asSentence("Led a 5-person team to 2nd place at the Beta Alpha Psi regional competition", { org: "Beta Alpha Psi", lead: "at" })).toBe("I led a 5-person team to 2nd place at the Beta Alpha Psi regional competition.");
     expect(lowerFirst("QuickBooks reports")).toBe("QuickBooks reports");
     expect(lowerFirst("SQL queries")).toBe("SQL queries");
   });

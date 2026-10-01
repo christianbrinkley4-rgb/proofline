@@ -23,7 +23,7 @@ export function RunLoopButton({ disabled, label = "Find 3 ready to apply" }: { d
       </Button>
       {pending && (
         <p role="status" className="text-[13px] text-muted-foreground">
-          Confirming each posting is open, building the resumes, and running the review. This takes about a minute.
+          Confirming each posting is open, building the resumes and cover letters, and running both reviews. This takes a minute or two.
         </p>
       )}
     </div>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { addReasonToRun, type AddReasonResult } from "@/lib/agent/add-reason";
 import { logEvent } from "@/lib/agent/events";
 import { runLoop, type LoopSummary } from "@/lib/agent/loop";
 import { addRule, companyRule, removeRule, titleWordRule } from "@/lib/agent/rules";
@@ -28,6 +29,23 @@ export async function runLoopAction(): Promise<{ ok: true; summary: LoopSummary 
   } catch {
     refresh();
     return { ok: false, error: "Something stopped the run. Whatever finished is saved below; try again in a minute." };
+  }
+}
+
+/**
+ * The person's own reason for wanting a role that is waiting on it. The cover letter
+ * is rebuilt around it and reviewed again; the role is ready when both documents pass.
+ */
+export async function addReasonAction(runId: string, why: string): Promise<AddReasonResult> {
+  const session = await requireSession();
+  const id = z.uuid().safeParse(runId);
+  if (!id.success) return { ok: false, error: "That didn't go through. Reload and try again." };
+  try {
+    const result = await addReasonToRun(session.user.id, id.data, why);
+    refresh();
+    return result;
+  } catch {
+    return { ok: false, error: "Couldn't save that. Try again in a minute." };
   }
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findVoiceIssues, findWeakOpener } from "./rules";
+import { findLetterFiller, findVoiceIssues, findWeakOpener } from "./rules";
 
 describe("findVoiceIssues", () => {
   it("flags every em dash with its position", () => {
@@ -49,4 +49,22 @@ describe("findWeakOpener", () => {
       expect(findWeakOpener(bullet)).toBeNull();
     },
   );
+});
+
+describe("findLetterFiller", () => {
+  it.each([
+    ["I am passionate about accounting.", ["passionate"]],
+    ["I'm excited to apply for this innovative team.", ["excited to", "innovative"]],
+    ["I am writing to express my interest.", ["i am writing to"]],
+    ["I utilized Excel and would hit the ground running.", ["utilized", "hit the ground running"]],
+  ])("finds the clichés in %j", (text, found) => {
+    expect(findLetterFiller(text)).toEqual(found);
+  });
+
+  it("leaves plain, specific sentences alone", () => {
+    expect(findLetterFiller("I read how LoopCo closes its books each week and I want to learn that process.")).toEqual([]);
+    expect(findLetterFiller("Reconciled 40 vendor accounts each month in Excel.")).toEqual([]);
+    // Word boundaries: nothing inside a longer word.
+    expect(findLetterFiller("The dynamics of the audit cycle")).toEqual([]);
+  });
 });

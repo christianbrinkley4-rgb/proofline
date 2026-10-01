@@ -38,6 +38,8 @@ export type AgentEventType =
   | "tailor_completed"
   | "gate_passed"
   | "gate_failed"
+  | "letter_gate_passed"
+  | "letter_gate_failed"
   | "exported"
   | "practice_answered"
   | "proof_shared"
