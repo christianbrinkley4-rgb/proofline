@@ -4,6 +4,15 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## October 1 the morning run (spec Phase 3 autonomy, committed locally, not deployed)
+
+Opt-in scheduled runs, because "always-on hunting" is what the manual operation does that a button cannot. A switch at the top of `/app/ready` ("Run this for me every morning") sets `profile.auto_run` (migration 0021, off by default). `/api/cron/run-loops` (`vercel.json`, 11:00 and 11:10 UTC, after the feed refresh) calls `runScheduled` (`lib/agent/schedule.ts`): for each opted-in person, the one who has waited longest first, it runs the same loop as the button, with the same limits (3 roles a run, 9 a day, nothing submitted, no fact written).
+
+- **Bounded.** A run stops starting new people after 150 seconds of a 300-second function; the second cron call picks up whoever was left, and anyone run in the last 20 hours is skipped, so a repeated call never spends a person's day twice. Each person is marked as run before the loop starts, so a crash is not retried in a loop. One person's failure is counted and skipped.
+- **Email, only if mail is set up.** When a run leaves something ready or waiting, one plain-text note goes to the person's own address (`digestEmail`: the roles, any reason it is waiting, one link to `/app/ready`, "Proofline never applies for you"). `RESEND_API_KEY` is still the owner's to add, so until then the Ready page and Home card are the only place it shows.
+- **Privacy copy** now says cover letters and the Ready checks send text to Gemini for review by more than one reviewer, that contact details are not sent, and what the morning run does.
+- **Checked:** six tests (order, opt-in only, no double run, failure isolation, deadline, email rules) and a real call in a browser on an isolated server: the cron route refused a missing and a wrong secret, a run for the one opted-in person found two roles, and a second call skipped them. **Cost:** an opted-in person can spend up to nine roles' worth of review calls (4 to 6 credits each) a day without opening the app. At the default 50 credits a person that is the whole day's allowance; the owner may want to raise `PROOFLINE_DAILY_MODEL_CREDITS` before inviting people to turn it on.
+
 ## October 1 Ready loop follow-through: check again, and better letter evidence (committed locally, not deployed)
 
 Found by running the loop in a browser on an isolated dev server (its own database, a stand-in review model):

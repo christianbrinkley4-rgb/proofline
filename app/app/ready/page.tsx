@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { DismissMenu } from "@/components/ready/dismiss-menu";
+import { AutoRunToggle } from "@/components/ready/auto-run-toggle";
 import { ReasonForm } from "@/components/ready/reason-form";
 import { RecheckButton } from "@/components/ready/recheck-button";
 import { RuleList } from "@/components/ready/rule-list";
@@ -12,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { listRules } from "@/lib/agent/rules";
 import { listRuns, type RunItem } from "@/lib/agent/runs";
 import { requireSession } from "@/lib/auth";
+import { emailConfigured } from "@/lib/email";
 import { scoringReady } from "@/lib/facts/base";
+import { getProfile } from "@/lib/kb/profile";
 
 export const metadata: Metadata = { title: "Ready to apply" };
 // A run confirms postings live and reviews up to three resumes.
@@ -70,7 +73,7 @@ function Role({ run, children }: { run: RunItem; children?: React.ReactNode }) {
 export default async function ReadyPage() {
   const session = await requireSession();
   const userId = session.user.id;
-  const [runs, rules, readiness] = await Promise.all([listRuns(userId), listRules(userId), scoringReady(userId)]);
+  const [runs, rules, readiness, profile] = await Promise.all([listRuns(userId), listRules(userId), scoringReady(userId), getProfile(userId)]);
   const ready = runs.filter((r) => r.status === "ready");
   const needsYou = runs.filter((r) => r.status === "needs_you");
   const skipped = runs.filter((r) => r.status === "skipped");
@@ -98,6 +101,8 @@ export default async function ReadyPage() {
           Postings on Greenhouse, Lever, Ashby, and SmartRecruiters can be confirmed open this way. Jobs from other sources stay in Find jobs, where you can open them yourself.
         </p>
       </div>
+
+      {readiness.ready && <AutoRunToggle initial={profile?.autoRun ?? false} mail={emailConfigured()} />}
 
       <section className="mt-10" aria-labelledby="ready-heading">
         <h2 id="ready-heading" className="text-[15px] font-semibold tracking-tight">

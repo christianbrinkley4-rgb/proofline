@@ -10,7 +10,7 @@ export const PRIVACY_POINTS = [
   },
   {
     title: "AI review",
-    text: "Recommended resume lines are drafted by Proofline's own rules from how you described a role. That description is saved with the role and isn't sent to an AI model. When you save a line from Ideas from similar roles, your answers on that card may be sent to Google Gemini to check the wording. You see any change before it is saved. Before a resume can be downloaded, its text, the posting's requirements, and what you confirmed may also be sent to Gemini for review.",
+    text: "Recommended resume lines are drafted by Proofline's own rules from how you described a role. That description is saved with the role and isn't sent to an AI model. When you save a line from Ideas from similar roles, your answers on that card may be sent to Google Gemini to check the wording. You see any change before it is saved. Before a resume can be downloaded, and when Ready to apply checks a job for you, its text, your cover letter, the posting's requirements, and what you confirmed may be sent to Gemini, where more than one reviewer reads them. Your contact details are not sent. If you turn on the morning run, this happens each morning for the jobs it checks, and you can turn it off at any time.",
   },
   {
     title: "Share links",

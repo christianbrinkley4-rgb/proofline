@@ -46,6 +46,8 @@ export type AgentEventType =
   | "kit_sent"
   | "loop_started"
   | "loop_finished"
+  | "loop_scheduled"
+  | "auto_run_changed"
   | "loop_role_dismissed"
   | "rule_added"
   | "rule_removed";

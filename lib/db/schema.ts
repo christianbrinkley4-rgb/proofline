@@ -128,6 +128,9 @@ export const profile = pgTable("profile", {
   importedBasics: jsonb("imported_basics").$type<Record<string, string>>(),
   /** Find jobs filters, kept so the feed opens the way the person left it (lib/jobs/feed/filters.ts). */
   feedFilters: jsonb("feed_filters").$type<Record<string, unknown>>(),
+  /** The person asked Proofline to run the Ready loop each morning (lib/agent/schedule.ts). Off until they turn it on. */
+  autoRun: boolean("auto_run").notNull().default(false),
+  lastAutoRunAt: timestamp("last_auto_run_at", { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

@@ -10,6 +10,7 @@ import { addRule, companyRule, removeRule, titleWordRule } from "@/lib/agent/rul
 import { requireSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { setMatchStatus } from "@/lib/jobs/store";
+import { updateProfile } from "@/lib/kb/profile";
 import { deleteApplication } from "@/lib/tracker/service";
 
 function refresh() {
@@ -29,6 +30,21 @@ export async function runLoopAction(): Promise<{ ok: true; summary: LoopSummary 
   } catch {
     refresh();
     return { ok: false, error: "Something stopped the run. Whatever finished is saved below; try again in a minute." };
+  }
+}
+
+/** Turns the morning run on or off. It is the person's own setting, off until they choose it. */
+export async function setAutoRunAction(on: boolean): Promise<{ ok: true; on: boolean } | { ok: false; error: string }> {
+  const session = await requireSession();
+  const flag = z.boolean().safeParse(on);
+  if (!flag.success) return { ok: false, error: "That didn't go through. Reload and try again." };
+  try {
+    await updateProfile(session.user.id, { autoRun: flag.data });
+    await logEvent(session.user.id, "auto_run_changed", { on: flag.data });
+    refresh();
+    return { ok: true, on: flag.data };
+  } catch {
+    return { ok: false, error: "Couldn't save that. Try again in a minute." };
   }
 }
 
