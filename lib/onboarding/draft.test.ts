@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseResumeText } from "@/lib/resume/parse/rules";
-import { draftFromResume, newToAccount } from "./draft";
+import { draftFromResume, newToAccount, unkeptLines } from "./draft";
 
 const B = "";
 const RESUME = [
@@ -80,5 +80,25 @@ describe("importing into an account that already has facts", () => {
   it("matches a school by graduation month when the degree is worded differently", () => {
     const result = newToAccount(draft, { schools: [{ school: "UNC Greensboro", degree: "B.S.", gradDate: "2026-12" }], roles: [] });
     expect(result.education.map((e) => e.degree)).toEqual(["Master of Science"]);
+  });
+});
+
+describe("importing again after leaving without keeping lines", () => {
+  const draft = draftFromResume(parseResumeText(RESUME));
+  const saved = [
+    { id: "e1", org: "Bankers Life", title: "Financial Advisor Intern", bullets: ["Booked 10 client meetings through personal outreach calls."] },
+    { id: "e2", org: "UNCG Investment Club", title: "Treasurer", bullets: [] },
+  ];
+
+  it("offers a saved role's resume lines that aren't kept yet", () => {
+    const result = unkeptLines(draft, saved);
+    expect(result.map((r) => [r.id, r.lines.length])).toEqual([["e1", 3], ["e2", 1]]);
+    expect(result[0].lines).not.toContain("Booked 10 client meetings through personal outreach calls.");
+    expect(result[0].name).toBe("Financial Advisor Intern, Bankers Life");
+  });
+
+  it("offers nothing once every line is kept", () => {
+    const all = saved.map((r) => ({ ...r, bullets: draft.roles.find((d) => d.org === r.org)?.bullets ?? [] }));
+    expect(unkeptLines(draft, all)).toEqual([]);
   });
 });

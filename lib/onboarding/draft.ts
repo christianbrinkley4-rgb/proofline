@@ -146,3 +146,35 @@ export function newToAccount(
   const knownRole = (role: RoleDraft) => existing.roles.some((r) => same(r.org, role.org) && (same(r.title, role.title) || !r.title || !role.title));
   return { ...draft, education: draft.education.filter((entry) => !knownSchool(entry)), roles: draft.roles.filter((role) => !knownRole(role)) };
 }
+
+/** A saved role whose resume lines the person hasn't kept yet. */
+export type UnkeptRole = { id: string; name: string; kind: RoleKind; ended: boolean; lines: string[]; saved: string[] };
+
+const sameLineText = (a: string, b: string) => same(a, b);
+
+/**
+ * Importing a resume again after leaving without pressing Keep: a role that's
+ * already saved is not added twice, but any of its resume lines the account
+ * doesn't have yet come back as cards to keep. Lines already kept are left out.
+ */
+export function unkeptLines(
+  draft: ResumeDraft,
+  existing: Array<{ id: string; org: string; title: string; bullets: string[] }>,
+): UnkeptRole[] {
+  const found: UnkeptRole[] = [];
+  for (const role of draft.roles) {
+    const match = existing.find((r) => same(r.org, role.org) && (same(r.title, role.title) || !r.title || !role.title));
+    if (!match || found.some((f) => f.id === match.id)) continue;
+    const lines = role.bullets.filter((line) => line.trim().length >= 3 && !match.bullets.some((kept) => sameLineText(kept, line)));
+    if (!lines.length) continue;
+    found.push({
+      id: match.id,
+      name: [match.title || role.title, match.org].filter(Boolean).join(", "),
+      kind: role.kind,
+      ended: Boolean(role.endDate) || !role.startDate,
+      lines,
+      saved: match.bullets,
+    });
+  }
+  return found;
+}

@@ -56,6 +56,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/app/o
       title: r.experience.title ?? "",
       name: [r.experience.title, r.experience.org].filter(Boolean).join(", "),
       lines: r.bullets.length,
+      bullets: r.bullets.map((b) => b.text),
     })),
     skills: base.skill.map((f) => f.text),
     licenses: base.license.map((f) => f.text),

@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { DraftResponse } from "@/app/api/onboarding/resume-draft/route";
 import { Textarea } from "@/components/ui/textarea";
-import { confirmedEducationDetails, newToAccount, type ResumeDraft, type RoleDraft } from "@/lib/onboarding/draft";
+import { confirmedEducationDetails, newToAccount, unkeptLines, type ResumeDraft, type RoleDraft, type UnkeptRole } from "@/lib/onboarding/draft";
 import { countableRoleLines, isProjectKind } from "./role-step";
 import { ChipInput, Field, PillChoice } from "./parts";
 
@@ -32,7 +32,7 @@ export type BetaOnboardingData = {
   firstName: string;
   basics: { fullName: string; phone: string; city: string; region: string; contactEmail: string; linkedinUrl: string; portfolioUrl: string; school: string; degree: string; major: string; gradDate: string; gpa: string };
   education: Array<{ entryId: string; school: string; degree: string; major: string; gradDate: string; gpa: string; honors: string; coursework: string }>;
-  roles: Array<{ id: string; kind: string; org: string; title: string; name: string; lines: number }>;
+  roles: Array<{ id: string; kind: string; org: string; title: string; name: string; lines: number; bullets: string[] }>;
   skills: string[];
   licenses: string[];
   logistics: { workAuthorization: string; targetLocations: string[]; workModes: Array<"remote" | "hybrid" | "onsite">; openToRelocate: "" | "yes" | "no"; availableFrom: string };
@@ -73,6 +73,12 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
       // Not kept across reloads; the draft still works on this page.
     }
   };
+  // Saved roles whose resume lines were never kept. Read once per resume, so keeping a line doesn't pull its card away.
+  const unkept = useMemo(
+    () => (storedDraft ? unkeptLines(storedDraft, data.roles) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [storedDraft],
+  );
   const doneWithDraft = (key: string) => {
     if (storedDraft) setDraft({ ...storedDraft, roles: storedDraft.roles.filter((r) => r.key !== key) });
   };
@@ -127,6 +133,7 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
             startOpen={data.adding}
             roles={data.roles}
             drafts={draft?.roles ?? []}
+            unkept={unkept}
             onDraftSaved={doneWithDraft}
             onBack={() => go("education")}
             onContinue={hasRole ? () => go("job") : null}
@@ -455,6 +462,7 @@ function ExperienceScreen({
   startOpen,
   roles,
   drafts,
+  unkept,
   onDraftSaved,
   onBack,
   onContinue,
@@ -464,6 +472,8 @@ function ExperienceScreen({
   roles: BetaOnboardingData["roles"];
   /** Roles read from their resume and not saved yet. */
   drafts: RoleDraft[];
+  /** Saved roles whose lines from the resume were never kept. */
+  unkept: UnkeptRole[];
   onDraftSaved: (key: string) => void;
   onBack: () => void;
   /** Null until one role is saved: that's the minimum for a resume. */
@@ -535,6 +545,20 @@ function ExperienceScreen({
             </li>
           ))}
         </ul>
+      )}
+
+      {unkept.length > 0 && (
+        <div className="mt-6 space-y-4">
+          <p className="text-[13.5px] leading-6 text-muted-foreground">
+            These roles are saved, but their lines from your resume aren&apos;t kept yet. Keep the true ones; only what you keep goes on a resume.
+          </p>
+          {unkept.map((role) => (
+            <section key={role.id} aria-label={role.name} className="rounded-2xl border bg-background p-4 shadow-lift sm:p-5">
+              <h2 className="font-display text-[19px] font-semibold">{role.name}</h2>
+              <DraftLines className="mt-4" experienceId={role.id} kind={role.kind} ended={role.ended} imported={role.lines} existing={role.saved} />
+            </section>
+          ))}
+        </div>
       )}
 
       {active && (
@@ -846,7 +870,7 @@ function ResumeImport({ draft, onDraft, importing = false }: { draft: ResumeDraf
         </p>
         <p className="text-muted-foreground">
           {importing
-            ? "Roles and schools you already saved are left alone. Check each screen, add what's new, and confirm it; skills you don't have yet are added on the skills screen."
+            ? "Roles and schools you already saved aren't added twice. Any of their resume lines you haven't kept yet come back on the experience screen. Check each screen, add what's new, and confirm it."
             : "I filled in what I found. Fix anything that's off. Nothing is saved until you press save, and you'll check each resume line on the next screen."}
         </p>
       </div>
