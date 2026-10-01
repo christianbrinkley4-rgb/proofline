@@ -79,7 +79,7 @@ describe("packaging the cover letter for a role", () => {
     await saveWhy(userId, jobId, "I read how LetterCo closes its books every week and I want to learn that close process from the team that built it.");
     const fetchMock = modelSays("PASS");
     expect(await packageLetter(userId, jobId)).toEqual({ ok: true });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     const packet = await getPacket(userId, jobId);
     expect(readLetter(packet)?.paragraphs.find((p) => p.purpose === "motivation")?.text).toBe("I read how LetterCo closes its books every week and I want to learn that close process from the team that built it.");
     expect(packet?.letterReview).toMatchObject({ version: 1, passed: true, model: { status: "pass" } });
@@ -100,7 +100,7 @@ describe("packaging the cover letter for a role", () => {
     expect(readLetter(await getPacket(userId, jobId))?.generator).toBe("user");
     const fetchMock = modelSays("PASS");
     expect(await packageLetter(userId, jobId)).toEqual({ ok: true });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(readLetter(await getPacket(userId, jobId))?.paragraphs.find((p) => p.purpose === "closing")?.text).toBe("Thank you for reading. I would be glad to talk any time that suits you.");
   });
 

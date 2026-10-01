@@ -7,12 +7,15 @@ import { keywordsOf, requirementsOf } from "@/lib/jobs/store";
 import { layoutResume, PAGE, type LayoutResult } from "@/lib/resume/layout";
 import type { StoredResume } from "@/lib/resume/store";
 import { blockingFailures, lintResume, type LintCheck } from "./linter";
-import { modelReview, type ModelReview } from "./model";
+import { reviewByConsensus } from "./consensus";
+import { RESUME_FRAMINGS } from "./framings";
+import { buildReviewInput, type ModelReview } from "./model";
 import { resumeLines, resumeToText } from "./resume-text";
 
 /**
  * The review gate: nothing exports until every BLOCKING linter check passes and
- * the model verdict is PASS for exactly this resume against exactly these facts.
+ * independent model reviewers (see consensus.ts) all pass exactly this resume
+ * against exactly these facts.
  * The verdict is stored with a fingerprint; any change to the resume, the facts,
  * or the posting invalidates it, and export re-runs the linter itself.
  */
@@ -60,19 +63,26 @@ function lint(inputs: Inputs) {
   return lintResume({ resumeText: inputs.resumeText, jobDescription: inputs.jobDescription, userFacts: inputs.facts, keywords: inputs.keywords, pageCount: inputs.pageCount });
 }
 
-/** Runs the whole gate (linter, then the model if the linter allows), stores it, and logs the outcome. */
+/** Independent reviewers read the resume (see consensus.ts). The contact line never leaves the database. */
+function reviewResume(userId: string, inputs: Inputs, resumeText: string): Promise<ModelReview> {
+  return reviewByConsensus(userId, {
+    purpose: "review.gate",
+    framings: RESUME_FRAMINGS,
+    input: buildReviewInput({ requirements: inputs.requirements, resumeText, facts: inputs.facts }),
+    text: resumeText,
+    facts: inputs.facts,
+    noun: "resume",
+  });
+}
+
+/** Runs the whole gate (linter, then the model reviewers if the linter allows), stores it, and logs the outcome. */
 export async function runGate(userId: string, stored: StoredResume): Promise<GateResult> {
   const inputs = await gather(userId, stored);
   const linter = lint(inputs);
   const blocked = blockingFailures(linter);
   const model: ModelReview = blocked.length
     ? { status: "skipped", issues: [], model: null, message: "The final read-through runs once everything marked Must fix is fixed." }
-    : await modelReview(userId, {
-        requirements: inputs.requirements,
-        // The contact line isn't needed for the review, so it never leaves the database.
-        resumeText: resumeLines(stored.document).filter((l) => l.kind !== "contact").map((l) => l.text).join("\n"),
-        facts: inputs.facts,
-      });
+    : await reviewResume(userId, inputs, resumeLines(stored.document).filter((l) => l.kind !== "contact").map((l) => l.text).join("\n"));
   const result: GateResult = { version: 1, fingerprint: inputs.fingerprint, linter, model, passed: !blocked.length && model.status === "pass", at: new Date().toISOString() };
   await db.update(schema.resume).set({ review: result as unknown as Record<string, unknown> }).where(eq(schema.resume.id, stored.row.id));
   await logEvent(userId, result.passed ? "gate_passed" : "gate_failed", {

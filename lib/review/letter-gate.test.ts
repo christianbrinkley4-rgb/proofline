@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CoverLetter, LetterContext } from "@/lib/packet/cover-letter";
+import { LETTER_FRAMINGS } from "./framings";
 import { buildLetterReviewInput, evaluateLetter, letterFailureReason, letterFingerprint, letterGateChecks, letterReviewText, LETTER_SYSTEM_PROMPT, type LetterGateInput } from "./letter-gate";
 
 afterEach(() => {
@@ -86,7 +87,7 @@ describe("the cover letter's model review", () => {
   it("passes only when the rules pass and the model says PASS", async () => {
     const fetchMock = modelSays("PASS");
     const result = await evaluateLetter("u", input(letter()), { chargeAccount: false });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.passed).toBe(true);
     expect(result.model.message).toMatch(/found nothing to fix/);
   });
@@ -101,7 +102,14 @@ describe("the cover letter's model review", () => {
     expect(sent).toContain("School: UNC Greensboro");
     expect(sent).toContain(`1. ${FACT}`);
     expect(sent).not.toContain("Sam Lee");
-    expect(body.systemInstruction.parts[0].text).toBe(LETTER_SYSTEM_PROMPT);
+    // Two independent reviewers with different jobs read the same letter.
+    const systems = fetchMock.mock.calls.map((call) => JSON.parse(((call as unknown) as [string, { body: string }])[1].body).systemInstruction.parts[0].text as string);
+    expect(systems).toEqual([LETTER_FRAMINGS[0].system, LETTER_FRAMINGS[1].system]);
+    expect(new Set(systems).size).toBe(2);
+  });
+
+  it("keeps the all-purpose letter prompt as the replacement reviewer", () => {
+    expect(LETTER_FRAMINGS[2].system).toBe(LETTER_SYSTEM_PROMPT);
   });
 
   it("fails on a flagged line it can quote, and drops a flag it cannot quote", async () => {

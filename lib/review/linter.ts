@@ -474,3 +474,29 @@ export function enforceQuotes(checks: LintCheck[], resumeText: string): LintChec
 export function blockingFailures(checks: LintCheck[]): LintCheck[] {
   return checks.filter((c) => c.severity === "BLOCKING" && !c.passed);
 }
+
+/**
+ * What a resume must be before Proofline will call it ready without the person
+ * reading it first. A person downloading one resume can ship it with a stray space;
+ * a resume that goes into someone's queue as finished work cannot. These are the
+ * mistakes the manual checklist catches, so none of them is allowed through:
+ * mixed date styles, empty bullets, uneven bold, doubled words in Skills, stray
+ * spaces, missing sections or contact details, filler, and a bullet that does not
+ * open with a verb.
+ */
+export const READY_BAR: LintCheckId[] = [
+  "no_empty_bullets_or_paragraphs",
+  "consistent_bold",
+  "consistent_date_format",
+  "no_trailing_or_double_spaces",
+  "no_duplicate_words_in_skills",
+  "section_headers_present",
+  "contact_info_complete",
+  "contractions_consistent",
+  "bullets_start_with_verb",
+  "no_corporate_filler",
+];
+
+export function readyBarFailures(checks: LintCheck[]): LintCheck[] {
+  return checks.filter((c) => READY_BAR.includes(c.id) && !c.passed);
+}

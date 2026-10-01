@@ -462,6 +462,16 @@ function ReviewList({
             ? "An AI reads every line against what you confirmed before you download. It's not available right now. Everything else still works, and a resume that already passed can still be downloaded."
             : (model?.message ?? "Press Check it again to check this version.")}
         </p>
+        {resume.aiConfigured && model?.reviewers && model.reviewers.length > 0 && (
+          <ul className="mt-2 space-y-1 text-[12.5px] leading-5 text-muted-foreground">
+            {model.reviewers.map((r) => (
+              <li key={r.reviewer}>
+                <span className="font-medium text-foreground">{r.label}:</span>{" "}
+                {r.disqualified ? `set aside. ${r.disqualified}` : r.status === "pass" ? "passed" : r.status === "fail" ? "found lines to fix" : "didn't finish"}
+              </li>
+            ))}
+          </ul>
+        )}
         {model?.issues.map((issue) => (
           <div key={issue.quote} className="mt-2.5 rounded-md bg-muted/60 p-2.5 text-[12.5px] leading-5">
             <blockquote className="border-l-2 border-pending pl-2 font-medium">&ldquo;{issue.quote}&rdquo;</blockquote>

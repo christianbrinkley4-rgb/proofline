@@ -5,31 +5,19 @@ import { db, schema } from "@/lib/db";
 import { confirmedFactTexts } from "@/lib/facts/base";
 import { requirementsOf } from "@/lib/jobs/store";
 import { checkCoverLetter, letterStatus, type CoverLetter, type LetterCheck, type LetterContext } from "@/lib/packet/cover-letter";
-import { callReviewModel, settleVerdict, type ModelReview } from "./model";
+import { reviewByConsensus } from "./consensus";
+import { LETTER_FRAMINGS } from "./framings";
+import type { ModelReview } from "./model";
 
 /**
  * The cover letter's review gate, the same shape as the resume's: the rules checks
- * must pass and then a model reads the letter against the confirmed facts and the
- * posting. A letter still holding the bracketed prompt for the person's own reason
+ * must pass and then independent reviewers read the letter against the confirmed
+ * facts and the posting (see consensus.ts). A letter still holding the bracketed prompt for the person's own reason
  * never reaches the model, because the one part Proofline will not write is why
  * someone wants a job.
  */
 
-export const LETTER_PROMPT_VERSION = "letter-gate.v1";
-
-export const LETTER_SYSTEM_PROMPT = `You are the last reviewer before a student sends a cover letter for one specific job.
-
-The bar: it reads like a person wrote it. It names this employer and role, rests on one or two true examples, and has no filler, no flattery, and no claim the facts do not support.
-
-How to review:
-1. Before flagging any claim about the student as invented, search the ENTIRE facts list and the profile and quote the closest supporting line. Only flag a claim if zero supporting language exists anywhere.
-2. Prove support, don't hunt guilt. PASS if every claim has support.
-3. The sentence about why the student wants this job is theirs. Never fail it for being short, plain, or personal. Fail it only for filler words or for a claim about the employer that the posting does not make.
-4. You may NOT fail for: contractions, the greeting or sign-off, the opening line about the student's school and graduation (it comes from their profile), style preferences between two truthful wordings, anything you cannot quote verbatim from the letter, or corrections that add new claims, numbers, or methods the student never confirmed.
-5. You may fail for: a claim about the student with no supporting language in the facts; a claim about the employer or the role that is not in the posting; filler, flattery, or wording that reads as machine-written; a sentence that says nothing specific.
-6. Every issue must copy the offending letter text exactly, character for character, into "quote"; name the rule it breaks in "rule_broken"; and give a "fix" that uses only the confirmed facts or the posting.
-
-Return strict JSON and nothing else: {"verdict":"PASS"|"FAIL","issues":[{"quote":"...","rule_broken":"...","fix":"..."}]}. PASS means "issues" is an empty array. No prose outside the JSON.`;
+export { LETTER_PROMPT_VERSION, LETTER_SYSTEM_PROMPT } from "./letter-prompt";
 
 export type LetterGateResult = {
   version: 1;
@@ -134,17 +122,10 @@ export async function evaluateLetter(userId: string, input: LetterGateInput, opt
       message: unfinished ? "The final read-through runs once your reason for wanting this job is in." : "The final read-through runs once everything marked Must fix is fixed.",
     };
   } else {
-    const text = letterReviewText(input.letter);
-    const out = await callReviewModel(userId, { purpose: "review.letter", promptVersion: LETTER_PROMPT_VERSION, system: LETTER_SYSTEM_PROMPT, input: buildLetterReviewInput(input) }, opts);
-    if (!out.ok) model = { status: out.status, issues: [], model: out.model, message: out.message };
-    else {
-      const settled = settleVerdict(out.parsed, text, input.facts);
-      model = {
-        ...settled,
-        model: out.model,
-        message: settled.status === "pass" ? "An AI read the letter against what you confirmed and found nothing to fix." : `An AI read the letter against what you confirmed and found ${settled.issues.length} ${settled.issues.length === 1 ? "line" : "lines"} to fix.`,
-      };
-    }
+    const ctx = input.letterContext;
+    // Names a sentence may use that no fact holds: the employers and school it names.
+    const known = [ctx.company, ctx.title, ctx.school, ctx.degree, ctx.major, ...ctx.evidence.flatMap((e) => [e.org, e.title])].filter((x): x is string => Boolean(x));
+    model = await reviewByConsensus(userId, { purpose: "review.letter", framings: LETTER_FRAMINGS, input: buildLetterReviewInput(input), text: letterReviewText(input.letter), facts: input.facts, known, noun: "letter" }, opts);
   }
   return { version: 1, fingerprint, checks, model, passed: !blocked.length && model.status === "pass", at: new Date().toISOString() };
 }

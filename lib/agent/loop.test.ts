@@ -8,7 +8,7 @@ import { refreshFeed } from "@/lib/jobs/feed/refresh";
 import { checkPostingOpen } from "@/lib/jobs/feed/verify-live";
 import { SourceError } from "@/lib/jobs/sources/http";
 import type { NormalizedJob } from "@/lib/jobs/types";
-import { reviewFailureReason, runLoop, type LoopDeps } from "./loop";
+import { readyBarReason, reviewFailureReason, runLoop, type LoopDeps } from "./loop";
 
 const NOW = new Date();
 const LONG = (body: string) => `${body}\n\n${"You will join a small team, learn the close process, and work with people across the company every week. ".repeat(5)}`;
@@ -209,3 +209,31 @@ describe("review failure reasons", () => {
   });
 });
 
+
+describe("the ready bar", () => {
+  const lint = (id: string, label: string, detail: string, passed: boolean, severity = "WARN") => ({ id, label, severity, passed, evidence_quote: passed ? "" : "x", failures: passed ? [] : ["x"], detail }) as unknown as GateResult["linter"][number];
+
+  it("lets a resume through only when the formatting mistakes a person would catch are all absent", () => {
+    expect(readyBarReason({ ...passingGate(), linter: [lint("consistent_date_format", "One date format", "Dates all use one style.", true)] })).toBeNull();
+    expect(readyBarReason({ ...passingGate(), linter: [lint("bullets_have_numbers", "Every bullet has a number", "2 of 6 bullets have no number.", false)] })).toBeNull();
+  });
+
+  it("names the one thing to fix, or says how many", () => {
+    const dates = lint("consistent_date_format", "One date format", "Dates mix May 2025 and 05/2025. Pick one.", false);
+    expect(readyBarReason({ ...passingGate(), linter: [dates] })).toBe("Dates mix May 2025 and 05/2025. Pick one.");
+    const spaces = lint("no_trailing_or_double_spaces", "No stray spaces", "There's a double space or a space at the end of a line.", false);
+    expect(readyBarReason({ ...passingGate(), linter: [dates, spaces] })).toBe("Fix 2 things before it counts as ready: one date format; no stray spaces.");
+  });
+
+  it("keeps a role that passed the download gate in needs-you when its formatting is not clean", async () => {
+    const userId = "loop-user-bar";
+    await makeUser(userId);
+    const sloppy: GateResult = { ...passingGate(), linter: [lint("consistent_bold", "Titles bold; company and location plain", "Bold only the job title. Keep the company and location plain.", false)] };
+    const letter = vi.fn(async () => ({ ok: true as const }));
+    const summary = await runLoop(userId, "loop@example.com", { limit: 1, deps: deps({ review: async () => sloppy, letter }) });
+    expect(summary).toMatchObject({ ready: 0, needsYou: 1 });
+    expect(letter).not.toHaveBeenCalled();
+    const [run] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
+    expect(run.reason).toBe("Bold only the job title. Keep the company and location plain.");
+  });
+});

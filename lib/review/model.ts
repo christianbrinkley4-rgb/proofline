@@ -25,15 +25,30 @@ How to review:
 4. You may fail for: a claim with no supporting language in the facts; a bullet that leaves out a number or method the facts already contain; filler or wording that reads as machine-written; a line that ignores what this employer asks for when the facts would allow a truthful, closer match.
 5. Every issue must copy the offending resume text exactly, character for character, into "quote"; name the rule it breaks in "rule_broken"; and give a "fix" that uses only the confirmed facts.
 
-Return strict JSON and nothing else: {"verdict":"PASS"|"FAIL","issues":[{"quote":"...","rule_broken":"...","fix":"..."}]}. PASS means "issues" is an empty array. No prose outside the JSON.`;
+Return strict JSON and nothing else: {"verdict":"PASS"|"FAIL","issues":[{"quote":"...","rule_broken":"...","fix":"...","category":"unsupported_claim"|"missing_detail"|"filler"|"fit"|"other"}]}. Use "unsupported_claim" only when no line in the facts supports the claim. PASS means "issues" is an empty array. No prose outside the JSON.`;
 
-export type ModelIssue = { quote: string; rule_broken: string; fix: string };
+/** What kind of problem a reviewer says a line has. Only unsupported_claim can be checked against the facts in code. */
+export const ISSUE_CATEGORIES = ["unsupported_claim", "missing_detail", "filler", "fit", "other"] as const;
+export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
+
+export type ModelIssue = { quote: string; rule_broken: string; fix: string; category?: IssueCategory };
 export type ModelReviewStatus = "pass" | "fail" | "unavailable" | "limit" | "error" | "skipped";
-export type ModelReview = { status: ModelReviewStatus; issues: ModelIssue[]; model: string | null; message: string };
+
+/** One independent reviewer's result, kept so the person (and the owner) can see who said what. */
+export type ReviewerVerdict = {
+  reviewer: string;
+  label: string;
+  status: "pass" | "fail" | "unavailable" | "limit" | "error";
+  issues: ModelIssue[];
+  /** Why this reviewer's flags were set aside, when the facts show it was wrong. */
+  disqualified: string | null;
+  model: string | null;
+};
+export type ModelReview = { status: ModelReviewStatus; issues: ModelIssue[]; model: string | null; message: string; reviewers?: ReviewerVerdict[] };
 
 export const Output = z.object({
   verdict: z.enum(["PASS", "FAIL"]),
-  issues: z.array(z.object({ quote: z.string(), rule_broken: z.string(), fix: z.string() })).max(20),
+  issues: z.array(z.object({ quote: z.string(), rule_broken: z.string(), fix: z.string(), category: z.enum(ISSUE_CATEGORIES).optional().catch(undefined) })).max(20),
 });
 
 /** Gemini's response schema, so the model returns the JSON shape and nothing else. */
@@ -43,7 +58,11 @@ const RESPONSE_SCHEMA = {
     verdict: { type: "STRING", enum: ["PASS", "FAIL"] },
     issues: {
       type: "ARRAY",
-      items: { type: "OBJECT", properties: { quote: { type: "STRING" }, rule_broken: { type: "STRING" }, fix: { type: "STRING" } }, required: ["quote", "rule_broken", "fix"] },
+      items: {
+        type: "OBJECT",
+        properties: { quote: { type: "STRING" }, rule_broken: { type: "STRING" }, fix: { type: "STRING" }, category: { type: "STRING", enum: [...ISSUE_CATEGORIES] } },
+        required: ["quote", "rule_broken", "fix", "category"],
+      },
     },
   },
   required: ["verdict", "issues"],

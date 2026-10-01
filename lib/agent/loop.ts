@@ -11,7 +11,7 @@ import { keywordsOf, requirementsOf, saveMatches, setMatchStatus, type JobRow } 
 import { getProfile } from "@/lib/kb/profile";
 import { getResume } from "@/lib/resume/store";
 import { tailorBestResume, type TailorOutcome } from "@/lib/resume/tailor-best";
-import { blockingFailures } from "@/lib/review/linter";
+import { blockingFailures, readyBarFailures } from "@/lib/review/linter";
 import { runGate, type GateResult } from "@/lib/review/gate";
 import { trackJob } from "@/lib/tracker/service";
 import { dealBreakerMatches } from "./learn";
@@ -89,6 +89,17 @@ export function reviewFailureReason(gate: GateResult): string {
   if (blocked.length) return `Fix ${blocked.length} things first: ${blocked.map((c) => c.label.toLowerCase()).join("; ")}.`;
   if (gate.model.status === "fail") return `The final read-through flagged ${gate.model.issues.length === 1 ? "a line" : `${gate.model.issues.length} lines`} to fix.`;
   return gate.model.message || "The review could not finish. Check it again from the job page.";
+}
+
+/**
+ * Why a resume that passed the download gate is still not ready: formatting a
+ * finished resume cannot get wrong (see READY_BAR), because nobody reads it first.
+ */
+export function readyBarReason(gate: GateResult): string | null {
+  const failed = readyBarFailures(gate.linter);
+  if (!failed.length) return null;
+  if (failed.length === 1) return failed[0].detail || `Fix first: ${failed[0].label.toLowerCase()}.`;
+  return `Fix ${failed.length} things before it counts as ready: ${failed.map((c) => c.label.toLowerCase()).join("; ")}.`;
 }
 
 const step = (name: StepName, ok: boolean, note: string, at: Date): LoopStep => ({ step: name, ok, note, at: at.toISOString() });
@@ -169,12 +180,12 @@ async function runRole(userId: string, email: string, runId: string, job: JobRow
   steps.push(step("resume", true, "Built from your confirmed facts only.", deps.now()));
 
   const gate = await deps.review(userId, built.resumeId);
-  if (!gate?.passed) {
-    const reason = gate ? reviewFailureReason(gate) : "The resume could not be read back for review.";
+  const reason = !gate ? "The resume could not be read back for review." : !gate.passed ? reviewFailureReason(gate) : readyBarReason(gate);
+  if (reason) {
     steps.push(step("review", false, reason, deps.now()));
     return stop("needs_you", reason, { applicationId: application.id, resumeId: built.resumeId });
   }
-  steps.push(step("review", true, "The resume passed the review against your facts and this posting.", deps.now()));
+  steps.push(step("review", true, `The resume passed every check. ${gate!.model.message}`, deps.now()));
   // The resume is good whatever happens to the letter, so it goes on the tracker now.
   application = await trackJob(userId, job.id, { resumeId: built.resumeId });
 
