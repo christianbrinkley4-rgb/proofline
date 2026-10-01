@@ -68,7 +68,7 @@ describe("agent tools", () => {
     expect(feedback.every((entry) => entry.outcomeEvidence === false)).toBe(true);
   });
   it("offers occupation tasks only as questions and respects profile ownership", async () => {
-    const experience = await createExperience(userId, { kind: "work", org: "Local museum", title: "Museum collections assistant" });
+    const experience = await createExperience(userId, { kind: "work", org: "Local museum", title: "Museum technician" });
     const before = (await listFacts(userId)).length;
     const result = (await runTool("get_role_task_prompts", { experienceId: experience.id, count: 8 }, ctx)) as {
       prompts: Array<{ question: string; source: string }>;

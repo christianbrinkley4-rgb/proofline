@@ -25,7 +25,7 @@ describe("role task coverage", () => {
     expect(onetTasksForTitle("Dental Hygienist").length).toBeGreaterThan(2);
     expect(onetTasksForTitle("Electrician").length).toBeGreaterThan(2);
     expect(onetTasksForTitle("Bookkeeping assistant").some((task) => /academic or administrative committees/i.test(task.template))).toBe(false);
-    expect(onetTasksForTitle("Museum collections assistant").length).toBeGreaterThan(0);
+    expect(onetTasksForTitle("Museum technician").length).toBeGreaterThan(0);
     expect(onetTasksForTitle("Bookkeeping assistant").some((task) => /Reconciled or note and report/i.test(task.template))).toBe(false);
   });
 

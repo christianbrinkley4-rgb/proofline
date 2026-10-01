@@ -11,10 +11,26 @@ const catalog = catalogData as { source: string; url: string; license: string; o
 const titleCache = new Map<string, RoleTask[]>();
 const generic = new Set(["a", "an", "and", "assistant", "associate", "at", "intern", "junior", "lead", "manager", "of", "senior", "specialist", "staff", "the"]);
 
+/** Two-letter titles that carry real meaning, spelled out so "QA Tester" is not read as just "Tester". */
+const acronyms: Array<[RegExp, string]> = [
+  [/\bsqa\b/gi, "software quality assurance"],
+  [/\bqa\b/gi, "quality assurance"],
+  [/\bqc\b/gi, "quality control"],
+];
+
 function tokens(text: string): string[] {
-  return (text.toLowerCase().match(/[a-z]+/g) ?? [])
+  const spelled = acronyms.reduce((out, [pattern, words]) => out.replace(pattern, words), text);
+  // A generic word is dropped before it is stemmed, or "manager" becomes "manag"
+  // and a bare "Manager" matches Human Resources Managers.
+  return (spelled.toLowerCase().match(/[a-z]+/g) ?? [])
+    .filter((word) => !generic.has(word))
     .map((word) => word.replace(/(ing|ers|er|ists|ist|s)$/, ""))
     .filter((word) => word.length > 2 && !generic.has(word));
+}
+
+/** Every word of a title, stemmed the same way but without dropping the generic ones. */
+function stems(text: string): Set<string> {
+  return new Set((text.toLowerCase().match(/[a-z]+/g) ?? []).map((word) => word.replace(/(ing|ers|er|ists|ist|s)$/, "")).filter((word) => word.length > 2));
 }
 
 const titleSignatures = new Map(catalog.occupations.map((occupation) => [occupation.code,
@@ -144,23 +160,53 @@ export function onetTasksForTitle(title: string | null, limit = 80, commonOnly =
   const cached = titleCache.get(key);
   if (cached) return cached.slice(0, limit);
   // Employment labels describe the arrangement, not a different occupation.
-  const matchTitle = commonOnly ? title.replace(/\b(?:part[ -]time|full[ -]time|temporary|contract|seasonal|freelance)\b/gi, " ") : title;
+  const matchTitle = title.replace(/\b(?:part[ -]time|full[ -]time|temporary|contract|seasonal|freelance)\b/gi, " ");
+  const floor = commonOnly ? 0.65 : 0.4;
+  const titleWords = new Set(tokens(matchTitle));
+  const wholeWords = [...stems(matchTitle)].filter((word) => !["intern", "junior", "senior", "lead", "staff"].includes(word));
   const scored = catalog.occupations
     .map((occupation) => {
       const score = occupationScore(matchTitle, occupation);
       const occupationWords = new Set(tokens([occupation.title, ...occupation.aliases].join(" ")));
-      const titleWords = new Set(tokens(matchTitle));
       const contextMatches = commonOnly && score >= 0.65 ? [...new Set(tokens(context))].filter((word) => !titleWords.has(word) && occupationWords.has(word)).length : 0;
+      // The official title is the strongest evidence: "Cashier" is the occupation
+      // called Cashiers, not every occupation that lists "Cashier" as an alias.
+      // Words like "assistant" are ignored for scoring but still count here:
+      // "Library Assistants, Clerical" is the official title of a library assistant.
       const officialWords = new Set(tokens(occupation.title));
-      const officialMatch = commonOnly && score >= 0.65 && officialWords.size === titleWords.size && [...titleWords].every((word) => officialWords.has(word));
-      return { occupation, score: score + (officialMatch ? 0.2 : 0) + Math.min(contextMatches * 0.15, 0.3) };
+      const strong = score >= Math.max(floor, 0.65) && titleWords.size > 0;
+      const covers = strong && [...titleWords].every((word) => officialWords.has(word));
+      const exact = covers && officialWords.size === titleWords.size;
+      const spoken = strong && covers && wholeWords.every((word) => stems(occupation.title).has(word));
+      const officialBonus = (covers ? 0.1 : 0) + (exact ? 0.2 : 0) + (spoken ? 0.1 : 0);
+      return { occupation, score: score + officialBonus + Math.min(contextMatches * 0.15, 0.3) };
     })
     .sort((a, b) => b.score - a.score);
   // A loose alias match can connect "bookkeeping assistant" to a teaching
   // occupation whose alias is "bookkeeping instructor". Keep only matches
   // that are nearly as strong as the best occupation for this title.
   const best = scored[0]?.score ?? 0;
-  const matches = scored.filter(({ score }) => score >= (commonOnly ? 0.65 : 0.4) && score >= best - (commonOnly ? 0.1 : 0.15)).slice(0, 2);
+  const close = scored.filter(({ score }) => score >= floor && score >= best - (commonOnly ? 0.1 : 0.15));
+  // "Tester" or "Quality Assurance Intern" is an alias in occupations from
+  // unrelated fields. When the best matches are spread evenly across fields,
+  // none is a better guess than the rest, and a wrong question ("Did you test
+  // for penetration?") costs more trust than no question: the person can
+  // describe the role instead. When one field clearly leads, its occupations
+  // are used, and a second occupation never comes from a different field.
+  const field = (occupation: Occupation) => occupation.code.slice(0, 2);
+  const tiedFields = new Map<string, number>();
+  for (const { occupation, score } of close) if (score >= best - 0.05) tiedFields.set(field(occupation), (tiedFields.get(field(occupation)) ?? 0) + 1);
+  const ranked = [...tiedFields.entries()].sort((a, b) => b[1] - a[1]);
+  // A field wins by having more of the tied occupations than any other. A partial
+  // match (one word of two) is too weak to pick a field at all: "Museum collections
+  // assistant" shares "collections" with bill collectors and "museum" with curators.
+  if (ranked.length > 1 && (best < 0.65 || ranked[0][1] === ranked[1][1])) {
+    if (titleCache.size >= 100) titleCache.clear();
+    titleCache.set(key, []);
+    return [];
+  }
+  const lead = ranked[0]?.[0];
+  const matches = close.filter(({ occupation }) => field(occupation) === lead).slice(0, 2);
   const out: RoleTask[] = [];
   for (const { occupation } of matches) {
     for (const item of [...occupation.tasks].sort((a, b) => Number(b.core) - Number(a.core))) {

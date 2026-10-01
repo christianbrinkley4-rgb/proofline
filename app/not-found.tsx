@@ -9,16 +9,21 @@ export default function NotFound() {
       <Link href="/" aria-label="Home">
         <Logo />
       </Link>
-      <h1 className="mt-10 text-[32px] font-semibold tracking-[-0.03em]">This page isn&apos;t here yet.</h1>
+      <h1 className="mt-10 text-[32px] font-semibold tracking-[-0.03em]">We can&apos;t find that page.</h1>
       <p className="mt-3 max-w-sm text-[15px] leading-7 text-muted-foreground">
-        We&apos;re building Proofline in the open, one piece at a time. This one is still on the way.
+        The link may be old or mistyped. Open Proofline to pick up where you left off.
       </p>
-      <Button size="xl" variant="outline" asChild className="mt-8">
-        <Link href="/">
-          <ArrowLeft data-icon="inline-start" />
-          Back to home
-        </Link>
-      </Button>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <Button size="xl" asChild>
+          <Link href="/app">Open Proofline</Link>
+        </Button>
+        <Button size="xl" variant="outline" asChild>
+          <Link href="/">
+            <ArrowLeft data-icon="inline-start" />
+            Back to home
+          </Link>
+        </Button>
+      </div>
     </main>
   );
 }

@@ -56,6 +56,9 @@ export const ROLE_TASKS: RoleTask[] = [
   task("software.build", ["software"], ["software", "developer", "programmer", "app", "project"], "Built a working feature from a written requirement", ["Project management"], ["software.test"]),
   task("software.test", ["software"], ["software", "developer", "programmer", "app", "project"], "Wrote tests for the project's main workflows", ["Problem solving"], ["software.build"]),
   task("software.fix", ["software"], ["software", "developer", "programmer", "app", "project"], "Diagnosed defects and shipped fixes", ["Problem solving"], ["software.test"]),
+  task("qa.check", [], ["qa", "quality assurance", "tester", "test engineer", "sdet"], "Checked work against written requirements and recorded what didn't match", ["Attention to detail"], ["qa.retest"]),
+  task("qa.retest", [], ["qa", "quality assurance", "tester", "test engineer", "sdet"], "Retested fixes and confirmed the problem was resolved", ["Problem solving", "Attention to detail"], ["qa.check"]),
+  task("qa.report", [], ["qa", "quality assurance", "tester", "test engineer", "sdet"], "Summarized test results for the team", ["Communication", "Attention to detail"], ["qa.check"]),
   task("health.records", ["healthcare"], ["medical assistant", "clinic", "patient", "dental"], "Updated patient records after visits", ["Electronic health records", "Attention to detail"], ["health.schedule"]),
   task("health.schedule", ["healthcare"], ["medical assistant", "clinic", "patient", "dental"], "Scheduled patient visits and confirmed appointment details", ["Appointment scheduling", "Patient care"], ["health.records"]),
   task("health.intake", ["healthcare"], ["medical assistant", "clinic", "patient"], "Recorded intake information and flagged missing details", ["Patient care", "Attention to detail"], ["health.records"]),
@@ -82,10 +85,21 @@ export const ROLE_TASKS: RoleTask[] = [
   task("event.followup", [], ["event", "community organizer", "volunteer coordinator"], "Collected attendee feedback and summarized improvements", ["Communication", "Data analysis"], ["event.coordinate"]),
 ];
 
+/** Quality assurance and testing work, which shares words with accounting ("assurance"), data ("analyst"), and software. */
+const QA_TITLE = /\b(?:qa|qc|sqa|sdet|quality (?:assurance|control)|testers?|test engineer|(?:software|application|app|web|game|automation) testing)\b/i;
+/** A security tester checks for weaknesses, not requirements, so it is not QA. */
+const SECURITY_TESTER = /penetration|security|cyber|\bpen[ -]?test/i;
+const SOFTWARE_QA_TITLE = /\b(?:software|sqa|sdet|web|app|mobile|game|automation|systems?|computer)\b/i;
+
 export function tasksForExperience(experience: { title: string | null; kind: string }): RoleTask[] {
   const title = (experience.title ?? "").toLowerCase();
-  const familyIds = new Set(ROLE_FAMILIES.filter((family) => family.titleWords.some((word) => titleTermMatches(title, word))).map((family) => family.id));
-  return ROLE_TASKS.filter((item) => item.titleWords.some((word) => titleTermMatches(title, word)) || item.families.some((id) => familyIds.has(id)));
+  // A family's own exclusions apply here too: "Quality Assurance Tester" is not an accounting role.
+  const familyIds = new Set(ROLE_FAMILIES.filter((family) => !family.excludeTitle?.test(title) && family.titleWords.some((word) => titleTermMatches(title, word))).map((family) => family.id));
+  const qa = QA_TITLE.test(title) && !SECURITY_TESTER.test(title);
+  if (!qa) return ROLE_TASKS.filter((item) => !item.id.startsWith("qa.") && (item.titleWords.some((word) => titleTermMatches(title, word)) || item.families.some((id) => familyIds.has(id))));
+  // Testing roles keep the testing lines, and only a software one keeps the software test lines.
+  const software = SOFTWARE_QA_TITLE.test(title);
+  return ROLE_TASKS.filter((item) => item.id.startsWith("qa.") || (software && (item.id === "software.test" || item.id === "software.fix")));
 }
 
 /** Match role words at word boundaries. Longer single words can be stems such as "bookkeep". */
