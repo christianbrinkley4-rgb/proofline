@@ -2,7 +2,7 @@
 
 ## September 30 simplification pass
 
-Onboarding is three screens, roles get recommended resume lines (Keep, Edit, Drop), and the interface drops internal words. Signup to a downloaded resume went from 10 screens and 13 clicks (with an empty role) to 6 screens and 9 clicks (with two real lines). Details, the jargon table, and what was flagged: `docs/SIMPLIFY-AUDIT.md`. Committed locally, not deployed.
+Onboarding is three screens, roles get recommended resume lines (Keep, Edit, Drop), and the interface drops internal words. Signup to a downloaded resume went from 10 screens and 13 clicks (with an empty role) to 6 screens and 9 clicks (with two real lines). Details, the jargon table, and what was flagged: `docs/SIMPLIFY-AUDIT.md`. Commit `43766ef` is live as Ready production deployment `dpl_Cc53UAjWXJttyPAG5pTYAWtBY9wT` (no new migration). Live checks: home, /check, /privacy, /login, and /signup 200 with the new copy; signed-out My experience 307 to login; development login 404; no errors in the logs. The first deploy attempt returned "Not authorized" during upload and the retry with the same CLI (60.1.3) succeeded. Signed-in flows were checked on localhost with synthetic data and a stand-in for the review model, not on production. Testers should reload open tabs.
 
 ## September 30 owner's report (live)
 
