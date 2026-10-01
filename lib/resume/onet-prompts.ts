@@ -2,7 +2,7 @@ import { postingOverlap } from "@/lib/jobs/relevance";
 import { onetTasksForTitle } from "./onet-tasks";
 import { tasksForExperience } from "./role-tasks";
 
-export type RolePromptIdea = { id: string; question: string; source: "O*NET 31.0" | "Proofline"; postingMatch: number };
+export type RolePromptIdea = { id: string; /** The task as a resume-style line, without the question around it. */ template: string; question: string; source: "O*NET 31.0" | "Proofline"; postingMatch: number };
 
 /** Occupational tasks are questions to confirm, never applicant claims. */
 export function rolePromptIdeas(title: string | null, description?: string | null, count = 8): RolePromptIdea[] {
@@ -15,6 +15,7 @@ export function rolePromptIdeas(title: string | null, description?: string | nul
     seen.add(key);
     return [{
       id: task.id,
+      template: task.template,
       question: `Have you done this work? ${task.template}`,
       source: task.id.startsWith("onet:") ? "O*NET 31.0" as const : "Proofline" as const,
       postingMatch: postingOverlap(task.template, description),

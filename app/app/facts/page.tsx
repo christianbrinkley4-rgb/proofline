@@ -4,7 +4,6 @@ import { FileUp, Plus, ShieldCheck } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { AddFact, DeleteEducationButton, DeleteRoleButton, FactRow, type FactRowView } from "@/components/facts/fact-list";
 import { DraftLinesToggle } from "@/components/facts/draft-lines";
-import { FactRecall } from "@/components/facts/fact-recall";
 import { Button } from "@/components/ui/button";
 import { AddEducation } from "@/components/facts/add-education";
 import { ContactDetails } from "@/components/facts/contact-details";
@@ -156,8 +155,7 @@ function RoleSection({ title, roles, project }: { title: string; roles: Awaited<
                 {role.bullets.length === 0 && <li className="px-3 py-1 text-[13px] text-pending-ink">No lines yet, so this role shows up empty on a resume.</li>}
               </ul>
               <div className="mt-3 flex flex-wrap items-start gap-2 px-3 pb-1">
-                <DraftLinesToggle experienceId={role.experience.id} kind={role.experience.kind} ended={ended} description={role.experience.rawNotes ?? ""} existing={role.bullets.map((b) => b.text)} />
-                <FactRecall roles={[{ id: role.experience.id, name, lines: role.bullets.length }]} label="Ideas from similar roles" variant="outline" />
+                <DraftLinesToggle experienceId={role.experience.id} kind={role.experience.kind} ended={ended} description={role.experience.rawNotes ?? ""} existing={role.bullets.map((b) => b.text)} ideas />
               </div>
             </div>
           );

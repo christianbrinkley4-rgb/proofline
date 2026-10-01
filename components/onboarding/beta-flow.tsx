@@ -17,7 +17,6 @@ import { FIRST_RUN, PROGRESS_STEPS, type OnboardingStep } from "@/app/app/onboar
 import { PasteJobBox } from "@/components/coach/paste-job-box";
 import { ConfirmBox } from "@/components/facts/confirm-box";
 import { DraftLines } from "@/components/facts/draft-lines";
-import { RoleRecall } from "@/components/profile/role-recall";
 import { SearchableInput } from "@/components/shared/searchable-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -556,8 +555,7 @@ function ExperienceScreen({
           {unkept.map((role) => (
             <section key={role.id} aria-label={role.name} className="rounded-2xl border bg-background p-4 shadow-lift sm:p-5">
               <h2 className="font-display text-[19px] font-semibold">{role.name}</h2>
-              <DraftLines className="mt-4" experienceId={role.id} kind={role.kind} ended={role.ended} imported={role.lines} existing={role.saved} />
-              <RoleRecall experienceId={role.id} name={role.name} />
+              <DraftLines className="mt-4" experienceId={role.id} kind={role.kind} ended={role.ended} imported={role.lines} existing={role.saved} ideas />
             </section>
           ))}
         </div>
@@ -581,9 +579,9 @@ function ExperienceScreen({
             description={active.description}
             imported={active.imported}
             autoDraft
+            ideas
             onKeptChange={setKept}
           />
-          <RoleRecall key={`recall-${active.id}`} experienceId={active.id} name={active.name} />
         </section>
       )}
 

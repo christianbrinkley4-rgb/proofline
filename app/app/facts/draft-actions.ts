@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth";
 import { addBulletFact, deleteFact } from "@/lib/facts/base";
 import { getExperience, updateExperience } from "@/lib/kb/experiences";
 import { unsupportedNumbers } from "@/lib/resume/draft-bullets";
+import { rolePromptIdeas } from "@/lib/resume/onet-prompts";
 import { dashesToCommas, findVoiceIssues } from "@/lib/voice/rules";
 
 export type KeepResult = { ok: true; factId: string; text: string } | { ok: false; error: string };
@@ -68,4 +69,23 @@ export async function saveRoleNotesAction(experienceId: string, notes: string): 
   const id = z.uuid().safeParse(experienceId);
   if (!id.success) return;
   await updateExperience(userId, id.data, { rawNotes: notes.trim().slice(0, 4000) || null });
+}
+
+/**
+ * Lines that are common in this kind of job, from the role's title. They are
+ * questions, never claims: nothing is saved until the person says they did it and
+ * confirms the wording. A template with a blank to fill in is left out. The
+ * templates are all past tense, so a current role keeps them whole rather than
+ * changing only the first verb.
+ */
+export async function roleIdeasAction(experienceId: string, count = 3): Promise<string[]> {
+  const userId = (await requireSession()).user.id;
+  const id = z.uuid().safeParse(experienceId);
+  if (!id.success) return [];
+  const experience = await getExperience(userId, id.data);
+  if (!experience || experience.archivedAt) return [];
+  return rolePromptIdeas(experience.title?.trim() || experience.org, null, 12)
+    .filter((idea) => !/\[[^\]]*\]/.test(idea.template))
+    .slice(0, Math.max(1, Math.min(5, Math.floor(count))))
+    .map((idea) => idea.template);
 }

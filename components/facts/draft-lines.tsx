@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, LoaderCircle, Pencil, Plus, Sparkles, X } from "lucide-react";
-import { keepLineAction, saveRoleNotesAction, undoKeepAction } from "@/app/app/facts/draft-actions";
+import { keepLineAction, roleIdeasAction, saveRoleNotesAction, undoKeepAction } from "@/app/app/facts/draft-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { draftBullets, draftWithAnswer, type DraftLine } from "@/lib/resume/draft-bullets";
 import { cn } from "@/lib/utils";
 
-type Origin = "draft" | "resume" | "edited" | "own";
+/** idea: a task common in this kind of job, offered as a question until the person says they did it. */
+type Origin = "draft" | "resume" | "edited" | "own" | "idea";
 
 type Card = {
   key: string;
@@ -40,6 +41,8 @@ export type DraftLinesProps = {
   existing?: string[];
   /** Draft from the description as soon as this opens. */
   autoDraft?: boolean;
+  /** Also offer a few lines that are common in this kind of job. */
+  ideas?: boolean;
   /** Called with the number of lines kept so far. */
   onKeptChange?: (kept: number) => void;
   className?: string;
@@ -57,6 +60,19 @@ const fromDraft = (line: DraftLine, description: string): Card => ({
   state: "pending",
   answer: "",
   asked: !line.question,
+  error: null,
+  factId: null,
+});
+
+const fromIdea = (text: string, i: number): Card => ({
+  key: `i${i}-${text}`,
+  text,
+  origin: "idea",
+  sources: [],
+  draft: null,
+  state: "pending",
+  answer: "",
+  asked: true,
   error: null,
   factId: null,
 });
@@ -80,7 +96,7 @@ const fromResume = (text: string, i: number): Card => ({
  * each one. Only a kept or edited line becomes a confirmed fact; a draft never
  * reaches a resume, and a dropped one is gone.
  */
-export function DraftLines({ experienceId, kind, ended, description: initial = "", imported = [], existing = [], autoDraft = false, onKeptChange, className }: DraftLinesProps) {
+export function DraftLines({ experienceId, kind, ended, description: initial = "", imported = [], existing = [], autoDraft = false, ideas = false, onKeptChange, className }: DraftLinesProps) {
   const saved = new Set(existing.map(sameLine));
   const router = useRouter();
   const [description, setDescription] = useState(initial);
@@ -91,10 +107,33 @@ export function DraftLines({ experienceId, kind, ended, description: initial = "
     return [...fromFile, ...drafts];
   });
   const [thin, setThin] = useState(false);
-  // Lines from their own resume come first; describing more is one tap away.
-  const [describing, setDescribing] = useState(imported.length === 0 || Boolean(initial.trim()));
+  // With lines to look at, the box for describing the role stays closed until they want it.
+  const [describing, setDescribing] = useState(cards.length === 0);
   const kept = cards.filter((c) => c.state === "kept").length;
   const reported = useRef(-1);
+
+  // Common lines for the job come in after the first screen, and never repeat a line already here or saved.
+  useEffect(() => {
+    if (!ideas) return;
+    let active = true;
+    roleIdeasAction(experienceId)
+      .then((lines) => {
+        if (!active || !lines.length) return;
+        setCards((list) => {
+          const have = new Set([...saved, ...list.map((c) => sameLine(c.text))]);
+          const fresh = lines.filter((line) => !have.has(sameLine(line)));
+          return [...list, ...fresh.map(fromIdea)];
+        });
+        // Ideas are the quicker way in; describing the job stays one tap away.
+        setDescribing(false);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+    // Once per role; `saved` is only the lines it already has.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [experienceId, ideas]);
 
   useEffect(() => {
     if (reported.current !== kept) {
@@ -123,7 +162,6 @@ export function DraftLines({ experienceId, kind, ended, description: initial = "
     setCards((list) => [...list, { key: `own-${Date.now()}`, text: "", origin: "own", sources: [], draft: null, state: "editing", answer: "", asked: true, error: null, factId: null }]);
 
   const pending = cards.filter((c) => c.state !== "kept");
-  const hasDrafts = cards.some((c) => c.origin === "draft");
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -165,8 +203,7 @@ export function DraftLines({ experienceId, kind, ended, description: initial = "
         <div>
           {pending.length > 0 && (
             <p className="text-[13px] leading-5 text-muted-foreground">
-              {cards.some((c) => c.origin === "resume") && !hasDrafts ? "From your resume. " : "My drafts. "}
-              Keep the true ones, edit anything that&apos;s off, and drop the rest. Only what you keep goes on a resume.
+              Keep the lines that are true, edit any that are off, and drop the rest. Only what you keep goes on your resume.
             </p>
           )}
           <ul className="mt-3 space-y-2.5" aria-live="polite">
@@ -213,7 +250,7 @@ export function DraftLines({ experienceId, kind, ended, description: initial = "
       {!describing && (
         <Button type="button" size="sm" variant="outline" className="bg-background" onClick={() => setDescribing(true)}>
           <Sparkles data-icon="inline-start" />
-          Did more there? Describe it and I&apos;ll draft lines
+          Describe what you did and I&apos;ll draft more lines
         </Button>
       )}
       <button type="button" onClick={addOwn} className="inline-flex min-h-10 items-center gap-1 text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
@@ -242,7 +279,7 @@ function DraftCard({
   const [pending, start] = useTransition();
   const keep = () =>
     start(async () => {
-      const result = await keepLineAction({ experienceId, text: card.text, origin: card.origin, sources: card.answer ? [...card.sources, card.answer] : card.sources, confirmed: true }).catch(() => ({
+      const result = await keepLineAction({ experienceId, text: card.text, origin: card.origin === "idea" ? "edited" : card.origin, sources: card.answer ? [...card.sources, card.answer] : card.sources, confirmed: true }).catch(() => ({
         ok: false as const,
         error: "Couldn't reach Proofline. Check your connection and try again.",
       }));
@@ -260,7 +297,9 @@ function DraftCard({
 
   return (
     <div className="rounded-xl border border-pending/40 bg-pending-soft/40 p-3 sm:p-4">
-      <p className="text-[11.5px] font-medium text-pending-ink">{card.origin === "resume" ? "From your resume, not confirmed yet" : "Draft, not on your resume yet"}</p>
+      <p className="text-[11.5px] font-medium text-pending-ink">
+        {card.origin === "idea" ? "Common in jobs like this. Did you do this?" : card.origin === "resume" ? "From your resume, not confirmed yet" : "Draft, not on your resume yet"}
+      </p>
       <p className="mt-1 text-[15px] leading-6 font-medium text-foreground">{card.text}</p>
       {!card.asked && card.draft?.question && (
         <form
@@ -296,20 +335,34 @@ function DraftCard({
           {card.error}
         </p>
       )}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={keep} disabled={pending}>
-          {pending ? <LoaderCircle className="animate-spin" /> : <Check data-icon="inline-start" />}
-          Keep
-        </Button>
-        <Button type="button" size="sm" variant="outline" className="bg-background" onClick={() => onChange({ state: "editing", error: null })} disabled={pending}>
-          <Pencil data-icon="inline-start" />
-          Edit
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onDrop} disabled={pending}>
-          <X data-icon="inline-start" />
-          Drop
-        </Button>
-      </div>
+      {card.origin === "idea" ? (
+        // A common task is not a claim: "Yes" opens it for the person to put in their own words before it saves.
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" size="sm" onClick={() => onChange({ state: "editing", error: null })}>
+            <Check data-icon="inline-start" />
+            Yes, I did this
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={onDrop}>
+            <X data-icon="inline-start" />
+            Not me
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" size="sm" onClick={keep} disabled={pending}>
+            {pending ? <LoaderCircle className="animate-spin" /> : <Check data-icon="inline-start" />}
+            Keep
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="bg-background" onClick={() => onChange({ state: "editing", error: null })} disabled={pending}>
+            <Pencil data-icon="inline-start" />
+            Edit
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={onDrop} disabled={pending}>
+            <X data-icon="inline-start" />
+            Drop
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -338,7 +391,7 @@ function EditCard({ card, experienceId, onSaved, onCancel }: { card: Card; exper
       }}
     >
       <label htmlFor={`edit-${card.key}`} className="text-[13px] font-medium">
-        {card.origin === "own" ? "Your line" : "Say it your way"}
+        {card.origin === "own" ? "Your line" : card.origin === "idea" ? "Put it the way it really was" : "Say it your way"}
       </label>
       <p className="mt-0.5 text-[12.5px] leading-5 text-muted-foreground">Start with what you did. Add a number only if you could explain it in an interview.</p>
       <Textarea id={`edit-${card.key}`} value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={400} autoFocus className="mt-2 text-[14px] leading-6" />
