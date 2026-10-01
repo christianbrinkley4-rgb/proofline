@@ -87,6 +87,11 @@ describe("pasted resume edge cases", () => {
     expect(parsed.entries[0]).toMatchObject({ org: "Bull City Bistro", title: "General Manager", startDate: "2019-03", endDate: null });
   });
 
+  it("splits a title, organization, place, and dates written on one line", () => {
+    const parsed = parseResumeText("Jordan Lee\nEXPERIENCE\nFront Desk Assistant, City Clinic, Greensboro, NC    Jan 2024 - Present\n- Checked in about 30 patients a day");
+    expect(parsed.entries[0]).toMatchObject({ org: "City Clinic", title: "Front Desk Assistant", location: "Greensboro, NC", startDate: "2024-01", endDate: null });
+  });
+
   it("recognizes a title line followed by a company line", () => {
     const parsed = parseResumeText("Avery Lee\nEXPERIENCE\nGeneral Manager\nBull City Bistro\n• Scheduled staff shifts and tracked daily sales");
     expect(parsed.entries[0]).toMatchObject({ org: "Bull City Bistro", title: "General Manager" });

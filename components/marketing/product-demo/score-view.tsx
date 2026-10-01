@@ -58,7 +58,7 @@ export function ScoreView({
           <p className="flex items-start gap-2 text-[12.5px]">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              <span className="font-medium">Knockout: don&apos;t tailor for this job.</span> {knockout.reason}
+              <span className="font-medium">Dealbreaker: no resume for this job.</span> {knockout.reason}
             </span>
           </p>
         ) : (
@@ -174,7 +174,7 @@ export function ScoreView({
               </Button>
             ) : (
               <Button className="w-full" onClick={onTailor}>
-                Tailor my resume for this job
+                Make my resume for this job
                 <ArrowRight data-icon="inline-end" />
               </Button>
             )}

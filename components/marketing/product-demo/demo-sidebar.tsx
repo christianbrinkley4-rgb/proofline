@@ -9,7 +9,7 @@ const NAV = [
   { label: "Jobs", icon: ClipboardPaste, tabs: ["find", "score"] },
   { label: "Resumes", icon: FileText, tabs: ["tailor"] },
   { label: "Tracker", icon: SquareKanban, tabs: ["track"] },
-  { label: "My facts", icon: ListChecks, tabs: [] },
+  { label: "My experience", icon: ListChecks, tabs: [] },
 ] as const satisfies ReadonlyArray<{ label: string; icon: unknown; tabs: readonly DemoTab[] }>;
 
 const SAVED_ROLES = [
@@ -74,7 +74,7 @@ export function DemoSidebar({ tab, facts }: { tab: DemoTab; facts: { confirmed: 
           <span className="bg-pending transition-[width] duration-500" style={{ width: `${(toReview / total) * 100}%` }} />
         </div>
         <div className="mt-2 text-[11.5px] text-muted-foreground">
-          {confirmed} facts confirmed
+          {confirmed} things confirmed
           {toReview > 0 ? <span className="text-pending-ink"> · {toReview} to review</span> : " · all reviewed"}
         </div>
       </div>

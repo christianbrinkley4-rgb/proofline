@@ -248,7 +248,7 @@ function Results({ report }: { report: DefendReport }) {
       <section className="rounded-2xl bg-ink p-6 text-ink-foreground sm:p-8">
         <h2 className="font-display text-[26px] leading-tight font-semibold sm:text-[32px]">Fix it at the source.</h2>
         <p className="mt-3 max-w-xl text-[15px] leading-7 text-ink-muted">
-          {site.name} builds your resume only from facts you confirm. It asks for the real number instead of inventing one, and checks every line before you can download it.
+          {site.name} makes your resume only from what you confirm. It asks for the real number instead of inventing one, and checks every line before you can download it.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button size="lg" variant="secondary" asChild>

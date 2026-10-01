@@ -13,7 +13,7 @@ export function ClosingCta() {
             Summer 2027 internships are posting now.
           </h2>
           <p className="mx-auto mt-5 max-w-md text-[17px] leading-7 text-muted-foreground">
-            Start with a few facts about you and one job you want. Proofline takes it from there.
+            Start with your school, one thing you&apos;ve done, and a job you want. Proofline takes it from there.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="xl" asChild className="w-full px-6 sm:w-auto">

@@ -2,8 +2,8 @@ import { ArrowRight, Check, CircleAlert } from "lucide-react";
 import { Section, SectionHeading } from "./section";
 
 const CHECKED = [
-  { token: "40+", fact: "your fact about vendor accounts" },
-  { token: "$3,200", fact: "your fact about duplicate payments" },
+  { token: "40+", fact: "what you confirmed about vendor accounts" },
+  { token: "$3,200", fact: "what you confirmed about duplicate payments" },
 ];
 
 export function BulletWalkthrough() {
@@ -21,7 +21,7 @@ export function BulletWalkthrough() {
           </div>
           <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-brand-ink">
             <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />
-            Saved as a fact, exactly as you wrote it
+            Saved exactly as you wrote it
           </p>
         </Step>
 
@@ -38,7 +38,7 @@ export function BulletWalkthrough() {
           <div className="mt-3 rounded-lg border bg-background p-3 text-[13.5px] leading-6">
             Reconciled 40+ vendor accounts a month in QuickBooks, catching $3,200 in duplicate payments
           </div>
-          <p className="mt-2 text-[12.5px] text-muted-foreground">You edit your fact. Editing re-confirms it.</p>
+          <p className="mt-2 text-[12.5px] text-muted-foreground">You edit the line. Saving the edit confirms it again.</p>
         </Step>
 
         <Connector />

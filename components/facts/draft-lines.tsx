@@ -36,12 +36,17 @@ export type DraftLinesProps = {
   description?: string;
   /** Lines read from their own resume for this role, shown as cards to keep. */
   imported?: string[];
+  /** Lines this role already has, so a draft never repeats one. */
+  existing?: string[];
   /** Draft from the description as soon as this opens. */
   autoDraft?: boolean;
   /** Called with the number of lines kept so far. */
   onKeptChange?: (kept: number) => void;
   className?: string;
 };
+
+/** Two lines that differ only in case or punctuation are the same line. */
+const sameLine = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 const fromDraft = (line: DraftLine, description: string): Card => ({
   key: `${line.key}-${line.text}`,
@@ -75,16 +80,19 @@ const fromResume = (text: string, i: number): Card => ({
  * each one. Only a kept or edited line becomes a confirmed fact; a draft never
  * reaches a resume, and a dropped one is gone.
  */
-export function DraftLines({ experienceId, kind, ended, description: initial = "", imported = [], autoDraft = false, onKeptChange, className }: DraftLinesProps) {
+export function DraftLines({ experienceId, kind, ended, description: initial = "", imported = [], existing = [], autoDraft = false, onKeptChange, className }: DraftLinesProps) {
+  const saved = new Set(existing.map(sameLine));
   const router = useRouter();
   const [description, setDescription] = useState(initial);
   const [drafted, setDrafted] = useState(false);
   const [cards, setCards] = useState<Card[]>(() => {
     const fromFile = imported.map(fromResume);
-    const drafts = autoDraft && initial.trim() ? draftBullets({ kind, ended, description: initial }).map((l) => fromDraft(l, initial)) : [];
+    const drafts = autoDraft && initial.trim() ? draftBullets({ kind, ended, description: initial }).filter((l) => !saved.has(sameLine(l.text))).map((l) => fromDraft(l, initial)) : [];
     return [...fromFile, ...drafts];
   });
   const [thin, setThin] = useState(false);
+  // Lines from their own resume come first; describing more is one tap away.
+  const [describing, setDescribing] = useState(imported.length === 0 || Boolean(initial.trim()));
   const kept = cards.filter((c) => c.state === "kept").length;
   const reported = useRef(-1);
 
@@ -101,14 +109,12 @@ export function DraftLines({ experienceId, kind, ended, description: initial = "
   const draft = () => {
     const text = description.trim();
     if (!text) return;
-    const lines = draftBullets({ kind, ended, description: text });
-    // New drafts replace the old undecided ones; kept lines and open edits stay put.
-    setCards((list) => {
-      const settled = list.filter((c) => c.state !== "pending" || c.origin === "resume");
-      const known = new Set(settled.map((c) => c.text.toLowerCase()));
-      return [...settled, ...lines.filter((l) => !known.has(l.text.toLowerCase())).map((l) => fromDraft(l, text))];
-    });
-    setThin(lines.length < 2);
+    // New drafts replace the old undecided ones; kept lines, open edits, and lines already saved stay put.
+    const settled = cards.filter((c) => c.state !== "pending" || c.origin === "resume");
+    const known = new Set([...saved, ...settled.map((c) => sameLine(c.text))]);
+    const fresh = draftBullets({ kind, ended, description: text }).filter((l) => !known.has(sameLine(l.text)));
+    setCards([...settled, ...fresh.map((l) => fromDraft(l, text))]);
+    setThin(fresh.length < 2);
     setDrafted(true);
     void saveRoleNotesAction(experienceId, text).catch(() => undefined);
   };
@@ -121,7 +127,7 @@ export function DraftLines({ experienceId, kind, ended, description: initial = "
 
   return (
     <div className={cn("space-y-4", className)}>
-      {(imported.length === 0 || hasDrafts || drafted) && (
+      {describing && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -204,6 +210,12 @@ export function DraftLines({ experienceId, kind, ended, description: initial = "
         </div>
       )}
 
+      {!describing && (
+        <Button type="button" size="sm" variant="outline" className="bg-background" onClick={() => setDescribing(true)}>
+          <Sparkles data-icon="inline-start" />
+          Did more there? Describe it and I&apos;ll draft lines
+        </Button>
+      )}
       <button type="button" onClick={addOwn} className="inline-flex min-h-10 items-center gap-1 text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
         <Plus className="size-3.5" aria-hidden="true" />
         Write my own line instead

@@ -212,7 +212,7 @@ export const GUIDES: Guide[] = [
               "Read it out loud. If you wouldn't say it in an interview, rewrite it.",
             ],
           },
-          { kind: "p", text: "That's the idea behind Proofline: it only writes from facts you've confirmed and checks every number against them before you can download the page." },
+          { kind: "p", text: "That's the idea behind Proofline: it only writes from what you've confirmed and checks every number against it before you can download the page." },
         ],
       },
     ],

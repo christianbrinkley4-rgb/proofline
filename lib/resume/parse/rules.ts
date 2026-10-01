@@ -147,7 +147,8 @@ function parseEntry(section: ParsedEntry["section"], header: string[], bullets: 
   let roleParts = withoutLocation;
   if (roleParts.length === 1) {
     const comma = roleParts[0].match(/^(.+?),\s+(.+)$/);
-    if (comma && TITLE_NOUN.test(comma[2])) roleParts = [comma[1], comma[2]];
+    // "Org, Title" or "Title, Org": split when either side reads as a job title. The swap below orders them.
+    if (comma && (TITLE_NOUN.test(comma[2]) || TITLE_NOUN.test(comma[1]))) roleParts = [comma[1], comma[2]];
   }
   let [org = header[0] ?? "Untitled", title = null] = roleParts;
   // "Org | Title" and "Title | Org" (Proofline's own export) both occur; the role words decide.

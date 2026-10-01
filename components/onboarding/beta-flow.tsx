@@ -640,7 +640,16 @@ function ExperienceScreen({
           <p className="text-[12.5px] text-subtle-foreground">Saving confirms the title, place, and dates are right.</p>
         </form>
       ) : (
-        <Button variant="outline" className="mt-4 bg-background" onClick={() => (nextDraft ? review(nextDraft) : setOpen(true))}>
+        <Button
+          variant="outline"
+          className="mt-4 bg-background"
+          onClick={() => {
+            setEditing(null);
+            setV(blank);
+            setActive(null);
+            setOpen(true);
+          }}
+        >
           <Plus data-icon="inline-start" />
           Add another
         </Button>
@@ -833,12 +842,12 @@ function ResumeImport({ draft, onDraft, importing = false }: { draft: ResumeDraf
           <Check className="size-4 text-brand" strokeWidth={3} aria-hidden="true" />
           {importing
             ? `Read your resume. New to your account: ${draft.education.length} ${draft.education.length === 1 ? "school" : "schools"}, ${draft.roles.length} ${draft.roles.length === 1 ? "role or project" : "roles and projects"}.`
-            : `Read your resume: ${draft.roles.length} ${draft.roles.length === 1 ? "role or project" : "roles and projects"}, ${draft.skills.length} skills.`}
+            : `Read your resume: ${draft.roles.length} ${draft.roles.length === 1 ? "role" : "roles"} and ${draft.skills.length} ${draft.skills.length === 1 ? "skill" : "skills"}.`}
         </p>
         <p className="text-muted-foreground">
           {importing
             ? "Roles and schools you already saved are left alone. Check each screen, add what's new, and confirm it; skills you don't have yet are added on the skills screen."
-            : "We filled in what we found. Check each screen and fix anything that's off; nothing is saved until you confirm it."}
+            : "I filled in what I found. Fix anything that's off. Nothing is saved until you press save, and you'll check each resume line on the next screen."}
         </p>
       </div>
     );
@@ -847,12 +856,12 @@ function ResumeImport({ draft, onDraft, importing = false }: { draft: ResumeDraf
   return (
     <div className="mt-6 rounded-xl border bg-muted/30 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[14px] font-medium">Have a resume? Start from it.</p>
+        <p className="text-[14px] font-medium">Have a resume? Start from it and skip most of the typing.</p>
         <button type="button" onClick={() => setMode(mode === "file" ? "paste" : "file")} className="text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground">
           {mode === "file" ? "Paste text instead" : "Upload a file instead"}
         </button>
       </div>
-      <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">We&apos;ll fill in these screens for you to check. It takes a few seconds.</p>
+      <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">I&apos;ll fill in these screens for you to check. It takes a few seconds.</p>
       {mode === "file" ? (
         <label className={cn("mt-3 flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong bg-background px-4 text-[14px] transition-colors hover:bg-muted/50", pending && "pointer-events-none opacity-60")}>
           {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4 text-muted-foreground" aria-hidden="true" />}

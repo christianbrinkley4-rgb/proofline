@@ -10,26 +10,26 @@ import { Section, SectionHeading } from "./section";
 const STEPS = [
   {
     id: "story",
-    title: "Tell us about yourself",
-    text: "School, jobs, projects, skills, and licenses, in your own words. Each one is saved as a fact you confirm, and only those facts reach a resume.",
+    title: "Tell it what you've done",
+    text: "Your school, then a job, club, or class project in plain words. Proofline drafts the resume lines. You keep the true ones, and only those can reach a resume.",
     visual: <StoryVisual />,
   },
   {
     id: "paste",
     title: "Paste any job",
-    text: "A link from LinkedIn, Indeed, Handshake, or a company site, or the description itself. Knockouts come first, then a fit score with the math shown.",
+    text: "A link from LinkedIn, Indeed, Handshake, or a company site, or the description itself. Dealbreakers like a visa rule or a graduation date come first, then a fit score with the math shown.",
     visual: <PasteVisual />,
   },
   {
     id: "resumes",
-    title: "Get one tailored resume",
+    title: "Get a resume made for it",
     text: "The best one-page version for this job, in the employer's words where your experience fits them. A review checks every line before you can download it.",
     visual: <ReviewVisual />,
   },
   {
     id: "gaps",
     title: "Close the gaps",
-    text: "For each thing the posting wants that your resume doesn't show, it asks whether you've done anything like it. Your confirmed answer becomes a fact, and the resume rebuilds.",
+    text: "For each thing the posting wants that your resume doesn't show, it asks whether you've done anything like it. Your confirmed answer goes on the resume, and it rebuilds.",
     visual: <GapVisual />,
   },
 ];
@@ -37,7 +37,7 @@ const STEPS = [
 const THEN = [
   { icon: FileText, title: "Download", text: "PDF or DOCX, one page, in a layout applicant tracking systems read cleanly." },
   { icon: SquareKanban, title: "Track and follow up", text: "Every application on one board, with a follow-up reminder two weeks after you apply." },
-  { icon: ListChecks, title: "Your facts, your rules", text: "Every fact you've confirmed on one page. Edit or delete any of them." },
+  { icon: ListChecks, title: "Your experience, your rules", text: "Everything you've confirmed on one page. Edit or delete any of it." },
 ];
 
 export function Walkthrough() {
@@ -142,7 +142,7 @@ function PasteVisual() {
 
 function ReviewVisual() {
   const checks = [
-    ["Every number matches a fact you confirmed", true],
+    ["Every number matches something you confirmed", true],
     ["Fits on one page", true],
     ["Bullets lead with a result", false],
   ] as const;
@@ -182,7 +182,7 @@ function GapVisual() {
       <div className="flex items-center justify-between rounded-lg border border-brand/30 bg-brand-soft/70 px-3 py-2 text-[12px]">
         <span className="flex items-center gap-1.5 font-medium">
           <Check className="size-3.5 text-brand-ink" strokeWidth={3} />
-          Confirmed as a new fact
+          Confirmed and saved
         </span>
         <span className="font-medium text-brand-ink">Resume rebuilt</span>
       </div>

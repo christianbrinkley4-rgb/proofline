@@ -68,7 +68,7 @@ export function TailorView({ job, pending, hours, onConfirm, onRemove, onUndo }:
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
         <div className="min-w-0">
-          <div className="text-[12px] text-subtle-foreground">Tailored resume · v1</div>
+          <div className="text-[12px] text-subtle-foreground">Resume for this job</div>
           <h3 className="truncate text-[15px] font-semibold tracking-tight">
             {job.title} <span className="font-normal text-muted-foreground">at {job.company}</span>
           </h3>
@@ -392,7 +392,7 @@ function runChecks(bullets: ResumeBullet[], hasPending: boolean): QualityCheck[]
       : {
           label: "Every claim is confirmed",
           status: "pass",
-          detail: `All ${bullets.length} bullets trace back to facts you confirmed.`,
+          detail: `All ${bullets.length} lines trace back to what you confirmed.`,
         },
     weak.length
       ? { label: "Strong opening verbs", status: "fail", detail: `Weak openers: ${weak.join(", ")}.` }

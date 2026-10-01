@@ -14,7 +14,7 @@ export type DemoTab = "find" | "score" | "tailor" | "track";
 const STEPS: { id: DemoTab; label: string; blurb: string }[] = [
   { id: "find", label: "Find", blurb: "Paste postings you found. They line up by fit." },
   { id: "score", label: "Score", blurb: "A fit score out of 100, with the math shown." },
-  { id: "tailor", label: "Tailor", blurb: "A one-page resume from facts you confirmed." },
+  { id: "tailor", label: "Resume", blurb: "A one-page resume from what you confirmed." },
   { id: "track", label: "Track", blurb: "Every application and follow-up in one place." },
 ];
 

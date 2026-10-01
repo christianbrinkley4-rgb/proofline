@@ -21,8 +21,8 @@ export function Hero() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-[38rem] text-[17px] leading-7 text-pretty text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:160ms] sm:text-[19px] sm:leading-8">
-          Every line comes from something you confirmed. Nothing is invented. Paste any job and get your fit, one tailored
-          one-page resume, and exactly what would make it stronger.
+          Every line comes from something you confirmed. Nothing is invented. Paste any job and get your fit, a one-page
+          resume made for it, and exactly what would make it stronger.
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 motion-safe:animate-rise motion-safe:[animation-delay:240ms] sm:flex-row">

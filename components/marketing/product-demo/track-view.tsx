@@ -122,7 +122,7 @@ export function TrackView({ followUpSent, onMarkSent, onUndo }: { followUpSent: 
           </div>
           <div className="border-t px-4 py-3">
             <p className="mb-2.5 text-[12px] text-muted-foreground">
-              Written from facts you confirmed. Nothing sends until you send it.
+              Written from what you confirmed. Nothing sends until you send it.
             </p>
             <div className="flex gap-2">
               <Button size="sm" className="flex-1" onClick={copyDraft}>

@@ -21,7 +21,7 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
 
       <div className="flex items-center justify-between gap-4 border-b px-4 py-2.5 text-[12px] text-subtle-foreground sm:px-5">
         <span>
-          <span className="font-medium text-foreground">{DEMO_JOBS.length} saved roles</span>, each checked for knockouts, then scored
+          <span className="font-medium text-foreground">{DEMO_JOBS.length} saved roles</span>, each checked for dealbreakers, then scored
         </span>
         <span className="hidden shrink-0 lg:inline">Sorted by best fit</span>
       </div>
@@ -49,7 +49,7 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
                   {knockout && (
                     <span className="mt-1.5 flex items-start gap-1.5 text-[12px] text-pending-ink">
                       <TriangleAlert className="mt-px size-3.5 shrink-0" />
-                      <span className="line-clamp-2 sm:truncate">Knockout: {knockout.reason}</span>
+                      <span className="line-clamp-2 sm:truncate">Dealbreaker: {knockout.reason}</span>
                     </span>
                   )}
                 </span>
@@ -63,7 +63,7 @@ export function FindView({ onOpenJob }: { onOpenJob: (id: string) => void }) {
 
       <div className="mt-auto flex items-center gap-2 border-t bg-muted/40 px-4 py-2.5 text-[12px] text-muted-foreground sm:px-5">
         <span className="size-1.5 shrink-0 rounded-full bg-brand" />
-        Knockouts show first. A role you can&apos;t take never gets a tailored resume.
+        Dealbreakers show first. A role you can&apos;t take never gets a resume.
       </div>
     </div>
   );

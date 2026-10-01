@@ -4,11 +4,11 @@ import { Section, SectionHeading } from "./section";
 const FAQS = [
   {
     q: "Will it make things up to make me look better?",
-    a: "No. Proofline only writes from facts you've confirmed. If it thinks a number would make a bullet stronger, it asks you first. Anything unconfirmed is flagged on screen and can't be exported.",
+    a: "No. Proofline only writes from what you've confirmed. If it thinks a number would make a bullet stronger, it asks you first. Anything unconfirmed is flagged on screen and can't be exported.",
   },
   {
     q: "How is this different from other resume builders or ChatGPT?",
-    a: "Most tools write whatever sounds strongest, including numbers you never gave them, and some send applications for you. Proofline writes only from facts you've confirmed, checks every number against them, and leaves applying to you. You get fewer, better applications, and you can answer any question about your own resume.",
+    a: "Most tools write whatever sounds strongest, including numbers you never gave them, and some send applications for you. Proofline writes only from what you've confirmed, checks every number against them, and leaves applying to you. You get fewer, better applications, and you can answer any question about your own resume.",
   },
   {
     q: "Where do the jobs come from?",
@@ -16,7 +16,7 @@ const FAQS = [
   },
   {
     q: "How many resumes do I get per job?",
-    a: "One: the best version for that posting, built from your confirmed facts. If the posting asks for something you haven't shown, Proofline asks you about it instead of guessing.",
+    a: "One: the best version for that posting, made from what you've confirmed. If the posting asks for something you haven't shown, Proofline asks you about it instead of guessing.",
   },
   {
     q: "Does it apply for me?",

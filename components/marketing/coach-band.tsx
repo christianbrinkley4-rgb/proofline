@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 import { container } from "./section";
 
 const RAIL = [
-  { label: "Your facts", state: "done" },
+  { label: "Your experience", state: "done" },
   { label: "Paste a job", state: "done" },
-  { label: "Tailored resume", state: "done" },
+  { label: "Your resume", state: "done" },
   { label: "Close gaps", state: "current" },
 ] as const;
 
@@ -60,14 +60,14 @@ export function CoachBand() {
             <div className="text-[12px] font-medium text-brand-ink">Step 4 of 4</div>
             <div className="mt-1 font-display text-[22px] leading-tight font-semibold">The posting asks for journal entries. Have you done anything like it?</div>
             <p className="mt-2 text-[14px] leading-6 text-muted-foreground">
-              Answer in a sentence and confirm it. It becomes a fact in your own words. Haven&apos;t done it yet? Say so, and it won&apos;t ask again for this job.
+              Answer in a sentence and confirm it. It&apos;s saved in your own words. Haven&apos;t done it yet? Say so, and it won&apos;t ask again for this job.
             </p>
             <span className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-[14px] font-medium text-primary-foreground">
               Confirm and rebuild
               <ArrowRight className="size-4" />
             </span>
           </div>
-          <p className="mt-4 text-[12.5px] text-subtle-foreground">Your resume rebuilds with the new fact, and the review runs again.</p>
+          <p className="mt-4 text-[12.5px] text-subtle-foreground">Your resume rebuilds with the new line, and every line is checked again.</p>
         </div>
       </div>
     </section>
