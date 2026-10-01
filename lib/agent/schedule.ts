@@ -3,6 +3,7 @@ import { db, schema } from "@/lib/db";
 import { emailConfigured, sendEmail } from "@/lib/email";
 import { site } from "@/lib/site";
 import { logEvent } from "./events";
+import { clearRunFailure, recordRunFailure } from "./failure";
 import { runLoop, type LoopSummary } from "./loop";
 
 /**
@@ -99,6 +100,7 @@ export async function runScheduled(opts: { deadline?: Date; deps?: Partial<Sched
     }
     try {
       const summary = await deps.run(person.userId, person.email);
+      await clearRunFailure(person.userId, "later_run");
       stats.ran++;
       stats.ready += summary.ready;
       stats.needsYou += summary.needsYou;
@@ -112,7 +114,8 @@ export async function runScheduled(opts: { deadline?: Date; deps?: Partial<Sched
       }
     } catch (error) {
       stats.failed++;
-      console.error("[schedule] run failed:", error instanceof Error ? error.message : String(error));
+      // Logged with a code and kept on the person's Ready page, so a morning run that stopped is not silent.
+      await recordRunFailure(person.userId, "morning", error, deps.now());
     }
   }
   return stats;

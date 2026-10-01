@@ -8,6 +8,7 @@ import { migrate as migratePostgres } from "drizzle-orm/postgres-js/migrator";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { rejectRawDates } from "./strict-params";
 
 /**
  * One database handle for the whole server.
@@ -73,14 +74,14 @@ function create(): DbState {
   // Tests, and `next build` (which loads server modules in several worker processes at once),
   // get a throwaway in-memory database.
   if ((process.env.VITEST || process.env.NEXT_PHASE === "phase-production-build") && !process.env.PGLITE_DIR) {
-    const db = drizzlePglite(new PGlite(), { schema });
+    const db = drizzlePglite(new PGlite(), { schema, logger: rejectRawDates });
     return { db, ready: migratePglite(db, { migrationsFolder: MIGRATIONS }) };
   }
   const dataDir = process.env.PGLITE_DIR ?? path.join(process.cwd(), ".data", "pglite");
   mkdirSync(dataDir, { recursive: true });
   lockDataDir(dataDir);
   const client = new PGlite(dataDir);
-  const db = drizzlePglite(client, { schema });
+  const db = drizzlePglite(client, { schema, logger: rejectRawDates });
   const ready = migratePglite(db, { migrationsFolder: MIGRATIONS }).catch((error: unknown) => {
     const cause = error instanceof Error ? (error.cause instanceof Error ? error.cause.message : error.message) : String(error);
     if (/Aborted/.test(cause)) {

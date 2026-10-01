@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db, dbReady, schema } from "@/lib/db";
-import { ModelQuotaError, reserveModelCredits } from "./quota";
+import { ModelQuotaError, modelCreditsToday, reserveModelCredits } from "./quota";
 
 const userId = randomUUID();
 const otherId = randomUUID();
@@ -47,5 +47,20 @@ describe("daily model credits", () => {
     const rejected = results.find((result) => result.status === "rejected");
     expect(rejected).toMatchObject({ reason: { scope: "platform" } });
     expect((await reserveModelCredits(otherId, "beta.shared", 1, new Date("2026-10-04T00:01:00.000Z"), 10, 1)).used).toBe(1);
+  });
+});
+
+describe("showing today's credits", () => {
+  it("counts what enforcement counts, from the same UTC midnight, without spending any", async () => {
+    const id = randomUUID();
+    await db.insert(schema.user).values({ id, name: "Counter", email: "quota-" + id + "@example.invalid" });
+    const noon = new Date("2026-10-02T12:00:00.000Z");
+    expect(await modelCreditsToday(id, noon, 50)).toEqual({ used: 0, limit: 50, left: 50 });
+    await reserveModelCredits(id, "review.resume", 8, noon, 50);
+    expect(await modelCreditsToday(id, noon, 50)).toEqual({ used: 8, limit: 50, left: 42 });
+    expect(await modelCreditsToday(id, noon, 50)).toEqual({ used: 8, limit: 50, left: 42 });
+    // The next UTC day starts over, and a lowered limit never shows a negative.
+    expect(await modelCreditsToday(id, new Date("2026-10-03T00:00:01.000Z"), 50)).toEqual({ used: 0, limit: 50, left: 50 });
+    expect(await modelCreditsToday(id, noon, 5)).toEqual({ used: 8, limit: 5, left: 0 });
   });
 });

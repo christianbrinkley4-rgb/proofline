@@ -66,6 +66,16 @@ describe("the assisted loop", () => {
     await refreshFeed({ boards: [{ source: "greenhouse", slug: "loopco", company: "LoopCo" }], now: NOW, fetch: async () => [1, 2, 3, 4, 5].map((n) => posting(n)) });
   }, 60_000);
 
+  // The October 1 production crash: a brand-new account pressed "Find 3 ready to apply" and the run stopped
+  // before it touched a role. The test database now rejects the query the hosted one rejected (lib/db/strict-params.ts).
+  it("starts for a brand-new account: one school, one confirmed role, no earlier runs", async () => {
+    const userId = "loop-user-fresh";
+    await makeUser(userId);
+    expect(await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) })).toHaveLength(0);
+    const summary = await runLoop(userId, "fresh@example.com", { deps: deps() });
+    expect(summary).toEqual({ blocked: null, looked: 3, ready: 3, needsYou: 0, skipped: 0, unconfirmed: 0 });
+  });
+
   it("takes the best roles through live check, tracker, resume, and review, and records each stage", async () => {
     const userId = "loop-user-ready";
     await makeUser(userId);
@@ -159,15 +169,24 @@ describe("the assisted loop", () => {
     const userId = "loop-user-error";
     await makeUser(userId);
     let calls = 0;
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const summary = await runLoop(userId, "loop@example.com", {
       deps: deps({
         tailor: async (id, job) => {
-          if (calls++ === 0) throw new Error("The database hiccuped.");
+          if (calls++ === 0) throw new Error("Failed query: insert into resume (secret)");
           return deps().tailor!(id, job, "x");
         },
       }),
     });
     expect(summary).toMatchObject({ needsYou: 1, ready: 2 });
+    // The person reads a code, never the error; the log has the real error under the same code.
+    const [run] = await db.query.agentRun.findMany({ where: and(eq(schema.agentRun.userId, userId), eq(schema.agentRun.status, "needs_you")) });
+    const code = run.reason!.match(/code (ERR-[2-9A-HJKMNP-Z]{5})\)/)?.[1];
+    expect(code).toBeDefined();
+    expect(run.reason).not.toContain("Failed query");
+    const line = logged.mock.calls.map((c) => String(c[1])).find((l) => l.includes(code!));
+    expect(JSON.parse(line!)).toMatchObject({ code, userId, scope: "role", message: "Failed query: insert into resume (secret)" });
+    logged.mockRestore();
   });
 
   it("honors the person's dealbreakers and standing rules", async () => {

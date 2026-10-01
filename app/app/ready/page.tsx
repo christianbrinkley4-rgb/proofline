@@ -7,15 +7,18 @@ import { AutoRunToggle } from "@/components/ready/auto-run-toggle";
 import { ReasonForm } from "@/components/ready/reason-form";
 import { RecheckButton } from "@/components/ready/recheck-button";
 import { RuleList } from "@/components/ready/rule-list";
+import { RunFailureNotice } from "@/components/ready/run-failure";
 import { RunLoopButton } from "@/components/ready/run-loop-button";
 import { CompanyAvatar } from "@/components/shared/fit";
 import { Button } from "@/components/ui/button";
+import { lastRunFailure } from "@/lib/agent/failure";
 import { listRules } from "@/lib/agent/rules";
 import { listRuns, type RunItem } from "@/lib/agent/runs";
 import { requireSession } from "@/lib/auth";
 import { emailConfigured } from "@/lib/email";
 import { scoringReady } from "@/lib/facts/base";
 import { getProfile } from "@/lib/kb/profile";
+import { modelCreditsToday } from "@/lib/llm/quota";
 
 export const metadata: Metadata = { title: "Ready to apply" };
 // A run confirms postings live and reviews up to three resumes.
@@ -73,7 +76,7 @@ function Role({ run, children }: { run: RunItem; children?: React.ReactNode }) {
 export default async function ReadyPage() {
   const session = await requireSession();
   const userId = session.user.id;
-  const [runs, rules, readiness, profile] = await Promise.all([listRuns(userId), listRules(userId), scoringReady(userId), getProfile(userId)]);
+  const [runs, rules, readiness, profile, credits, failure] = await Promise.all([listRuns(userId), listRules(userId), scoringReady(userId), getProfile(userId), modelCreditsToday(userId), lastRunFailure(userId)]);
   const ready = runs.filter((r) => r.status === "ready");
   const needsYou = runs.filter((r) => r.status === "needs_you");
   const skipped = runs.filter((r) => r.status === "skipped");
@@ -88,6 +91,9 @@ export default async function ReadyPage() {
 
       <div className="mt-6">
         <RunLoopButton disabled={!readiness.ready} />
+        <p data-testid="model-credits" className="mt-2 text-[13px] text-muted-foreground">
+          {credits.left} of {credits.limit} model credits left today.{credits.left === 0 ? " They reset at midnight UTC." : ""}
+        </p>
         {!readiness.ready && (
           <p className="mt-3 text-[14px] text-muted-foreground">
             Add your {readiness.hasEducation ? "first role" : "school"} in{" "}
@@ -101,6 +107,8 @@ export default async function ReadyPage() {
           Postings on Greenhouse, Lever, Ashby, and SmartRecruiters can be confirmed open this way. Jobs from other sources stay in Find jobs, where you can open them yourself.
         </p>
       </div>
+
+      {failure && <RunFailureNotice code={failure.code} morning={failure.scope === "morning"} />}
 
       {readiness.ready && <AutoRunToggle initial={profile?.autoRun ?? false} mail={emailConfigured()} />}
 

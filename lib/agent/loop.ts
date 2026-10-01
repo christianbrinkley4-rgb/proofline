@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { scoringReady } from "@/lib/facts/base";
 import { loadCandidate } from "@/lib/fit/candidate";
@@ -14,6 +14,7 @@ import { tailorBestResume, type TailorOutcome } from "@/lib/resume/tailor-best";
 import { blockingFailures, readyBarFailures } from "@/lib/review/linter";
 import { runGate, type GateResult } from "@/lib/review/gate";
 import { trackJob } from "@/lib/tracker/service";
+import { reportError } from "./failure";
 import { dealBreakerMatches } from "./learn";
 import { letterStep, packageLetter, type LetterOutcome } from "./package-letter";
 import { logEvent } from "./events";
@@ -103,6 +104,9 @@ export function readyBarReason(gate: GateResult): string | null {
 }
 
 const step = (name: StepName, ok: boolean, note: string, at: Date): LoopStep => ({ step: name, ok, note, at: at.toISOString() });
+
+/** What the person reads when one role threw. The error itself is in the server log under this code. */
+const roleErrorReason = (code: string) => `Something stopped this role (code ${code}). Use Check again in a minute.`;
 
 /** Takes the role if nobody else has it; a crashed or unreachable earlier try may be picked up again. */
 async function claim(userId: string, jobId: string, started: Date): Promise<string | null> {
@@ -234,7 +238,7 @@ export async function recheckRun(userId: string, email: string, runId: string, o
     const [row] = await db.select({ reason: schema.agentRun.reason }).from(schema.agentRun).where(eq(schema.agentRun.id, runId));
     return { ok: true, status: outcome, reason: row?.reason ?? null };
   } catch (error) {
-    return failed(error instanceof Error ? error.message : "Something went wrong with this role.");
+    return failed(roleErrorReason(reportError(userId, "recheck", error, deps.now())));
   }
 }
 
@@ -244,7 +248,9 @@ async function startedToday(userId: string, now: Date): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(schema.agentRun)
-    .where(and(eq(schema.agentRun.userId, userId), sql`${schema.agentRun.createdAt} > ${since}`));
+    // gt() encodes the date for the column. A Date inside a sql`` template reaches the hosted
+    // database (postgres-js) unencoded and throws, which stopped every run before it began.
+    .where(and(eq(schema.agentRun.userId, userId), gt(schema.agentRun.createdAt, since)));
   return row?.n ?? 0;
 }
 
@@ -301,7 +307,7 @@ export async function runLoop(userId: string, email: string, opts: { limit?: num
     try {
       outcome = await runRole(userId, email, runId, job, item.score, steps, { candidate, profile }, deps);
     } catch (error) {
-      const reason = error instanceof Error ? error.message : "Something went wrong with this role.";
+      const reason = roleErrorReason(reportError(userId, "role", error, deps.now()));
       steps.push(step("resume", false, reason, deps.now()));
       await finish(runId, "needs_you", reason, steps);
       outcome = "needs_you";

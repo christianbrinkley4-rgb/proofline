@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { addReasonToRun, type AddReasonResult } from "@/lib/agent/add-reason";
 import { logEvent } from "@/lib/agent/events";
+import { clearRunFailure, recordRunFailure, reportError } from "@/lib/agent/failure";
 import { recheckRun, runLoop, type LoopSummary, type RecheckResult } from "@/lib/agent/loop";
 import { addRule, companyRule, removeRule, titleWordRule } from "@/lib/agent/rules";
 import { requireSession } from "@/lib/auth";
@@ -25,12 +26,24 @@ export async function runLoopAction(): Promise<{ ok: true; summary: LoopSummary 
   const session = await requireSession();
   try {
     const summary = await runLoop(session.user.id, session.user.email);
+    // A run that got through makes an earlier failure notice stale.
+    await clearRunFailure(session.user.id, "later_run");
     refresh();
     return { ok: true, summary };
-  } catch {
+  } catch (error) {
+    // The code is also kept on the Ready page, so it outlives the toast.
+    const { code } = await recordRunFailure(session.user.id, "run", error);
     refresh();
-    return { ok: false, error: "Something stopped the run. Whatever finished is saved below; try again in a minute." };
+    return { ok: false, error: `Something stopped the run (code ${code}). Whatever finished is saved below; try again in a minute.` };
   }
+}
+
+/** Dismisses the notice for a run that stopped. */
+export async function dismissRunFailureAction(): Promise<{ ok: true }> {
+  const session = await requireSession();
+  await clearRunFailure(session.user.id, "dismissed");
+  revalidatePath("/app/ready");
+  return { ok: true };
 }
 
 /** Turns the morning run on or off. It is the person's own setting, off until they choose it. */
@@ -57,9 +70,10 @@ export async function recheckRunAction(runId: string): Promise<RecheckResult> {
     const result = await recheckRun(session.user.id, session.user.email, id.data);
     refresh();
     return result;
-  } catch {
+  } catch (error) {
+    const code = reportError(session.user.id, "recheck", error);
     refresh();
-    return { ok: false, error: "Something stopped the check. Try again in a minute." };
+    return { ok: false, error: `Something stopped the check (code ${code}). Try again in a minute.` };
   }
 }
 

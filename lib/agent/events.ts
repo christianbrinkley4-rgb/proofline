@@ -46,6 +46,8 @@ export type AgentEventType =
   | "kit_sent"
   | "loop_started"
   | "loop_finished"
+  | "loop_failed"
+  | "loop_failure_dismissed"
   | "loop_scheduled"
   | "auto_run_changed"
   | "loop_role_dismissed"

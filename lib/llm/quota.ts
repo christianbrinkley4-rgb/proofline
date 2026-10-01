@@ -61,3 +61,17 @@ export async function reserveModelCredits(
     return { used: usage.total + credits, limit, resetAt };
   });
 }
+
+/**
+ * What this person has left of today's credits, for showing them. It counts the same
+ * events reserveModelCredits counts, from the same UTC midnight, and changes nothing.
+ */
+export async function modelCreditsToday(userId: string, now = new Date(), limit = dailyModelCredits()) {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const [usage] = await db.select({ total: count() }).from(schema.agentEvent).where(and(
+    eq(schema.agentEvent.userId, userId),
+    eq(schema.agentEvent.type, "model_credit_reserved"),
+    gte(schema.agentEvent.createdAt, start),
+  ));
+  return { used: usage.total, limit, left: Math.max(0, limit - usage.total) };
+}
