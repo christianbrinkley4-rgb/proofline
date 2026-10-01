@@ -10,7 +10,7 @@ import { scoreFit } from "@/lib/fit/engine";
 import { requirementsOf } from "@/lib/jobs/store";
 import { listApplications } from "@/lib/tracker/service";
 
-export const metadata: Metadata = { title: "Application tracker" };
+export const metadata: Metadata = { title: "Applications" };
 export default async function TrackerPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
   const session = await requireSession();
   const userId = session.user.id;
@@ -37,6 +37,6 @@ export default async function TrackerPage({ searchParams }: { searchParams: Prom
   }
   const activity = parseApplicationActivity(events);
   const initialAppId = typeof openApp === "string" && applications.some((a) => a.id === openApp) ? openApp : null;
-  return <PageBody className="max-w-[1600px]"><PageHeader title="Tracker" description="Every application on one board. Mark a role Applied and a follow-up comes due 14 days later." /><TrackerBoard applications={applications} insights={insights} activity={activity} name={session.user.name} now={new Date().toISOString()} initialAppId={initialAppId} /></PageBody>;
+  return <PageBody className="max-w-[1600px]"><PageHeader title="Applications" description="Every job you're applying to, on one board. Mark one Applied and I'll remind you to follow up 14 days later." /><TrackerBoard applications={applications} insights={insights} activity={activity} name={session.user.name} now={new Date().toISOString()} initialAppId={initialAppId} /></PageBody>;
 }
 

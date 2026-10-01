@@ -212,7 +212,7 @@ export function MarkSubmitted({ jobId, digest, company }: { jobId: string; diges
                 const result = await markSubmittedAction(jobId, digest);
                 if (result.ok) {
                   setOpen(false);
-                  toast("Saved as sent. It's in your tracker as Applied.");
+                  toast("Saved as sent. It's in your applications as Applied.");
                   router.refresh();
                   return;
                 }

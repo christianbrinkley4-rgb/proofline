@@ -233,7 +233,7 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
               )}
               {application && (
                 <Button size="lg" variant="ghost" asChild>
-                  <Link href={`/app/tracker?app=${application.id}`}>Open tracker</Link>
+                  <Link href={`/app/tracker?app=${application.id}`}>Open applications</Link>
                 </Button>
               )}
             </div>

@@ -27,7 +27,7 @@ export default async function ExtensionPage() {
   const connected = (await listTokens(session.user.id)).filter((t) => t.name === EXTENSION_TOKEN_NAME).length;
   return (
     <PageBody className="max-w-3xl">
-      <PageHeader title="Browser extension" description="Your fit score where you already look for jobs, less typing on application forms, and a tracker that stays current. Scores use only what you've already confirmed. Nothing new is collected." />
+      <PageHeader title="Browser extension" description="Your fit score where you already look for jobs, less typing on application forms, and an applications list that stays current. Scores use only what you've already confirmed. Nothing new is collected." />
       <div className="mt-8">
         <ConnectExtension connected={connected} />
       </div>

@@ -33,7 +33,7 @@ export default async function TodayPage() {
 
   return (
     <PageBody className="max-w-4xl">
-      <PageHeader title={greeting(profile?.fullName || session.user.name)} description="Paste a job you want and I'll make a one-page resume for it from what you've told me." />
+      <PageHeader title={greeting(profile?.fullName || session.user.name)} description="Paste a job you want. I'll show how well you fit, then make a one-page resume for it from what you've told me." />
 
       {!onboarded || !readiness.ready ? (
         <section className="mt-8 rounded-2xl border bg-background p-5 shadow-lift sm:p-6">
@@ -50,7 +50,15 @@ export default async function TodayPage() {
           </Button>
         </section>
       ) : (
-        <PasteJobBox className="mt-8" />
+        <>
+          <PasteJobBox className="mt-8" />
+          <p className="mt-3 text-[13px] text-muted-foreground">
+            No job in mind?{" "}
+            <Link href="/app/find" className="inline-flex min-h-6 items-center font-medium text-foreground underline-offset-2 hover:underline">
+              See internships and entry-level jobs that fit you
+            </Link>
+          </p>
+        </>
       )}
 
       {matches.length > 0 && (

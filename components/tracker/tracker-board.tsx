@@ -73,7 +73,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
         {[
           ["Applications", stats.applications, "Roles you've applied to"],
           ["Replies logged", repliesLogged, "Only replies you record"],
-          ["Active interviews & offers", stats.interviews, "Current tracker stage"],
+          ["Active interviews & offers", stats.interviews, "Current stage"],
           ["Follow-ups due", stats.dueFollowUps, "A good time to check in"],
         ].map(([label, value, detail]) => (
           <div key={label} className="rounded-xl border bg-background p-4">
@@ -91,7 +91,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
         <Button variant={dueOnly ? "secondary" : "outline"} size="sm" aria-pressed={dueOnly} onClick={() => setDueOnly(!dueOnly)}>
           <CalendarClock data-icon="inline-start" /> Follow-ups {stats.dueFollowUps > 0 && <span className="tabular-nums">{stats.dueFollowUps}</span>}
         </Button>
-        <div className="ml-auto flex rounded-lg border p-0.5" role="group" aria-label="Tracker view">
+        <div className="ml-auto flex rounded-lg border p-0.5" role="group" aria-label="Applications view">
           <Button variant={view === "board" ? "secondary" : "ghost"} size="icon-sm" aria-label="Board view" aria-pressed={view === "board"} onClick={() => setView("board")}><SquareKanban /></Button>
           <Button variant={view === "list" ? "secondary" : "ghost"} size="icon-sm" aria-label="List view" aria-pressed={view === "list"} onClick={() => setView("list")}><LayoutList /></Button>
         </div>
