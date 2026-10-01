@@ -188,12 +188,43 @@ describe("the assisted loop", () => {
 });
 
 describe("live posting check", () => {
+  const rejects = (status?: number) => async () => Promise.reject(status ? new SourceError(String(status), status) : new Error("offline"));
+
   it("reads a 404 as closed, other failures as unconfirmed, and never opens a board it cannot check", async () => {
-    expect(await checkPostingOpen("greenhouse", "acme:1", async () => ({}) as never)).toBe("open");
-    expect(await checkPostingOpen("greenhouse", "acme:1", async () => Promise.reject(new SourceError("404", 404)))).toBe("closed");
-    expect(await checkPostingOpen("greenhouse", "acme:1", async () => Promise.reject(new SourceError("500", 500)))).toBe("unconfirmed");
-    expect(await checkPostingOpen("greenhouse", "acme:1", async () => Promise.reject(new Error("offline")))).toBe("unconfirmed");
-    expect(await checkPostingOpen("lever", "acme:1", async () => ({}) as never)).toBe("unconfirmed");
+    for (const source of ["greenhouse", "lever", "smartrecruiters"] as const) {
+      expect(await checkPostingOpen(source, "acme:1", async () => ({}) as never), source).toBe("open");
+      expect(await checkPostingOpen(source, "acme:1", rejects(404)), source).toBe("closed");
+      expect(await checkPostingOpen(source, "acme:1", rejects(500)), source).toBe("unconfirmed");
+      expect(await checkPostingOpen(source, "acme:1", rejects()), source).toBe("unconfirmed");
+    }
+    expect(await checkPostingOpen("workday", "acme:1", async () => ({}) as never)).toBe("unconfirmed");
+    expect(await checkPostingOpen("greenhouse", "no-colon", async () => ({}) as never)).toBe("unconfirmed");
+  });
+
+  it("asks each board its own endpoint", async () => {
+    const asked: string[] = [];
+    const record = async (url: string) => {
+      asked.push(url);
+      return {} as never;
+    };
+    await checkPostingOpen("greenhouse", "acme:123", record);
+    await checkPostingOpen("lever", "acme:9f1c-22", record);
+    await checkPostingOpen("smartrecruiters", "LinkedIn3:7440001", record);
+    expect(asked).toEqual([
+      "https://boards-api.greenhouse.io/v1/boards/acme/jobs/123",
+      "https://api.lever.co/v0/postings/acme/9f1c-22",
+      "https://api.smartrecruiters.com/v1/companies/LinkedIn3/postings/7440001",
+    ]);
+  });
+
+  it("reads Ashby's board list, because Ashby has no public single-posting check", async () => {
+    const board = async () => ({ jobs: [{ id: "aaa" }, { id: "bbb" }] }) as never;
+    expect(await checkPostingOpen("ashby", "ramp:aaa", board)).toBe("open");
+    expect(await checkPostingOpen("ashby", "ramp:zzz", board)).toBe("closed");
+    // Not being able to read the list, or a reply with no list, says nothing about the posting.
+    expect(await checkPostingOpen("ashby", "ramp:aaa", rejects(500))).toBe("unconfirmed");
+    expect(await checkPostingOpen("ashby", "ramp:aaa", rejects(404))).toBe("unconfirmed");
+    expect(await checkPostingOpen("ashby", "ramp:aaa", async () => ({}) as never)).toBe("unconfirmed");
   });
 });
 

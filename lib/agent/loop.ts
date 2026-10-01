@@ -51,7 +51,7 @@ const STALE_RUNNING_MS = 10 * 60_000;
  */
 const RUN_TIME_MS = 60_000;
 
-const SOURCE_LABEL: Record<string, string> = { greenhouse: "Greenhouse" };
+const SOURCE_LABEL: Record<string, string> = { greenhouse: "Greenhouse", lever: "Lever", ashby: "Ashby", smartrecruiters: "SmartRecruiters" };
 
 export type LoopDeps = {
   checkLive: (source: JobRow["source"], sourceId: string) => Promise<LiveCheck>;

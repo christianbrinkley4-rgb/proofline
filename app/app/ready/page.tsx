@@ -94,7 +94,7 @@ export default async function ReadyPage() {
           </p>
         )}
         <p className="mt-3 max-w-2xl text-[13px] text-subtle-foreground">
-          Only Greenhouse postings can be confirmed open this way for now. Jobs from other boards stay in Find jobs, where you can open them yourself.
+          Postings on Greenhouse, Lever, Ashby, and SmartRecruiters can be confirmed open this way. Jobs from other sources stay in Find jobs, where you can open them yourself.
         </p>
       </div>
 

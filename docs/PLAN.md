@@ -4,6 +4,10 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## October 1 roadmap Phase 5, item 8: more boards the Ready loop can confirm open (committed locally, not deployed)
+
+The registry has 53 Greenhouse boards and 43 on other systems (13 Lever, 23 Ashby, 7 SmartRecruiters), but only Greenhouse had a live open check, so the Ready loop skipped almost half of Find jobs. `checkPostingOpen` (`lib/jobs/feed/verify-live.ts`) now covers all four. Lever and SmartRecruiters answer 404 once a posting is gone, like Greenhouse. Ashby's single-posting endpoint is private (401) and its job pages answer 200 for any id, so its public board list is read (about 2.6 MB for a large board) and the posting is open if it is on the list; a list that cannot be read, or has no list, is "unconfirmed" and never closes anything. Checked against live boards: an open and a made-up posting on each source, and a board that does not exist, all gave the right answer in under a second. Still not covered: aggregators and company portals (Workday, Adzuna, USAJobs, The Muse, Himalayas, Jobicy) have no single-posting check, which is the next step on the roadmap.
+
 ## October 1 roadmap Phase 4: a gate with more than one reviewer (committed locally, not deployed)
 
 The roadmap called the single review model the weakest link. The resume gate and the cover letter gate now go through `lib/review/consensus.ts`.
