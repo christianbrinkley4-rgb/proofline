@@ -8,6 +8,7 @@ import { archiveExperienceAction, updateExperienceAction } from "@/app/app/profi
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { MonthInput } from "@/components/ui/month-input";
 import { SearchableInput } from "@/components/shared/searchable-input";
 import type { ExperienceDetails } from "@/lib/kb/experiences";
 
@@ -119,12 +120,12 @@ export function ExperienceEdit({ experience }: { experience: EditableExperience 
             </label>
             <label className={field}>
               <span>Started</span>
-              <Input name="startDate" type="month" defaultValue={asMonth(experience.startDate)} />
+              <MonthInput name="startDate" defaultValue={asMonth(experience.startDate)} />
               <YearHint value={experience.startDate} />
             </label>
             <label className={field}>
               <span>Ended</span>
-              <Input name="endDate" type="month" defaultValue={asMonth(experience.endDate)} disabled={current} />
+              <MonthInput name="endDate" defaultValue={asMonth(experience.endDate)} disabled={current} />
               {!current && <YearHint value={experience.endDate} />}
             </label>
             <label className="flex items-center gap-2 text-[13px] sm:col-span-2">

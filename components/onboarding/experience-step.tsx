@@ -10,6 +10,7 @@ import {
 } from "@/app/app/onboarding/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthInput } from "@/components/ui/month-input";
 import { Textarea } from "@/components/ui/textarea";
 import { EvidenceTag } from "@/components/shared/evidence-tag";
 import { SearchableInput } from "@/components/shared/searchable-input";
@@ -134,10 +135,10 @@ function ExperienceForm({ onDone, onCancel }: { onDone: () => void; onCancel?: (
           <SearchableInput id="title" kind="roles" value={values.title} onChange={(title) => setValues((v) => ({ ...v, title }))} placeholder="Search jobs or type your title" />
         </Field>
         <Field label="Started" htmlFor="startDate">
-          <Input id="startDate" type="month" value={values.startDate} onChange={set("startDate")} className="h-10" />
+          <MonthInput id="startDate" value={values.startDate} onChange={(value) => setValues((v) => ({ ...v, startDate: value }))} />
         </Field>
         <Field label="Ended" htmlFor="endDate" hint="Leave blank if you're still there.">
-          <Input id="endDate" type="month" value={values.endDate} onChange={set("endDate")} className="h-10" />
+          <MonthInput id="endDate" value={values.endDate} onChange={(value) => setValues((v) => ({ ...v, endDate: value }))} />
         </Field>
       </div>
       <Field label="What did you do there?" htmlFor="notes" hint="A few sentences is plenty. Rough is fine.">

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { addFactAction, addRoleAction, deleteEducationAction, deleteFactAction, deleteRoleAction, editFactAction, type FactActionResult } from "@/app/app/facts/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthInput } from "@/components/ui/month-input";
 import { Textarea } from "@/components/ui/textarea";
 import type { FactGroup } from "@/lib/facts/base";
 import { cn } from "@/lib/utils";
@@ -316,11 +317,11 @@ export function AddRole({ project }: { project?: boolean }) {
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[12.5px]">
             <span className="text-muted-foreground">Start</span>
-            <Input type="month" value={startDate} onChange={(e) => setStart(e.target.value)} className="mt-1 h-10" />
+            <MonthInput value={startDate} onChange={setStart} className="mt-1" />
           </label>
           <label className="text-[12.5px]">
             <span className="text-muted-foreground">End (blank if current)</span>
-            <Input type="month" value={endDate} onChange={(e) => setEnd(e.target.value)} className="mt-1 h-10" />
+            <MonthInput value={endDate} onChange={setEnd} className="mt-1" />
           </label>
         </div>
       </div>

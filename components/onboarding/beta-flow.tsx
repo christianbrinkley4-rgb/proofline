@@ -20,6 +20,7 @@ import { DraftLines } from "@/components/facts/draft-lines";
 import { SearchableInput } from "@/components/shared/searchable-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MonthInput } from "@/components/ui/month-input";
 import { cn } from "@/lib/utils";
 import type { DraftResponse } from "@/app/api/onboarding/resume-draft/route";
 import { Textarea } from "@/components/ui/textarea";
@@ -266,7 +267,7 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
           </Field>
         </div>
         <Field label="Graduation month" hint="Expected is fine." htmlFor="gradDate-0">
-          <Input id="gradDate-0" type="month" value={first.gradDate} onChange={(e) => setEntry(0, "gradDate", e.target.value)} required className="h-10" />
+          <MonthInput id="gradDate-0" value={first.gradDate} onChange={(value) => setEntry(0, "gradDate", value)} required />
         </Field>
         <Field label="Name on your resume" htmlFor="fullName">
           <Input id="fullName" value={v.fullName} onChange={(e) => set("fullName")(e.target.value)} required maxLength={120} className="h-10" />
@@ -323,7 +324,7 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
                     <SearchableInput id={`major-${index}`} kind="fields" value={entry.major} onChange={(value) => setEntry(index, "major", value)} maxLength={160} />
                   </Field>
                   <Field label="Graduation month" htmlFor={`gradDate-${index}`}>
-                    <Input id={`gradDate-${index}`} type="month" value={entry.gradDate} onChange={(e) => setEntry(index, "gradDate", e.target.value)} required className="h-10" />
+                    <MonthInput id={`gradDate-${index}`} value={entry.gradDate} onChange={(value) => setEntry(index, "gradDate", value)} required />
                   </Field>
                   <Field label="GPA" htmlFor={`gpa-${index}`}>
                     <Input id={`gpa-${index}`} inputMode="decimal" value={entry.gpa} onChange={(e) => setEntry(index, "gpa", e.target.value)} maxLength={4} className="h-10" />
@@ -625,10 +626,10 @@ function ExperienceScreen({
               <Input id="org" value={v.org} onChange={(e) => setV((x) => ({ ...x, org: e.target.value }))} required maxLength={160} className="h-10" />
             </Field>
             <Field label={isProject ? "Start (optional)" : "Start"} htmlFor="start">
-              <Input id="start" type="month" value={v.startDate} onChange={(e) => setV((x) => ({ ...x, startDate: e.target.value }))} required={!isProject} className="h-10" />
+              <MonthInput id="start" value={v.startDate} onChange={(value) => setV((x) => ({ ...x, startDate: value }))} required={!isProject} />
             </Field>
             <Field label="End" hint="Leave blank if you're still there." htmlFor="end">
-              <Input id="end" type="month" value={v.endDate} onChange={(e) => setV((x) => ({ ...x, endDate: e.target.value }))} className="h-10" />
+              <MonthInput id="end" value={v.endDate} onChange={(value) => setV((x) => ({ ...x, endDate: value }))} />
             </Field>
           </div>
           <Field label={editing ? "Anything your resume left out? (optional)" : "What did you do there?"} hint="Plain words are fine. Put in any numbers you remember." htmlFor="describe">
@@ -776,7 +777,7 @@ function LogisticsScreen({ data, onBack, onDone, onSkip }: { data: BetaOnboardin
           <PillChoice label="Relocation" options={RELOCATE_OPTIONS} value={v.openToRelocate ? [v.openToRelocate] : []} onChange={(next) => setV((x) => ({ ...x, openToRelocate: next[0] ?? "" }))} />
         </Field>
         <Field label="Earliest month you can start" htmlFor="available">
-          <Input id="available" type="month" value={v.availableFrom} onChange={(e) => setV((x) => ({ ...x, availableFrom: e.target.value }))} className="h-10 max-w-56" />
+          <MonthInput id="available" value={v.availableFrom} onChange={(value) => setV((x) => ({ ...x, availableFrom: value }))} className="max-w-56" />
         </Field>
       </div>
       <ErrorLine error={error} />
