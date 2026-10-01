@@ -3,6 +3,7 @@ import { findLetterFiller, findVoiceIssues } from "@/lib/voice/rules";
 import { verifyBullet } from "@/lib/resume/verify";
 import { formatMonth } from "@/lib/resume/parse/dates";
 import { skillCategory } from "@/lib/fit/skills";
+import { employerWording } from "@/lib/resume/employer-wording";
 import { roleName } from "@/lib/jobs/text";
 import { asSentence, type Evidence } from "./evidence";
 
@@ -42,6 +43,8 @@ export type LetterContext = {
   contactName?: string | null;
   /** The person's own reason for wanting this job, in their words. */
   why?: string | null;
+  /** The posting's text, so a skill is named the way the employer names it. */
+  postingText?: string | null;
   /** Ranked, most relevant first. */
   evidence: Evidence[];
   now?: Date;
@@ -93,6 +96,17 @@ function ownWords(why: string): string {
   return /[.!?]$/.test(clean) ? clean : `${clean}.`;
 }
 
+/**
+ * A skill as the posting words it, when that is the same thing: "account
+ * reconciliations" where the posting says so, "accounts payable (A/P)" where it
+ * uses the acronym. Anything else keeps the person's own name for it.
+ */
+export function skillInSentence(skill: string, postingText?: string | null): string {
+  const theirs = postingText ? employerWording(skill, postingText) : null;
+  if (!theirs) return inSentence(skill);
+  return theirs.startsWith(skill) ? `${inSentence(skill)}${theirs.slice(skill.length)}` : inSentence(theirs);
+}
+
 /** Rules-only draft. Picks the strongest evidence for the posting and says only what it shows. */
 export function draftCoverLetterOffline(ctx: LetterContext): CoverLetter {
   const paragraphs: LetterParagraph[] = [];
@@ -134,7 +148,7 @@ export function draftCoverLetterOffline(ctx: LetterContext): CoverLetter {
   const shown = [...new Set(picked.flatMap((e) => e.covers))].slice(0, 3);
   if (shown.length) {
     paragraphs.push({
-      text: `That work gave me hands-on practice with ${listPhrase(shown.map(inSentence))}, which your posting asks for.`,
+      text: `That work gave me hands-on practice with ${listPhrase(shown.map((skill) => skillInSentence(skill, ctx.postingText)))}, which your posting asks for.`,
       sourceIds: picked.filter((e) => e.covers.some((c) => shown.includes(c))).map((e) => e.id),
       purpose: "fit",
     });

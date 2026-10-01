@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findVoiceIssues } from "@/lib/voice/rules";
-import { checkCoverLetter, draftCoverLetterOffline, inSentence, letterText, roleWithNoun, WHY_PLACEHOLDER, type CoverLetter } from "./cover-letter";
+import { checkCoverLetter, draftCoverLetterOffline, inSentence, letterText, roleWithNoun, skillInSentence, WHY_PLACEHOLDER, type CoverLetter } from "./cover-letter";
 import { asSentence, lowerFirst, rankEvidence, requirementLabels, selectEvidenceForLetter, type EvidenceInput } from "./evidence";
 import { interviewPrep, storyParts } from "./interview";
 
@@ -70,6 +70,17 @@ describe("cover letter", () => {
     expect(evidenceParas.flatMap((p) => p.sourceIds).length).toBeGreaterThan(1);
     const checks = checkCoverLetter(letter, FACTS, BY_ID);
     expect(checks.find((c) => c.id === "evidence")!.ok).toBe(true);
+  });
+
+  it("names a skill the way the posting does when it is the same thing, and the person's own way otherwise", () => {
+    expect(skillInSentence("Account reconciliation", "You will own account reconciliations each month.")).toBe("account reconciliations");
+    expect(skillInSentence("Accounts payable", "Process A/P for 30 vendors")).toBe("accounts payable (A/P)");
+    expect(skillInSentence("QuickBooks", "Experience with Quickbooks required")).toBe("QuickBooks");
+    expect(skillInSentence("Excel", "Advanced pivot tables and VLOOKUP")).toBe("Excel");
+    expect(skillInSentence("Account reconciliation")).toBe("account reconciliation");
+    const letter = draftCoverLetterOffline({ ...base, postingText: "Own the account reconciliations and the month-end close." });
+    const fit = letter.paragraphs.find((p) => p.purpose === "fit");
+    if (fit) expect(fit.text).not.toMatch(/account reconciliation[^s]/);
   });
 
   it("uses the right article for a completed associate degree", () => {

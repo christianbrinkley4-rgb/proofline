@@ -110,6 +110,7 @@ export async function loadPacketContext(userId: string, jobId: string): Promise<
       company: job.company,
       title: job.title,
       contactName: contact?.name ?? null,
+      postingText: job.description,
       evidence,
     },
   };
