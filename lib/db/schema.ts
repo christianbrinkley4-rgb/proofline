@@ -617,6 +617,36 @@ export const agentEvent = pgTable(
   (t) => [index("agent_event_user_type_idx").on(t.userId, t.type)],
 );
 
+/**
+ * One pass of the assisted loop over one posting (lib/agent/loop.ts). `steps` is the
+ * trail the person reads: each stage the role passed or stopped at, with why.
+ * `status` is where it ended: ready (resume passed review), needs_you (something only
+ * the person can fix), skipped (closed, a dealbreaker, or a standing rule), or
+ * unconfirmed (the employer's board couldn't be reached, so it is tried again later).
+ */
+export const agentRun = pgTable(
+  "agent_run",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => job.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    reason: text("reason"),
+    steps: jsonb("steps").$type<Array<Record<string, unknown>>>().notNull(),
+    resumeId: uuid("resume_id").references(() => resume.id, { onDelete: "set null" }),
+    applicationId: uuid("application_id").references(() => application.id, { onDelete: "set null" }),
+    /** Set when the person dismisses the result from the Ready page. */
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("agent_run_user_job_uidx").on(t.userId, t.jobId), index("agent_run_user_idx").on(t.userId, t.status)],
+);
+
 export const chatMessage = pgTable(
   "chat_message",
   {

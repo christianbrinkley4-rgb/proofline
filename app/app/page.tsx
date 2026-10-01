@@ -5,6 +5,7 @@ import { PasteJobBox } from "@/components/coach/paste-job-box";
 import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/auth";
 import { scoringReady } from "@/lib/facts/base";
+import { listRuns } from "@/lib/agent/runs";
 import { listMatches } from "@/lib/jobs/store";
 import { factCounts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
@@ -21,13 +22,15 @@ function greeting(name: string) {
 export default async function TodayPage() {
   const session = await requireSession();
   const userId = session.user.id;
-  const [profile, facts, applications, matches, readiness] = await Promise.all([
+  const [profile, facts, applications, matches, readiness, runs] = await Promise.all([
     getProfile(userId),
     factCounts(userId),
     listApplications(userId),
     listMatches(userId, ["new", "saved"], 5),
     scoringReady(userId),
+    listRuns(userId),
   ]);
+  const readyCount = runs.filter((r) => r.status === "ready").length;
   const stats = trackerStats(applications);
   const onboarded = Boolean(profile?.onboardingCompletedAt);
 
@@ -59,6 +62,16 @@ export default async function TodayPage() {
             </Link>
           </p>
         </>
+      )}
+
+      {readyCount > 0 && (
+        <Link href="/app/ready" className="mt-8 flex items-center gap-3 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-[14px] text-brand-ink hover:bg-brand-soft/70">
+          <span className="min-w-0 flex-1 font-medium">
+            {readyCount === 1 ? "1 job is ready to apply" : `${readyCount} jobs are ready to apply`}
+            <span className="block text-[12.5px] font-normal">Each resume passed review against your facts.</span>
+          </span>
+          <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+        </Link>
       )}
 
       {matches.length > 0 && (

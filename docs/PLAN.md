@@ -4,6 +4,12 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## October 1 agent loop: Ready to apply (Phase 2 of docs/AGENT-UPGRADE.md, committed locally, not deployed)
+
+`/app/ready` (desktop nav, a button on Find jobs, a card on Home when something is ready) runs the assisted loop over the best-fitting open Greenhouse roles in the person's feed: live check, dealbreakers and knockouts, save to Applications, resume from confirmed facts, review gate. Results are Ready (passed review), Needs you (with the reason from the gate or the resume builder), Skipped (with the reason), or unconfirmed (board unreachable, tried again next run). "Not for me" can add a permanent rule (never this employer, skip a title word) that Find jobs also follows; rules show on the same page with a remove button. Details, caps, and what is not built: `docs/AGENT-UPGRADE.md`, "Phase 2 progress". Migration `0019_agent_run.sql`.
+
+Checked locally: 15 new tests (loop stages, caps, closed postings, unreachable boards, review failure, error in one role, dealbreakers, rules); a real run on the sample account against live Greenhouse postings (three roles taken through live check, tracker, resume, and gate; all three stopped at the gate's "every claim matches something you confirmed" check, the same result the job page gives that account); "Never show jobs at Coinbase" removed the role from Applications and Find jobs; no horizontal overflow at 375px. To release: deploy, confirm migration 0019 ran, press the button once on the owner's account and read the result.
+
 ## September 30 owner's report: extension, resume lines, duplicate schools (live)
 
 The owner reported three problems; all are fixed and deployed (`dpl_8QbcyBQ7qVRNxMU5wDr6pscKyC2F`, then `dpl_2jbu7ACbSJHo8WMqb6B3BybXNgn6`).

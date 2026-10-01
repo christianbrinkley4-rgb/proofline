@@ -1,5 +1,9 @@
 # Handoff to Cursor (September 28, 2026)
 
+## October 1 agent loop (committed locally, not deployed)
+
+The owner supplied `docs/AGENT-UPGRADE.md` (the plan for turning Proofline into an autonomous application agent) and chose to start Phase 2 before its Phase 1 gate. `/app/ready` now runs one continuous loop over open Greenhouse roles: live check, dealbreakers and knockouts, tracker, resume from confirmed facts, review gate, with every stage recorded. Corrections become standing rules (profile dealbreakers). It never submits anything. See `docs/AGENT-UPGRADE.md` "Phase 2 progress" and `docs/PLAN.md` for what is verified and what is not (no run has reached "Ready" against the real review model yet). To release: `npx vercel@60.1.3 --prod --yes`, confirm migration 0019, press "Find 3 ready to apply" on the owner's account.
+
 ## September 30 simplification pass
 
 Onboarding is three screens, roles get recommended resume lines (Keep, Edit, Drop), and the interface drops internal words. Signup to a downloaded resume went from 10 screens and 13 clicks (with an empty role) to 6 screens and 9 clicks (with two real lines). Details, the jargon table, and what was flagged: `docs/SIMPLIFY-AUDIT.md`. Commit `43766ef` is live as Ready production deployment `dpl_Cc53UAjWXJttyPAG5pTYAWtBY9wT` (no new migration). Live checks: home, /check, /privacy, /login, and /signup 200 with the new copy; signed-out My experience 307 to login; development login 404; no errors in the logs. The first deploy attempt returned "Not authorized" during upload and the retry with the same CLI (60.1.3) succeeded. Signed-in flows were checked on localhost with synthetic data and a stand-in for the review model, not on production. Testers should reload open tabs.

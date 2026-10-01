@@ -107,6 +107,9 @@ const KNOWN: Array<{ match: RegExp; posting: RegExp }> = [
   { match: /^relocation$/, posting: /\b(must|required to|willing(ness)? to) relocate\b|\brelocation (is )?required\b/i },
 ];
 
+/** True for the dealbreakers onboarding offers, which are read from the posting text rather than the title. */
+export const isKnownDealBreaker = (raw: string) => KNOWN.some((k) => k.match.test(raw.trim().toLowerCase()));
+
 /**
  * Deal-breakers as search exclusions. "company:Walmart" matches the employer; the
  * onboarding choices match what postings actually say; anything else matches the title.

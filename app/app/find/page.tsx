@@ -39,6 +39,11 @@ export default async function FindJobsPage({ searchParams }: { searchParams: Pro
             ? `Internships and early-career jobs from ${feed.employers} employers, scored against your confirmed facts. Knockouts come first, and every score shows its math when you open the job.`
             : "Internships and entry-level jobs straight from employers, scored against what you've confirmed."
         }
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/app/ready">Ready to apply</Link>
+          </Button>
+        }
       />
 
       {!readiness.ready && (

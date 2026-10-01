@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ClipboardPaste, House, ListChecks, LogOut, Search, Settings, SquareKanban, type LucideIcon } from "lucide-react";
+import { CircleCheckBig, ClipboardPaste, House, ListChecks, LogOut, Search, Settings, SquareKanban, type LucideIcon } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
 import {
@@ -24,6 +24,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon; mobile?: boolean
 const NAV: NavItem[] = [
   { href: "/app", label: "Home", icon: House, mobile: true },
   { href: "/app/find", label: "Find jobs", icon: Search, mobile: true },
+  { href: "/app/ready", label: "Ready to apply", icon: CircleCheckBig },
   { href: "/app/jobs", label: "My jobs", icon: ClipboardPaste, mobile: true },
   { href: "/app/facts", label: "My experience", short: "Experience", icon: ListChecks, mobile: true },
   { href: "/app/tracker", label: "Applications", icon: SquareKanban, mobile: true },

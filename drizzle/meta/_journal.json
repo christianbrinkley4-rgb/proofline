@@ -134,6 +134,13 @@
       "when": 1790793600000,
       "tag": "0018_application_sent",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790880000000,
+      "tag": "0019_agent_run",
+      "breakpoints": true
     }
   ]
 }

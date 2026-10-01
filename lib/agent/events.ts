@@ -41,7 +41,12 @@ export type AgentEventType =
   | "exported"
   | "practice_answered"
   | "proof_shared"
-  | "kit_sent";
+  | "kit_sent"
+  | "loop_started"
+  | "loop_finished"
+  | "loop_role_dismissed"
+  | "rule_added"
+  | "rule_removed";
 
 export async function logEvent(userId: string, type: AgentEventType, data: Record<string, unknown> = {}) {
   await db.insert(schema.agentEvent).values({ userId, type, data });
