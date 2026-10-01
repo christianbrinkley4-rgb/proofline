@@ -309,6 +309,17 @@ describe("checking a stopped role again", () => {
     await db.update(schema.job).set({ closedAt: null, listedAt: new Date() }).where(eq(schema.job.id, stopped.jobId));
   });
 
+  it("keeps the tracker entry when the check ends early", async () => {
+    const userId = "loop-user-recheck-link";
+    await makeUser(userId);
+    await runLoop(userId, "loop@example.com", { limit: 1, deps: deps({ review: async () => failingGate() }) });
+    const [stopped] = await db.query.agentRun.findMany({ where: eq(schema.agentRun.userId, userId) });
+    expect(stopped.applicationId).not.toBeNull();
+    await recheckRun(userId, "loop@example.com", stopped.id, { deps: deps({ checkLive: async () => "unconfirmed" }) });
+    const after = await db.query.agentRun.findFirst({ where: eq(schema.agentRun.id, stopped.id) });
+    expect(after).toMatchObject({ status: "unconfirmed", applicationId: stopped.applicationId });
+  });
+
   it("only takes the person's own role that is still waiting", async () => {
     const userId = "loop-user-recheck-guard";
     await makeUser(userId);

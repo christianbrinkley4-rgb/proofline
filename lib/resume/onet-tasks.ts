@@ -33,6 +33,9 @@ function stems(text: string): Set<string> {
   return new Set((text.toLowerCase().match(/[a-z]+/g) ?? []).map((word) => word.replace(/(ing|ers|er|ists|ist|s)$/, "")).filter((word) => word.length > 2));
 }
 
+/** Each occupation's official title, stemmed once. */
+const officialStems = new Map(catalog.occupations.map((occupation) => [occupation.code, stems(occupation.title)]));
+
 const titleSignatures = new Map(catalog.occupations.map((occupation) => [occupation.code,
   [occupation.title, ...occupation.aliases].map((choice) => new Set(tokens(choice))),
 ]));
@@ -177,7 +180,7 @@ export function onetTasksForTitle(title: string | null, limit = 80, commonOnly =
       const strong = score >= Math.max(floor, 0.65) && titleWords.size > 0;
       const covers = strong && [...titleWords].every((word) => officialWords.has(word));
       const exact = covers && officialWords.size === titleWords.size;
-      const spoken = strong && covers && wholeWords.every((word) => stems(occupation.title).has(word));
+      const spoken = strong && covers && wholeWords.every((word) => officialStems.get(occupation.code)?.has(word));
       const officialBonus = (covers ? 0.1 : 0) + (exact ? 0.2 : 0) + (spoken ? 0.1 : 0);
       return { occupation, score: score + officialBonus + Math.min(contextMatches * 0.15, 0.3) };
     })

@@ -15,7 +15,7 @@ import { blockingFailures, readyBarFailures } from "@/lib/review/linter";
 import { runGate, type GateResult } from "@/lib/review/gate";
 import { trackJob } from "@/lib/tracker/service";
 import { dealBreakerMatches } from "./learn";
-import { packageLetter, type LetterOutcome } from "./package-letter";
+import { letterStep, packageLetter, type LetterOutcome } from "./package-letter";
 import { logEvent } from "./events";
 
 /**
@@ -122,7 +122,8 @@ async function claim(userId: string, jobId: string, started: Date): Promise<stri
 async function finish(runId: string, status: Exclude<RunStatus, "running">, reason: string | null, steps: LoopStep[], links: { resumeId?: string | null; applicationId?: string | null } = {}) {
   await db
     .update(schema.agentRun)
-    .set({ status, reason, steps, resumeId: links.resumeId ?? null, applicationId: links.applicationId ?? null, updatedAt: new Date() })
+    // A link is only changed when this stop knows one, so a recheck that ends early keeps the tracker entry it had.
+    .set({ status, reason, steps, updatedAt: new Date(), ...(links.resumeId ? { resumeId: links.resumeId } : {}), ...(links.applicationId ? { applicationId: links.applicationId } : {}) })
     .where(eq(schema.agentRun.id, runId));
 }
 
@@ -191,10 +192,10 @@ async function runRole(userId: string, email: string, runId: string, job: JobRow
 
   const letter = await deps.letter(userId, job.id);
   if (!letter.ok) {
-    steps.push({ ...step("letter", false, letter.reason, deps.now()), ...(letter.needs ? { needs: letter.needs } : {}) });
+    steps.push(letterStep(letter, deps.now().toISOString()));
     return stop("needs_you", letter.reason, { applicationId: application.id, resumeId: built.resumeId });
   }
-  steps.push(step("letter", true, "The cover letter passed the review against your facts and this posting.", deps.now()));
+  steps.push(letterStep(letter, deps.now().toISOString()));
   await finish(runId, "ready", null, steps, { applicationId: application.id, resumeId: built.resumeId });
   return "ready";
 }

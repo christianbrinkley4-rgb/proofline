@@ -132,6 +132,10 @@ describe("adding a reason to a role that is waiting on it", () => {
     await db.delete(schema.applicationPacket).where(and(eq(schema.applicationPacket.userId, userId), eq(schema.applicationPacket.jobId, jobId)));
   });
 
+  const waiting = [
+    { step: "review", ok: true, note: "The resume passed every check.", at: new Date().toISOString() },
+    { step: "letter", ok: false, note: "Add one or two sentences on why you want this job.", at: new Date().toISOString(), needs: "why" },
+  ];
   const runFor = async (id: string) => {
     const [row] = await db
       .insert(schema.agentRun)
@@ -145,7 +149,7 @@ describe("adding a reason to a role that is waiting on it", () => {
           { step: "letter", ok: false, note: "Add one or two sentences on why you want this job.", at: new Date().toISOString(), needs: "why" },
         ],
       })
-      .onConflictDoUpdate({ target: [schema.agentRun.userId, schema.agentRun.jobId], set: { status: "needs_you", dismissedAt: null, steps: [] } })
+      .onConflictDoUpdate({ target: [schema.agentRun.userId, schema.agentRun.jobId], set: { status: "needs_you", dismissedAt: null, steps: waiting } })
       .returning({ id: schema.agentRun.id });
     void id;
     return row.id;
@@ -175,6 +179,15 @@ describe("adding a reason to a role that is waiting on it", () => {
     const runId = await runFor("c");
     expect(await addReasonToRun(userId, runId, "Looks good")).toMatchObject({ ok: false, error: expect.stringContaining("sentence or two") });
     expect(await addReasonToRun(userId, runId, "I am passionate about accounting and excited to apply to LetterCo.")).toMatchObject({ ok: false, error: expect.stringContaining("reads like a template") });
+    expect((await db.query.agentRun.findFirst({ where: eq(schema.agentRun.id, runId) }))?.status).toBe("needs_you");
+  });
+
+  it("will not make a role ready when it stopped at the resume rather than waiting on a reason", async () => {
+    const runId = await runFor("e");
+    await db.update(schema.agentRun).set({ steps: [{ step: "review", ok: false, note: "Fix first: fits on one page.", at: new Date().toISOString() }] }).where(eq(schema.agentRun.id, runId));
+    modelSays("PASS");
+    const result = await addReasonToRun(userId, runId, "I read how LetterCo closes its books every week and I want to learn that close process from the team that built it.");
+    expect(result).toMatchObject({ ok: false });
     expect((await db.query.agentRun.findFirst({ where: eq(schema.agentRun.id, runId) }))?.status).toBe("needs_you");
   });
 

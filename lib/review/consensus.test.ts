@@ -96,6 +96,16 @@ describe("review by consensus", () => {
     expect(calls).toHaveLength(2);
   });
 
+  it("keeps a reviewer's genuine flag when it was also wrong about another line", async () => {
+    const supported = "- Reconciled 40+ vendor accounts each month in QuickBooks Online, catching $3,200 in duplicate payments";
+    const real = "- Led the office manager build a cash report that pulls bank and QuickBooks data into one sheet";
+    reviewers({ facts: { verdict: "FAIL", issues: [issue(supported, "unsupported_claim"), issue(real, "unsupported_claim", "the facts say helped")] } });
+    const out = await run();
+    expect(out.status).toBe("fail");
+    expect(out.issues.map((i) => i.quote)).toEqual([real]);
+    expect(out.reviewers!.find((r) => r.reviewer === "facts")!.disqualified).toBeNull();
+  });
+
   it("never passes on the word of one reviewer", async () => {
     const supported = "- Reconciled 40+ vendor accounts each month in QuickBooks Online, catching $3,200 in duplicate payments";
     reviewers({

@@ -38,14 +38,16 @@ function settle(round: Round, spec: ConsensusSpec): ReviewerVerdict {
   const settled = settleVerdict(outcome.parsed, spec.text, spec.facts);
   if (settled.status === "pass") return { ...base, status: "pass", model: outcome.model };
   // A reviewer that calls a line unsupported when one confirmed fact already says it is wrong, not the line.
-  for (const issue of settled.issues) {
-    if (issue.category !== "unsupported_claim") continue;
+  let wrong: string | null = null;
+  const genuine = settled.issues.filter((issue) => {
+    if (issue.category !== "unsupported_claim") return true;
     const fact = supportingFact(issue.quote, spec.facts, spec.known);
-    if (fact) {
-      return { ...base, status: "fail", issues: settled.issues, disqualified: `Flagged "${issue.quote}" as unsupported, but your confirmed facts say "${fact}".`, model: outcome.model };
-    }
-  }
-  return { ...base, status: "fail", issues: settled.issues, model: outcome.model };
+    if (fact) wrong ??= `Flagged "${issue.quote}" as unsupported, but your confirmed facts say "${fact}".`;
+    return !fact;
+  });
+  // Set aside only when nothing it said stands. A reviewer that was wrong about one line and right about another keeps the line it was right about.
+  if (wrong && !genuine.length) return { ...base, status: "fail", issues: settled.issues, disqualified: wrong, model: outcome.model };
+  return { ...base, status: "fail", issues: genuine, model: outcome.model };
 }
 
 async function ask(userId: string, framing: Framing, spec: ConsensusSpec, opts: { chargeAccount?: boolean }): Promise<ReviewerVerdict> {

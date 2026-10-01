@@ -54,6 +54,9 @@ describe("evidence", () => {
     expect(asSentence("I organized a food drive for 120 families.")).toBe("I organized a food drive for 120 families.");
     // A line that already names the organization is not introduced with it a second time.
     expect(asSentence("Led a 5-person team to 2nd place at the Beta Alpha Psi regional competition", { org: "Beta Alpha Psi", lead: "at" })).toBe("I led a 5-person team to 2nd place at the Beta Alpha Psi regional competition.");
+    // A short employer name inside another word does not count as already named.
+    expect(asSentence("Reconciled bank statements daily", { org: "Bank", lead: "at" })).toBe("At Bank, I reconciled bank statements daily.");
+    expect(asSentence("Led the Bank of Oakwood food drive", { org: "Bank of Oakwood", lead: "at" })).toBe("I led the Bank of Oakwood food drive.");
     expect(lowerFirst("QuickBooks reports")).toBe("QuickBooks reports");
     expect(lowerFirst("SQL queries")).toBe("SQL queries");
   });

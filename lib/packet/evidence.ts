@@ -107,7 +107,8 @@ export function asSentence(text: string, opts: { org?: string | null; lead?: "at
   if (mine) return `${clean[0].toUpperCase()}${clean.slice(1)}.`;
   const verb = lowerFirst(clean);
   // "At Beta Alpha Psi, I led a team ... at the Beta Alpha Psi regional" says the name twice.
-  const named = Boolean(opts.org) && clean.toLowerCase().includes(opts.org!.toLowerCase());
+  // Whole words, as written, so an employer called "Bank" is not "named" by a line about bank statements.
+  const named = Boolean(opts.org) && new RegExp(`(?<![A-Za-z0-9])${opts.org!.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9])`).test(clean);
   if (opts.lead === "at" && opts.org && !named) return /\b(class|course|seminar)\b/i.test(opts.org) ? `In ${opts.org}, I ${verb}.` : `At ${opts.org}, I ${verb}.`;
   if (opts.lead === "also") return `I also ${verb}.`;
   return `I ${verb}.`;
