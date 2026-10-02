@@ -2,7 +2,11 @@
 export const PRIVACY_POINTS = [
   {
     title: "What we keep",
-    text: "What you tell us about yourself (including how you described each role), the jobs you paste, the resumes you build, and your applications. We also log a few steps (like signing up or downloading a resume) so we can see where the beta gets stuck. No ads, no third-party analytics.",
+    text: "What you tell us about yourself (including how you described each role), the jobs you paste, the resumes you build, and your applications. We also log a few steps (like signing up or downloading a resume) so we can see where the beta gets stuck. No ads. SimpleAnalytics counts visits without cookies. Our own saved step events remain the source of truth for what happens in the beta.",
+  },
+  {
+    title: "Error reports",
+    text: "When error reporting is configured, Sentry receives technical errors, the time, and your account ID so we can fix failures. We leave out form contents, contact details, cookies, and browsing breadcrumbs. These reports are for fixing the app, not tracking visits.",
   },
   {
     title: "Who sees it",

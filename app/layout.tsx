@@ -1,6 +1,8 @@
+import Script from "next/script";
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { ErrorUser } from "@/components/app/error-user";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -61,7 +63,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider><ErrorUser />{children}</ThemeProvider>
+        <Script src="https://scripts.simpleanalyticscdn.com/latest.js" strategy="afterInteractive" />
       </body>
     </html>
   );

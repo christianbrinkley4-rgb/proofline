@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowUpRight, CircleSlash, Clock, LoaderCircle, Undo2 } from "lucide-react";
 import { declineGapAction, reopenGapAction } from "@/app/app/jobs/[id]/gap-actions";
@@ -55,6 +56,8 @@ function GapCard({ jobId, gap, places, defaultOpen }: { jobId: string; gap: GapQ
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const hintId = useId();
   const name = gap.skill.split(/\s+or\s+/i)[0];
   const unnamed = text.trim().length >= 15 && !skillFromAnswer(gap.skill, text);
 
@@ -71,6 +74,11 @@ function GapCard({ jobId, gap, places, defaultOpen }: { jobId: string; gap: GapQ
       }).catch(() => ({ ok: false as const, error: "Couldn't save your answer. Your words are still here; try again." }));
       if (!result.ok) {
         setError(result.error);
+        toast.error(result.error);
+        requestAnimationFrame(() => {
+          errorRef.current?.scrollIntoView({ block: "center", behavior: "instant" });
+          errorRef.current?.focus();
+        });
         return;
       }
       router.refresh();
@@ -82,7 +90,7 @@ function GapCard({ jobId, gap, places, defaultOpen }: { jobId: string; gap: GapQ
         <div className="min-w-0">
           <span className={cn("inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium", gap.kind === "required" ? "bg-pending-soft text-pending-ink" : "bg-muted text-muted-foreground")}>{KIND_LABEL[gap.kind]}</span>
           <p className="mt-1.5 text-[15px] font-medium">
-            The posting asks for {inSentence(gap.skill)}. Have you done anything like it?
+            {`The posting asks for ${inSentence(gap.skill)}. Have you done anything like it?`}
           </p>
           <p className="mt-0.5 text-[12.5px] text-muted-foreground">If you have, say where and what you did. Your words go on a resume only when you confirm them.</p>
         </div>
@@ -148,18 +156,19 @@ function GapCard({ jobId, gap, places, defaultOpen }: { jobId: string; gap: GapQ
             )}
           </div>
           <label className="space-y-1.5 text-[12.5px]">
-            <span>What did you do with {inSentence(name)}? Write it as one resume line. A number helps if you remember one.</span>
-            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={400} placeholder={`Used ${name} to ...`} className="text-[14px] leading-6" />
+            <span>{`What did you do with ${inSentence(name)}? Write it as one resume line. A number helps if you remember one.`}</span>
+            <span id={hintId} className="block text-muted-foreground">{`Name ${inSentence(name)} in your answer if that is what you used. If you have not used it, choose Not yet.`}</span>
+            <Textarea aria-describedby={hintId} aria-invalid={unnamed || undefined} value={text} onChange={(e) => { setText(e.target.value); setConfirmed(false); }} rows={2} maxLength={400} placeholder={`Used ${name} to ...`} className="text-[14px] leading-6" />
           </label>
-          {unnamed && <p className="text-[12px] text-pending-ink">Name {inSentence(name)} in your line if that&apos;s what you used. If you haven&apos;t, choose Not yet instead.</p>}
+          {unnamed && <p className="text-[12px] text-pending-ink">{`Name ${inSentence(name)} in your line before rebuilding. If you have not used it, choose Not yet instead.`}</p>}
           <ConfirmBox checked={confirmed} onChange={setConfirmed} />
           {error && (
-            <p role="alert" className="text-[12.5px] text-destructive">
+            <p ref={errorRef} tabIndex={-1} role="alert" className="text-[12.5px] text-destructive">
               {error}
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={pending || !confirmed || text.trim().length < 15 || (where === "new" && !org.trim())}>
+            <Button type="submit" disabled={pending || unnamed || !confirmed || text.trim().length < 15 || (where === "new" && !org.trim())}>
               {pending ? <LoaderCircle className="animate-spin" /> : null}
               {pending ? "Saving and rebuilding" : "Confirm and rebuild my resume"}
               {!pending && <ArrowRight data-icon="inline-end" />}
@@ -167,6 +176,10 @@ function GapCard({ jobId, gap, places, defaultOpen }: { jobId: string; gap: GapQ
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
+            <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => {
+              await declineGapAction({ jobId, skill: gap.skill });
+              router.refresh();
+            })}>Not yet</Button>
           </div>
         </form>
       )}

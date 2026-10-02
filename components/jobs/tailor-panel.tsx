@@ -157,7 +157,7 @@ function Workspace({ jobId, resume, rebuilding, onRebuild, buildError }: { jobId
     startReview(async () => {
       const result = await rerunReviewAction(resume.resumeId).catch(() => ({ ok: false as const, error: "Couldn't reach the server. Try again." }));
       if (!result.ok) toast.error(result.error);
-      else toast(result.passed ? "Every check passed. You can download it now." : "Checked. See what to fix.");
+      else toast(result.passed ? "The download checks passed. Read any notes before sending." : "Checked. See what to fix.");
       setPanel("review");
       router.refresh();
     });
@@ -435,8 +435,8 @@ function ReviewList({
   return (
     <>
       <div className={cn("rounded-lg border p-3", resume.canExport ? "border-brand/40 bg-brand-soft/50" : "border-pending/40 bg-pending-soft/50")}>
-        <p className="text-[13px] font-semibold">{resume.canExport ? "Every check passed." : "Fix the lines below, then check again to download."}</p>
-        {resume.reviewedAt && <p className="mt-0.5 text-[12px] text-muted-foreground">Last checked {new Date(resume.reviewedAt).toLocaleString()}.{resume.stale ? " Things changed since then." : ""}</p>}
+        <p className="text-[13px] font-semibold">{resume.canExport ? checks.some((check) => !check.passed) ? "Download checks passed. Some checks still need a look." : "Every check passed." : "Fix the lines below, then check again to download."}</p>
+        {resume.reviewedAt && <p className="mt-0.5 text-[12px] text-muted-foreground">{`Last checked ${new Date(resume.reviewedAt).toLocaleString()}.${resume.stale ? " Things changed since then." : ""}`}</p>}
       </div>
 
       <section aria-label="Final read-through" className="rounded-lg border p-3">
@@ -450,12 +450,12 @@ function ReviewList({
           ) : (
             <Info className="size-4 text-muted-foreground" />
           )}
-          Final read-through:{" "}
+          <span>Final read-through:{" "}
           {!resume.aiConfigured
             ? "not available right now"
             : !model
               ? "not run yet"
-              : { pass: "passed", fail: "found lines to fix", unavailable: "not available right now", limit: "daily limit reached", error: "didn't finish", skipped: "runs once the checks below pass" }[model.status]}
+              : { pass: "passed", fail: "found lines to fix", unavailable: "not available right now", limit: "daily limit reached", error: "didn't finish", skipped: "runs once the checks below pass" }[model.status]}</span>
         </p>
         <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">
           {!resume.aiConfigured

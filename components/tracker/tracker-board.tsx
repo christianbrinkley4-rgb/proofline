@@ -204,7 +204,7 @@ function ApplicationCard({ app, insight, due, pending, onOpen, onMove, onSent, o
         {onDrag && <GripVertical aria-hidden="true" className="mt-1 size-3.5 shrink-0 text-subtle-foreground" />}
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-        {insight && <span className="rounded border px-1.5 py-0.5">{insight.score} fit</span>}
+        {insight && <span className="rounded border px-1.5 py-0.5">{`${insight.score} fit`}</span>}
         {app.resumeId && <span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-muted-foreground"><FileText className="size-3" />Resume attached</span>}
         {app.sent && <span className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-muted-foreground"><Check className="size-3" />Record of what you sent</span>}
         {app.appliedAt && <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">Applied {date(app.appliedAt)}</span>}

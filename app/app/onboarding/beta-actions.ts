@@ -1,6 +1,9 @@
 "use server";
 
+import { monitoredAction } from "@/lib/monitoring/actions";
+
 import { revalidatePath } from "next/cache";
+import { captureError } from "@/lib/monitoring/errors";
 import { z } from "zod";
 import { countableRoleLines, isProjectKind } from "@/components/onboarding/role-step";
 import { requireSession } from "@/lib/auth";
@@ -23,14 +26,17 @@ async function run(fn: (userId: string) => Promise<unknown>): Promise<StepResult
     return { ok: true };
   } catch (error) {
     if (error instanceof z.ZodError) return { ok: false, error: error.issues[0]?.message ?? "Check the form." };
-    return { ok: false, error: error instanceof Error ? error.message : "Something went wrong. Try again." };
+    captureError(error, "onboarding.save", userId);
+    return { ok: false, error: "Could not save those details. Try again in a minute." };
   }
 }
 
 export async function goToStepAction(step: OnboardingStep) {
-  if (!ONBOARDING_STEPS.includes(step)) return;
-  const userId = (await requireSession()).user.id;
-  await updateProfile(userId, { onboardingStep: step });
+  return monitoredAction("app/app/onboarding/beta-actions.ts:goToStepAction", async () => {
+    if (!ONBOARDING_STEPS.includes(step)) return;
+    const userId = (await requireSession()).user.id;
+    await updateProfile(userId, { onboardingStep: step });
+  });
 }
 
 const EntrySchema = z.object({
@@ -58,18 +64,20 @@ const EducationSchema = z.object({
 });
 
 export async function saveEducationStepAction(input: z.input<typeof EducationSchema>) {
-  return run(async (userId) => {
-    const v = EducationSchema.parse(input);
-    await saveEducation(userId, v.entries);
-    await updateProfile(userId, {
-      fullName: v.fullName,
-      phone: v.phone || null,
-      city: v.city || null,
-      region: v.region || null,
-      contactEmail: v.contactEmail || null,
-      linkedinUrl: v.linkedinUrl || null,
-      portfolioUrl: v.portfolioUrl || null,
-      onboardingStep: "experience",
+  return monitoredAction("app/app/onboarding/beta-actions.ts:saveEducationStepAction", async () => {
+    return run(async (userId) => {
+      const v = EducationSchema.parse(input);
+      await saveEducation(userId, v.entries);
+      await updateProfile(userId, {
+        fullName: v.fullName,
+        phone: v.phone || null,
+        city: v.city || null,
+        region: v.region || null,
+        contactEmail: v.contactEmail || null,
+        linkedinUrl: v.linkedinUrl || null,
+        portfolioUrl: v.portfolioUrl || null,
+        onboardingStep: "experience",
+      });
     });
   });
 }
@@ -93,19 +101,21 @@ const RoleSchema = z.object({
  * resume lines come next, as recommended lines they keep, edit, or drop.
  */
 export async function saveRoleStepAction(input: z.input<typeof RoleSchema>): Promise<{ ok: true; experienceId: string } | { ok: false; error: string }> {
-  let experienceId = "";
-  const result = await run(async (userId) => {
-    const v = RoleSchema.parse(input);
-    const bullets = countableRoleLines(v.bullets);
-    const isProject = isProjectKind(v.kind);
-    if (!isProject && !v.title) throw new Error("Add your title.");
-    if (!isProject && !v.startDate) throw new Error("Add when you started.");
-    if (v.startDate && v.endDate && v.startDate > v.endDate) throw new Error("The end date is before the start date.");
-    const saved = await saveRole(userId, { ...v, bullets });
-    experienceId = saved.id;
-    if (v.description) await updateExperience(userId, saved.id, { rawNotes: v.description });
+  return monitoredAction("app/app/onboarding/beta-actions.ts:saveRoleStepAction", async () => {
+    let experienceId = "";
+    const result = await run(async (userId) => {
+      const v = RoleSchema.parse(input);
+      const bullets = countableRoleLines(v.bullets);
+      const isProject = isProjectKind(v.kind);
+      if (!isProject && !v.title) throw new z.ZodError([{ code: "custom", path: ["title"], message: "Add your title." }]);
+      if (!isProject && !v.startDate) throw new z.ZodError([{ code: "custom", path: ["startDate"], message: "Add when you started." }]);
+      if (v.startDate && v.endDate && v.startDate > v.endDate) throw new z.ZodError([{ code: "custom", path: ["endDate"], message: "The end date is before the start date." }]);
+      const saved = await saveRole(userId, { ...v, bullets });
+      experienceId = saved.id;
+      if (v.description) await updateExperience(userId, saved.id, { rawNotes: v.description });
+    });
+    return result.ok ? { ok: true, experienceId } : result;
   });
-  return result.ok ? { ok: true, experienceId } : result;
 }
 
 const ListsSchema = z.object({
@@ -115,10 +125,12 @@ const ListsSchema = z.object({
 });
 
 export async function saveListsStepAction(input: z.input<typeof ListsSchema>) {
-  return run(async (userId) => {
-    const v = ListsSchema.parse(input);
-    await addListFacts(userId, "skill", v.skills);
-    await addListFacts(userId, "license", v.licenses);
+  return monitoredAction("app/app/onboarding/beta-actions.ts:saveListsStepAction", async () => {
+    return run(async (userId) => {
+      const v = ListsSchema.parse(input);
+      await addListFacts(userId, "skill", v.skills);
+      await addListFacts(userId, "license", v.licenses);
+    });
   });
 }
 
@@ -132,27 +144,31 @@ const LogisticsSchema = z.object({
 
 /** Used only for knockouts. These are preferences, not resume claims, so they aren't facts. */
 export async function saveLogisticsStepAction(input: z.input<typeof LogisticsSchema>) {
-  return run(async (userId) => {
-    const v = LogisticsSchema.parse(input);
-    await updateProfile(userId, {
-      workAuthorization: v.workAuthorization || null,
-      targetLocations: v.targetLocations,
-      workModes: v.workModes,
-      openToRelocate: v.openToRelocate === "" ? null : v.openToRelocate === "yes",
-      availableFrom: v.availableFrom || null,
-      onboardingStep: "job",
+  return monitoredAction("app/app/onboarding/beta-actions.ts:saveLogisticsStepAction", async () => {
+    return run(async (userId) => {
+      const v = LogisticsSchema.parse(input);
+      await updateProfile(userId, {
+        workAuthorization: v.workAuthorization || null,
+        targetLocations: v.targetLocations,
+        workModes: v.workModes,
+        openToRelocate: v.openToRelocate === "" ? null : v.openToRelocate === "yes",
+        availableFrom: v.availableFrom || null,
+        onboardingStep: "job",
+      });
     });
   });
 }
 
 /** Onboarding ends when the first job is in, or when they skip it. Refuses without the minimum. */
 export async function finishOnboardingStepAction(): Promise<StepResult> {
-  const userId = (await requireSession()).user.id;
-  const readiness = await scoringReady(userId);
-  if (!readiness.ready) {
-    return { ok: false, error: readiness.hasEducation ? "Add one experience first so your fit can be scored." : "Add your education first so your fit can be scored." };
-  }
-  await updateProfile(userId, { onboardingCompletedAt: new Date(), onboardingStep: "done" });
-  revalidatePath("/app", "layout");
-  return { ok: true };
+  return monitoredAction("app/app/onboarding/beta-actions.ts:finishOnboardingStepAction", async () => {
+    const userId = (await requireSession()).user.id;
+    const readiness = await scoringReady(userId);
+    if (!readiness.ready) {
+      return { ok: false, error: readiness.hasEducation ? "Add one experience first so your fit can be scored." : "Add your education first so your fit can be scored." };
+    }
+    await updateProfile(userId, { onboardingCompletedAt: new Date(), onboardingStep: "done" });
+    revalidatePath("/app", "layout");
+    return { ok: true };
+  });
 }

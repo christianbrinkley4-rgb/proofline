@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { logEvent } from "./events";
+import { captureError } from "@/lib/monitoring/errors";
 
 /**
  * What happens when the loop throws.
@@ -35,6 +36,7 @@ function describe(error: unknown) {
 /** Logs the real error with a fresh code and returns the code. Never throws. */
 export function reportError(userId: string, scope: FailureScope, error: unknown, now: Date = new Date()): string {
   const code = diagnosticCode();
+  captureError(error, `loop.${scope}`, userId, now);
   try {
     console.error("loop.failed", JSON.stringify({ code, userId, scope, at: now.toISOString(), ...describe(error) }));
   } catch {

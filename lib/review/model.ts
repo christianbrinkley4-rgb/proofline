@@ -1,3 +1,4 @@
+import { captureError } from "@/lib/monitoring/errors";
 import { z } from "zod";
 import { logLlmCall } from "@/lib/llm/log";
 import { ModelQuotaError, reserveModelCredits } from "@/lib/llm/quota";
@@ -133,6 +134,7 @@ export async function callReviewModel(userId: string, call: ReviewCall, opts: { 
     if (opts.chargeAccount !== false) await reserveModelCredits(userId, call.purpose);
   } catch (error) {
     if (error instanceof ModelQuotaError) return { ok: false, status: "limit", model, message: `${error.message} Your other checks still ran.` };
+    captureError(error, `${call.purpose}.quota`, userId);
     return { ok: false, status: "error", model, message: "The final read-through couldn't start. Try again in a minute." };
   }
 
@@ -156,6 +158,7 @@ export async function callReviewModel(userId: string, call: ReviewCall, opts: { 
     await logLlmCall({ purpose: call.purpose, promptVersion: call.promptVersion, model, ms: Date.now() - started, input: call.input, output: parsed });
     return { ok: true, model, parsed };
   } catch (error) {
+    captureError(error, call.purpose, userId);
     // Visible in the host's function logs; the file log below is off in production. Never includes the key.
     console.error(`[${call.purpose}] failed:`, error instanceof Error ? error.message : String(error));
     await logLlmCall({ purpose: call.purpose, promptVersion: call.promptVersion, model, ms: Date.now() - started, input: call.input, error: error instanceof Error ? error.message : String(error) });

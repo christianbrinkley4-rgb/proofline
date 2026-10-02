@@ -4,6 +4,10 @@ Living document. Updated as slices land.
 
 **Picking this up? Read [handoff/CURSOR-NEXT.md](handoff/CURSOR-NEXT.md) first:** current state, the owner's test results, and what to fix next, in order.
 
+## October 1 beta-readiness punchlist
+
+Sentry reporting, onboarding skills and Find jobs completion, signup autofill handling, immediate keyword feedback, truthful review summaries, spacing, per-account credit copy and confirmed SimpleAnalytics are implemented. No migration or quota change. Details, files and verification limits: [BETA-PUNCHLIST-2026-10-01.md](BETA-PUNCHLIST-2026-10-01.md). Production build, typecheck, lint and the final full suite (111 files, 1,478 tests) passed. Real password-manager integration and a Sentry dashboard receipt remain manual checks.
+
 ## October 1 Ready loop startup crash (spec 06, branch `ready-loop-crash-fix`, not deployed)
 
 "Find 3 ready to apply" stopped at once for every account on production: 0 roles, the "Something stopped the run" banner, nothing saved. **Cause:** `startedToday` in `lib/agent/loop.ts` compared `created_at` to a raw `Date` inside a `sql` template. Production runs postgres-js, and drizzle turns off its timestamp serializer there, so a raw `Date` reaches the wire unencoded and the query throws; PGlite accepts it, which is why all the tests passed. The query was the first thing `runLoop` ran after the readiness check, so it threw before any role was tried. It is now `gt(schema.agentRun.createdAt, since)`, which encodes the date. A grep of every `sql` template in `lib`, `app`, and `components` found no other raw interpolation. No limit, gate, or review behavior changed (`ROLES_PER_RUN`, `ROLES_PER_DAY`, the live-check-then-knockout order, and the review gate are as they were).

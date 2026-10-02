@@ -228,7 +228,7 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
       skills.length > 0 ||
       licenses.length > 0,
   );
-  const listsChanged = skills.length !== data.skills.length || licenses.length !== data.licenses.length;
+  const listsChanged = skills.some((skill) => !data.skills.includes(skill)) || licenses.some((license) => !data.licenses.includes(license));
   const first = entries[0];
 
   return (
@@ -280,10 +280,14 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
         </Field>
       </div>
 
+      <div className="mt-6"><Field label="What tools or skills have you used?" hint="Only ones you can describe from experience. Press Enter after each. Saving confirms these are yours." htmlFor="skills">
+        <ChipInput id="skills" value={skills} onChange={setSkills} placeholder="Excel, QuickBooks, Spanish" />
+      </Field></div>
+
       <details open={more} className="group mt-6 rounded-xl border bg-background">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[14px] font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
           More details (optional)
-          <span className="text-[12.5px] font-normal text-muted-foreground group-open:hidden">GPA, honors, phone, LinkedIn, skills</span>
+          <span className="text-[12.5px] font-normal text-muted-foreground group-open:hidden">GPA, honors, phone, LinkedIn</span>
         </summary>
         <div className="space-y-5 border-t p-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -373,9 +377,6 @@ function EducationScreen({ data, draft, onDraft, onDone }: { data: BetaOnboardin
           </div>
 
           <div className="space-y-4 border-t pt-5">
-            <Field label="Skills and tools" hint="Only ones you'd be fine being asked about. Press Enter after each." htmlFor="skills">
-              <ChipInput id="skills" value={skills} onChange={setSkills} placeholder="Excel, QuickBooks, Spanish" />
-            </Field>
             <Field label="Licenses and certificates" htmlFor="licenses">
               <ChipInput id="licenses" value={licenses} onChange={setLicenses} placeholder="Food Handler Certificate, CPR" />
             </Field>
@@ -802,9 +803,10 @@ function JobScreen({ onBack, needs, onFix }: { onBack: () => void; needs: "educa
   const finish = (href: (id?: string) => string) => (jobId?: string) =>
     new Promise<void>((resolve) =>
       start(async () => {
+        setError(null);
         const result = await finishOnboardingStepAction().catch(() => ({ ok: false as const, error: "Couldn't reach the server. Try again." }));
         if (!result.ok) setError(result.error);
-        else router.push(href(jobId));
+        else { router.push(href(jobId)); router.refresh(); }
         resolve();
       }),
     );
@@ -826,8 +828,12 @@ function JobScreen({ onBack, needs, onFix }: { onBack: () => void; needs: "educa
       <Heading title="Paste a job you want" hint="Copy the link from LinkedIn, Indeed, Handshake, or a company site, or paste the whole posting. I'll make a one-page resume for it from what you just told me." />
       <PasteJobBox className="mt-6" autoFocus submitLabel="Make my resume" onIngested={finish((id) => `/app/jobs/${id}?tab=resume`)} />
       <ErrorLine error={error} />
-      <Nav onBack={onBack} onSkip={() => void finish(() => "/app/find")()} skipLabel="Help me find one">
-        {pending && <LoaderCircle className="size-4 animate-spin text-muted-foreground" />}
+      <Nav onBack={onBack}>
+        <Button type="button" variant="outline" disabled={pending} onClick={() => void finish(() => "/app/find")()}>
+          {pending && <LoaderCircle className="size-4 animate-spin" />}
+          {pending ? "Opening jobs" : "Help me find one"}
+          <ArrowRight data-icon="inline-end" />
+        </Button>
       </Nav>
     </div>
   );

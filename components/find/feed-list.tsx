@@ -102,7 +102,7 @@ export function FeedList({ items, now }: { items: FeedItem[]; now: string }) {
                 )}
               </span>
               <span className="shrink-0 text-right">
-                <span className={cn("block font-display text-[24px] leading-none font-semibold tabular-nums", item.knockout && "text-muted-foreground")}>{item.score}</span>
+                <span className={cn("block font-display text-[24px] leading-none font-semibold tabular-nums", item.knockout && "text-muted-foreground")}>{item.score}{" "}</span>
                 <span className="text-[11px] text-subtle-foreground">fit</span>
               </span>
             </Link>

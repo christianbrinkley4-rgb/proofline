@@ -1,5 +1,9 @@
 # Handoff to Cursor (September 28, 2026)
 
+## October 1 beta-readiness punchlist
+
+Sentry reporting, onboarding skills and Find jobs completion, signup autofill handling, immediate keyword feedback, truthful review summaries, spacing, per-account credit copy and confirmed SimpleAnalytics are implemented. No migration or quota change. Details, files and verification limits: [BETA-PUNCHLIST-2026-10-01.md](../BETA-PUNCHLIST-2026-10-01.md). Production build, typecheck, lint and the final full suite (111 files, 1,478 tests) passed. Real password-manager integration and a Sentry dashboard receipt remain manual checks.
+
 ## October 1 Ready loop startup crash (branch `ready-loop-crash-fix`, not deployed)
 
 QA on production found "Find 3 ready to apply" stopping at once for a fresh account. Cause and fix: `startedToday` passed a raw `Date` to a `sql` template, which postgres-js (production) rejects and PGlite (tests) accepts. It is fixed, and the test database now rejects raw dates the way production does (`lib/db/strict-params.ts`), so this class of bug fails locally. Every loop error shown to a person now carries a code (`ERR-8F3K2`); the real error is in the server log under `loop.failed` with that code (`npx vercel@60.1.3 logs <deployment-url> --query ERR-8F3K2 --since 1h --no-follow`), and a run that stopped stays on `/app/ready` until dismissed. Model credits left today show under the run button, and the month fields are now an on-page picker. Details and what was checked: `docs/PLAN.md`. **To release:** merge the branch, `npx vercel@60.1.3 --prod --yes`, then press "Find 3 ready to apply" on a real account; no migration. The roles themselves (live check, resume, review model) have still never run on production, so read that first real run closely.

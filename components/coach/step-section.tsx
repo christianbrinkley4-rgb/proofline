@@ -66,7 +66,7 @@ export function StepSection({
             <span className={cn("text-[16px] font-semibold tracking-tight", state === "upcoming" && "text-muted-foreground")}>{title}</span>
             {state === "current" && <span className="text-[12px] font-medium text-brand-ink">Do this now</span>}
           </span>
-          {summary && !open && <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">{summary}</span>}
+          {summary && !open && <span className="mt-0.5 block break-words text-[13px] text-muted-foreground">{summary}</span>}
         </span>
         <ChevronDown className={cn("size-4 shrink-0 text-subtle-foreground transition-transform", open && "rotate-180")} />
       </button>

@@ -92,8 +92,9 @@ export default async function ReadyPage() {
       <div className="mt-6">
         <RunLoopButton disabled={!readiness.ready} />
         <p data-testid="model-credits" className="mt-2 text-[13px] text-muted-foreground">
-          {credits.left} of {credits.limit} model credits left today.{credits.left === 0 ? " They reset at midnight UTC." : ""}
+          {`${credits.left} of ${credits.limit} model credits left for your account today.`}
         </p>
+        <p className="mt-1 max-w-2xl text-[12.5px] leading-5 text-muted-foreground">Your credits reset at midnight UTC. One credit reserves one possible AI request. Writing checks and reviews can use several, and chat reserves credits up front. At zero, new AI checks wait until tomorrow; scoring, editing, and downloads that already passed review still work. The beta also has a shared daily limit, so AI checks may pause before your balance reaches zero.</p>
         {!readiness.ready && (
           <p className="mt-3 text-[14px] text-muted-foreground">
             Add your {readiness.hasEducation ? "first role" : "school"} in{" "}

@@ -3,11 +3,12 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import * as Sentry from "@sentry/nextjs";
 
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
-    console.error("Proofline page error", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

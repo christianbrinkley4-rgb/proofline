@@ -24,7 +24,7 @@ function friendlyError(message: string | undefined, mode: Mode) {
     return "That email and password don't match. Check both and try again.";
   }
   if (text.includes("invalid email")) return "That email doesn't look right. Check it and try again.";
-  if (message) return message;
+  if (text.includes("rate limit") || text.includes("too many")) return "Too many attempts. Wait a minute and try again.";
   return mode === "signup" ? "We couldn't create your account. Try again." : "We couldn't sign you in. Try again.";
 }
 
@@ -39,29 +39,50 @@ export function AuthForm({ mode }: { mode: Mode }) {
   // runs, which would wipe what the person typed whenever sign-up fails.
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    if (pending) return;
+    const element = event.currentTarget;
+    const form = new FormData(element);
+    // Read the current DOM values. Password managers need not fire React events.
+    const passwordField = element.elements.namedItem("password") as HTMLInputElement;
+    if (!passwordField.value) {
+      setError("Enter a password, or fill it from your password manager.");
+      passwordField.focus();
+      return;
+    }
+    if (passwordField.value.length < 8 || passwordField.value.length > 128) {
+      setError("Use a password with 8 to 128 characters.");
+      passwordField.focus();
+      return;
+    }
+    if (!element.reportValidity()) return;
     setPending(true);
     setError(null);
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
-    const result =
-      mode === "signup"
-        ? await signUp.email({ email, password, name: String(form.get("name") ?? "").trim() || email.split("@")[0] })
-        : await signIn.email({ email, password });
+    try {
+      const result =
+        mode === "signup"
+          ? await signUp.email({ email, password, name: String(form.get("name") ?? "").trim() || email.split("@")[0] })
+          : await signIn.email({ email, password });
 
-    if (result.error) {
-      if (result.error.code === PRIVATE_BETA_CODE) {
-        setClosed(true);
+      if (result.error) {
+        if (result.error.code === PRIVATE_BETA_CODE) {
+          setClosed(true);
+          setPending(false);
+          return;
+        }
+        setError(friendlyError(result.error.message, mode));
         setPending(false);
         return;
       }
-      setError(friendlyError(result.error.message, mode));
+      const next = params.get("next");
+      router.push(mode === "signup" ? "/app/onboarding" : next?.startsWith("/app") ? next : "/app");
+      router.refresh();
+    } catch {
+      setError("Could not reach Proofline. Your entries are still here. Try again.");
+    } finally {
       setPending(false);
-      return;
     }
-    const next = params.get("next");
-    router.push(mode === "signup" ? "/app/onboarding" : next?.startsWith("/app") ? next : "/app");
-    router.refresh();
   }
 
   if (closed) {
@@ -98,7 +119,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           : "Sign in to pick up where you left off."}
       </p>
 
-      <form method="post" onSubmit={onSubmit} className="mt-8 space-y-4" aria-describedby={error ? "auth-error" : undefined}>
+      <form noValidate method="post" onSubmit={onSubmit} className="mt-8 space-y-4" aria-describedby={error ? "auth-error" : undefined}>
         {mode === "signup" && (
           <div className="space-y-1.5">
             <Label htmlFor="name">Your name</Label>
@@ -107,7 +128,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         )}
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" autoComplete="email" required className="h-10" />
+          <Input id="email" name="email" type="email" autoComplete="username" required className="h-10" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="password">Password</Label>
@@ -117,7 +138,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
             type="password"
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
             minLength={8}
-            required
+            maxLength={128}
+            aria-required="true"
             aria-describedby={mode === "signup" ? "password-hint" : undefined}
             className="h-10"
           />
