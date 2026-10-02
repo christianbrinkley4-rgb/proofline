@@ -20,6 +20,10 @@ Implemented from the owner's supplied 07-beta-readiness-punchlist.md. The owner 
 - Real Chrome on isolated localhost: fresh signup, three-screen onboarding, scored Find jobs, generated one-page resume, Checks, PDF and DOCX downloads, missing-keyword feedback, 375px layout and credit explanation. Account, job and model responses were synthetic; no production account was used and no claim is made about real-model review quality.
 - Downloaded PDF is one page. PDF and DOCX both contain the confirmed Excel skill and omit unconfirmed AWS.
 - Temporary local test route and fixture scripts removed before release. Development-only login and test trigger must be absent in production.
-- Sentry capture is covered with a test transport and the temporary local trigger was exercised. Local DSN was absent, so its event was not delivered. Production SENTRY_DSN is configured. A dashboard receipt with account ID remains to be confirmed by someone with Sentry access.
+- Sentry capture is covered with a test transport and the temporary local trigger was exercised. Local DSN was absent, so its event was not delivered. Production SENTRY_DSN reaches the browser SDK, but it reports Invalid Sentry Dsn. The owner must correct the configured Client Key (DSN), sync it, and redeploy before an event can be delivered. No Sentry dashboard receipt is claimed.
 
 Release status and production checks are recorded at the top of docs/handoff/CURSOR-NEXT.md after deployment.
+
+## Release verification
+
+Released October 2 as Vercel production deployment dpl_22jy5H4b8STsfe6tsiPmLGrS68T8, Ready at https://proofline-beta.vercel.app. Implementation commit a1f5ec7 is pushed to GitHub main. Home, signup, login and privacy returned 200; signed-out Ready redirected to login; development login and the removed test trigger returned 404. SimpleAnalytics and updated privacy copy are live. Signup/privacy passed eight Chrome axe checks across light/dark and desktop/375px with no horizontal overflow. The owner confirmed a DSN correction and this deployment rebuilt with it; browser inspection still reports Invalid Sentry Dsn, with a value missing both https:// and @. The owner was asked to sync the complete Client Key DSN URL. No Sentry event was delivered. Once synced, redeploy and verify ingestion and the dashboard. Actual password-manager interaction remains a manual check.
