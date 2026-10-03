@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.git/
+.vercel/
+.data/
+.env*
+.claude/
+.agents/
+.codex/
+.aws/
+docs/evidence/
+coverage/
+*.tsbuildinfo
