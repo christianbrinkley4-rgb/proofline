@@ -8,9 +8,28 @@ import { requireSession } from "@/lib/auth";
 import { NoteSchema, ManualApplicationSchema, StageSchema, type Stage } from "@/lib/tracker/model";
 import { ReplySchema } from "@/lib/tracker/activity";
 import { addManualApplication, deleteApplication, getApplication, moveApplication, recordReply, trackJob, updateApplication } from "@/lib/tracker/service";
+import { saveOutcome } from "@/lib/interviews/service";
+import { OutcomeSchema, type Outcome } from "@/lib/interviews/model";
+import { prepareRelationship, sendRelationship } from "@/lib/outreach/service";
+import type { MessageKind } from "@/lib/outreach/model";
 
 const Id = z.uuid();
 function refresh() { revalidatePath("/app/tracker"); revalidatePath("/app"); }
+export async function prepareRelationshipAction(id: string, kind: MessageKind, why?: string) {
+  const session = await requireSession();
+  const result = await prepareRelationship(session.user.id, Id.parse(id), z.enum(["outreach", "follow_up"]).parse(kind), why === undefined ? undefined : z.string().trim().min(10).max(1200).parse(why));
+  refresh(); return result;
+}
+export async function sendRelationshipAction(id: string, kind: MessageKind, fingerprint: string) {
+  const session = await requireSession();
+  const result = await sendRelationship(session.user.id, Id.parse(id), z.enum(["outreach", "follow_up"]).parse(kind), z.string().regex(/^[a-f0-9]{64}$/).parse(fingerprint));
+  refresh(); return result;
+}
+export async function recordOutcomeAction(id: string, outcome: Outcome) {
+  const session = await requireSession();
+  await saveOutcome(session.user.id, Id.parse(id), OutcomeSchema.parse(outcome));
+  refresh(); revalidatePath("/app/calibration");
+}
 export async function trackJobAction(jobId: string, resumeId?: string) {
   const session = await requireSession();
   await trackJob(session.user.id, Id.parse(jobId), { resumeId: resumeId ? Id.parse(resumeId) : undefined });

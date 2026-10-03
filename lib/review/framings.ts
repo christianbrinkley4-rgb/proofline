@@ -5,10 +5,11 @@ import { LETTER_SYSTEM_PROMPT } from "./letter-prompt";
  * The independent reviewers. Each reads the same document with a different job, so
  * they do not make the same mistake together: one checks nothing but whether claims
  * are true, one reads only as the employer's recruiter would, and a third, the
- * original all-purpose read, steps in when one of the first two is set aside.
+ * original all-purpose read, checks the complete document. A fourth can replace
+ * one contradicted read; three standing reviews are always required.
  */
 
-export type FramingId = "facts" | "reader" | "complete";
+export type FramingId = "facts" | "reader" | "complete" | "replacement";
 export type Framing = { id: FramingId; label: string; promptVersion: string; system: string };
 
 const OUTPUT_RULE = (categories: string) =>
@@ -65,11 +66,13 @@ ${OUTPUT_RULE('"filler"|"fit"|"other"')}`;
 export const RESUME_FRAMINGS: Framing[] = [
   { id: "facts", label: "Fact check", promptVersion: "review-facts.v1", system: RESUME_FACTS },
   { id: "reader", label: "Recruiter read", promptVersion: "review-reader.v1", system: RESUME_READER },
-  { id: "complete", label: "Full read", promptVersion: "review-gate.v1", system: REVIEW_SYSTEM_PROMPT },
+  { id: "complete", label: "Full read", promptVersion: "review-gate.v2", system: `${REVIEW_SYSTEM_PROMPT}\nAlso check text formatting: consistent headings, readable bullets, and complete sentences where needed. Physical page fit is measured separately with actual font metrics.` },
+  { id: "replacement", label: "Independent replacement", promptVersion: "review-replacement.v1", system: `You are an independent replacement reviewer. Read the document afresh.\n${REVIEW_SYSTEM_PROMPT}` },
 ];
 
 export const LETTER_FRAMINGS: Framing[] = [
   { id: "facts", label: "Fact check", promptVersion: "letter-facts.v1", system: LETTER_FACTS },
   { id: "reader", label: "Hiring manager read", promptVersion: "letter-reader.v1", system: LETTER_READER },
-  { id: "complete", label: "Full read", promptVersion: "letter-gate.v1", system: LETTER_SYSTEM_PROMPT },
+  { id: "complete", label: "Full read", promptVersion: "letter-gate.v2", system: `${LETTER_SYSTEM_PROMPT}\nAlso check formatting: readable paragraphs, a finished greeting and sign-off, and no unfinished placeholders.` },
+  { id: "replacement", label: "Independent replacement", promptVersion: "letter-replacement.v1", system: `You are an independent replacement reviewer. Read the document afresh.\n${LETTER_SYSTEM_PROMPT}` },
 ];

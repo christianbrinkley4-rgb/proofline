@@ -1,0 +1,41 @@
+▲ Next.js 16.3.6
+- Local:         http://localhost:3100
+- Network:       http://10.74.25.6:3100
+✓ Ready in 384ms
+✓ Running next.config.ts took 1445ms
+⨯ MongoServerSelectionError: 5C9D0000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:openssl\ssl\record\rec_layer_s3.c:918:SSL alert number 80
+
+    at ignore-listed frames {
+  errorLabelSet: Set(0) {},
+  reason: TopologyDescription {
+    type: 'ReplicaSetNoPrimary',
+    servers: Map(3) {
+      'ac-j6dtyzq-shard-00-02.hdhkaet.mongodb.net:27017' => [ServerDescription],
+      'ac-j6dtyzq-shard-00-00.hdhkaet.mongodb.net:27017' => [ServerDescription],
+      'ac-j6dtyzq-shard-00-01.hdhkaet.mongodb.net:27017' => [ServerDescription]
+    },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: 'atlas-l4i4ks-shard-0',
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  },
+  code: undefined,
+  digest: '4007690564',
+  [cause]: MongoNetworkError: 5C9D0000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:openssl\ssl\record\rec_layer_s3.c:918:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(3) { 'SystemOverloadedError', 'RetryableError', 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 5C9D0000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:openssl\ssl\record\rec_layer_s3.c:918:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}

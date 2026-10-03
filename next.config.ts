@@ -2,8 +2,6 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
-  // A Sentry DSN is a public ingest address. Other credentials stay server-only.
-  env: { NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN ?? "" },
   // PGlite loads its WebAssembly build from its own package folder, so it must not be bundled.
   serverExternalPackages: ["@electric-sql/pglite"],
   redirects() {

@@ -1,0 +1,13 @@
+
+> proofline@0.1.0 test
+> vitest run lib/interviews/model.test.ts --maxWorkers 1
+
+
+ RUN  v5.0.1 C:/Users/chris/OneDrive/Documents/ChatGPT/proofline/beta-readiness
+
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  11:02:47
+   Duration  3.30s (import 52%, transform 41%, tests 4%, worker 3%)
+

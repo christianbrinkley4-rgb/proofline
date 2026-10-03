@@ -1,0 +1,16 @@
+
+> proofline@0.1.0 test
+> vitest run lib/interviews --maxWorkers 1
+
+
+ RUN  v5.0.1 C:/Users/chris/OneDrive/Documents/ChatGPT/proofline/beta-readiness
+
+
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+   Start at  11:14:03
+   Duration  10.79s (tests 60%, import 24%, transform 16%)
+
+    Isolate  2 workers spawned · ~1.52s startup each (spawn + environment, per file)
+             at least ~1.52s faster with isolate: false — reuses workers across files instead of one per file
+

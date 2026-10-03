@@ -1,0 +1,42 @@
+pglite: found DB, resuming
+2026-10-02 19:27:09.441 -05 [42] LOG:  database system was interrupted; last known up at 2026-10-16 11:37:16 -05
+2026-10-02 19:27:09.451 -05 [42] DEBUG:  checkpoint record is at 0/1962E00
+2026-10-02 19:27:09.451 -05 [42] DEBUG:  redo record is at 0/1962E00; shutdown true
+2026-10-02 19:27:09.451 -05 [42] DEBUG:  next transaction ID: 836; next OID: 24576
+2026-10-02 19:27:09.451 -05 [42] DEBUG:  next MultiXactId: 1; next MultiXactOffset: 0
+2026-10-02 19:27:09.451 -05 [42] DEBUG:  oldest unfrozen transaction ID: 744, in database 1
+2026-10-02 19:27:09.451 -05 [42] DEBUG:  oldest MultiXactId: 1, in database 1
+2026-10-02 19:27:09.452 -05 [42] DEBUG:  commit timestamp Xid oldest/newest: 0/0
+2026-10-02 19:27:09.452 -05 [42] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-10-02 19:27:09.452 -05 [42] DEBUG:  transaction ID wrap limit is 2147484391, limited by database with OID 1
+2026-10-02 19:27:09.452 -05 [42] DEBUG:  MultiXactId wrap limit is 2147483648, limited by database with OID 1
+2026-10-02 19:27:09.461 -05 [42] DEBUG:  starting up replication slots
+2026-10-02 19:27:09.462 -05 [42] DEBUG:  xmin required by slots: data 0, catalog 0
+2026-10-02 19:27:09.469 -05 [42] DEBUG:  resetting unlogged relations: cleanup 1 init 0
+2026-10-02 19:27:09.668 -05 [42] LOG:  redo starts at 0/1962E78
+2026-10-02 19:27:09.708 -05 [42] LOG:  invalid record length at 0/19CA4F8: expected at least 24, got 0
+2026-10-02 19:27:09.708 -05 [42] LOG:  redo done at 0/19CA4D0 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.04 s
+2026-10-02 19:27:09.709 -05 [42] DEBUG:  resetting unlogged relations: cleanup 0 init 1
+2026-10-02 19:27:09.718 -05 [42] DEBUG:  MultiXactId wrap limit is 2147483648, limited by database with OID 1
+2026-10-02 19:27:09.719 -05 [42] DEBUG:  MultiXact member stop limit is now 4294914944 based on MultiXact 1
+2026-10-02 19:27:09.721 -05 [42] DEBUG:  performing replication slot checkpoint
+
+PostgreSQL stand-alone backend 18.3
+runQuery 
+      SELECT b.oid, b.typarray
+      FROM pg_catalog.pg_type a
+      LEFT JOIN pg_catalog.pg_type b ON b.oid = a.typelem
+      WHERE a.typcategory = 'A'
+      GROUP BY b.oid, b.typarray
+      ORDER BY b.oid
+     [] undefined
+Local acceptance database restored
+2026-10-02 19:27:09.979 -05 [42] LOG:  shutting down
+2026-10-02 19:27:09.981 -05 [42] DEBUG:  performing replication slot checkpoint
+2026-10-02 19:27:09.992 -05 [42] LOG:  database system is shut down
+backend> 
+ExitStatus {
+  name: 'ExitStatus',
+  message: 'Program terminated with exit(0)',
+  status: 0
+}

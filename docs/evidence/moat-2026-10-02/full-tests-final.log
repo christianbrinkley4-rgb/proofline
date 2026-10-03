@@ -1,0 +1,25 @@
+
+> proofline@0.1.0 test
+> vitest run
+
+
+ RUN  v5.0.1 C:/Users/chris/OneDrive/Documents/ChatGPT/proofline/beta-readiness
+
+(node:21656) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35804) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18468) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34840) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  117 passed (117)
+      Tests  1553 passed (1553)
+   Start at  12:42:43
+   Duration  211.82s (tests 46%, import 37%, transform 17%)
+
+     Import  331 modules were evaluated 1065 times · 174.08s total, 37% of tracked time
+             ~15.37s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+

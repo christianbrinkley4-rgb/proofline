@@ -9,16 +9,26 @@ import { loadCandidate } from "@/lib/fit/candidate";
 import { scoreFit } from "@/lib/fit/engine";
 import { requirementsOf } from "@/lib/jobs/store";
 import { listApplications } from "@/lib/tracker/service";
+import { loadInterviewData } from "@/lib/interviews/service";
+import { submissionPrediction } from "@/lib/interviews/model";
+import { loadRelationshipLanes } from "@/lib/outreach/service";
+import { getResume } from "@/lib/resume/store";
+import { gateStatus } from "@/lib/review/gate";
+import { packetView } from "@/lib/packet/service";
+import { mapLimit } from "@/lib/jobs/sources/http";
+import type { ApplicationGatesView } from "@/components/tracker/application-gates";
 
 export const metadata: Metadata = { title: "Applications" };
 export default async function TrackerPage({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
   const session = await requireSession();
   const userId = session.user.id;
   const { app: openApp } = await searchParams;
-  const [applications, candidate, resumes, events] = await Promise.all([
+  const [applications, candidate, resumes, events, interviewData, relationships] = await Promise.all([
     listApplications(userId), loadCandidate(userId),
     db.query.resume.findMany({ where: eq(schema.resume.userId, userId), columns: { id: true, jobId: true } }),
     db.query.agentEvent.findMany({ where: and(eq(schema.agentEvent.userId, userId), inArray(schema.agentEvent.type, ["application_stage_changed", "application_reply_recorded", "resume_linked", "follow_up_recorded"])), orderBy: [desc(schema.agentEvent.createdAt)] }),
+    loadInterviewData(userId),
+    loadRelationshipLanes(userId),
   ]);
   const jobIds = [...new Set(applications.flatMap((a) => a.jobId ? [a.jobId] : []))];
   const jobs = jobIds.length ? await db.query.job.findMany({ where: inArray(schema.job.id, jobIds) }) : [];
@@ -36,7 +46,13 @@ export default async function TrackerPage({ searchParams }: { searchParams: Prom
     insights[app.id] = { score: fit.score, strengths: fit.strengths, gaps: fit.gaps, nextSteps: steps.slice(0, 4), versions: resumes.filter((r) => r.jobId === job.id).length };
   }
   const activity = parseApplicationActivity(events);
+  const interviews = Object.fromEntries(applications.map((app) => [app.id, { available: interviewData.available, prediction: app.appliedAt ? submissionPrediction(interviewData.predictions, app.id, app.appliedAt.toISOString()) : interviewData.predictions.find((p) => p.applicationId === app.id) ?? null, outcome: interviewData.outcomes.find((o) => o.applicationId === app.id)?.outcome ?? null }]));
   const initialAppId = typeof openApp === "string" && applications.some((a) => a.id === openApp) ? openApp : null;
-  return <PageBody className="max-w-[1600px]"><PageHeader title="Applications" description="Every job you're applying to, on one board. Mark one Applied and I'll remind you to follow up 14 days later." /><TrackerBoard applications={applications} insights={insights} activity={activity} name={session.user.name} now={new Date().toISOString()} initialAppId={initialAppId} /></PageBody>;
+  const receipts = await mapLimit(applications, 3, async (app): Promise<[string, ApplicationGatesView]> => {
+    const [stored, packet] = await Promise.all([app.resumeId ? getResume(userId, app.resumeId) : null, app.jobId ? packetView(userId, app.jobId) : null]);
+    const gate = stored ? await gateStatus(userId, stored) : null;
+    return [app.id, { resume: gate?.review ?? null, resumeStale: gate?.stale ?? false, letter: packet?.gate ?? null, letterStale: packet?.gateStale ?? false }];
+  });
+  return <PageBody className="max-w-[1600px]"><PageHeader title="Applications" description="Every job you're applying to, on one board. Mark one Applied and I'll remind you to follow up 14 days later." /><TrackerBoard applications={applications} insights={insights} interviews={interviews} relationships={relationships} gates={Object.fromEntries(receipts)} activity={activity} name={session.user.name} now={new Date().toISOString()} initialAppId={initialAppId} /></PageBody>;
 }
 

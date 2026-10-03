@@ -110,6 +110,7 @@ export function BetaOnboarding({ data }: { data: BetaOnboardingData }) {
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-12">
+      {!data.returnTo && !data.importing && <p className="mb-5 text-sm leading-6 text-muted-foreground">The goal is interviews. Put your effort into 10 perfect applications instead of 300 autopilot submissions. Start with what you actually did; you confirm the facts and choose every message you send.</p>}
       {progress >= 0 && !data.returnTo && !data.importing && (
         <ol aria-label="Progress" className="grid grid-cols-3 gap-1.5">
           {PROGRESS_STEPS.map((s, i) => (

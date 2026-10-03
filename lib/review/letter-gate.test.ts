@@ -87,7 +87,7 @@ describe("the cover letter's model review", () => {
   it("passes only when the rules pass and the model says PASS", async () => {
     const fetchMock = modelSays("PASS");
     const result = await evaluateLetter("u", input(letter()), { chargeAccount: false });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(result.passed).toBe(true);
     expect(result.model.message).toMatch(/found nothing to fix/);
   });
@@ -104,12 +104,15 @@ describe("the cover letter's model review", () => {
     expect(sent).not.toContain("Sam Lee");
     // Two independent reviewers with different jobs read the same letter.
     const systems = fetchMock.mock.calls.map((call) => JSON.parse(((call as unknown) as [string, { body: string }])[1].body).systemInstruction.parts[0].text as string);
-    expect(systems).toEqual([LETTER_FRAMINGS[0].system, LETTER_FRAMINGS[1].system]);
-    expect(new Set(systems).size).toBe(2);
+    expect(systems).toEqual([LETTER_FRAMINGS[0].system, LETTER_FRAMINGS[1].system, LETTER_FRAMINGS[2].system]);
+    expect(new Set(systems).size).toBe(3);
   });
 
-  it("keeps the all-purpose letter prompt as the replacement reviewer", () => {
-    expect(LETTER_FRAMINGS[2].system).toBe(LETTER_SYSTEM_PROMPT);
+  it("uses the complete review as the third primary and an independent fourth replacement", () => {
+    expect(LETTER_FRAMINGS[2].system).toContain(LETTER_SYSTEM_PROMPT);
+    expect(LETTER_FRAMINGS[2].system).toContain("formatting");
+    expect(LETTER_FRAMINGS[3].id).toBe("replacement");
+    expect(LETTER_FRAMINGS[3].system).toContain(LETTER_SYSTEM_PROMPT);
   });
 
   it("fails on a flagged line it can quote, and drops a flag it cannot quote", async () => {

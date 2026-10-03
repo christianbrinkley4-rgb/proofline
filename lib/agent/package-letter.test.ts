@@ -9,6 +9,8 @@ import type { NormalizedJob } from "@/lib/jobs/types";
 import { getPacket, loadPacketContext, readLetter, saveCoverLetter, saveWhy } from "@/lib/packet/service";
 import { addReasonToRun } from "./add-reason";
 import { packageLetter } from "./package-letter";
+// This suite uses real local Postgres and synthetic Atlas acknowledgements; it never touches an account database.
+vi.mock("@/lib/interviews/mongo", () => ({ atlasConfigured: () => true, atlas: async () => ({ collection: () => ({ insertOne: async () => ({ acknowledged: true }) }) }) }));
 
 const NOW = new Date();
 const posting: NormalizedJob = {
@@ -93,7 +95,7 @@ describe("packaging the cover letter for a role", () => {
     await saveWhy(userId, jobId, "I read how LetterCo closes its books every week and I want to learn that close process from the team that built it.");
     const fetchMock = modelSays("PASS");
     expect(await packageLetter(userId, jobId)).toEqual({ ok: true });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     const packet = await getPacket(userId, jobId);
     expect(readLetter(packet)?.paragraphs.find((p) => p.purpose === "motivation")?.text).toBe("I read how LetterCo closes its books every week and I want to learn that close process from the team that built it.");
     expect(packet?.letterReview).toMatchObject({ version: 1, passed: true, model: { status: "pass" } });
@@ -114,7 +116,7 @@ describe("packaging the cover letter for a role", () => {
     expect(readLetter(await getPacket(userId, jobId))?.generator).toBe("user");
     const fetchMock = modelSays("PASS");
     expect(await packageLetter(userId, jobId)).toEqual({ ok: true });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(readLetter(await getPacket(userId, jobId))?.paragraphs.find((p) => p.purpose === "closing")?.text).toBe("Thank you for reading. I would be glad to talk any time that suits you.");
   });
 

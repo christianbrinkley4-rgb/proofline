@@ -1,0 +1,395 @@
+{
+  "capturedAt": "2026-10-03T00:28:43.973Z",
+  "database": "proofline_moat_verification_20261002",
+  "predictions": [
+    {
+      "_id": "83475a22-0f07-4933-a98e-200903363a00",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "gate": "resume",
+      "fingerprint": "42c18230289cf9fffc174a33d0a94e6d7ae51324fd94438fee10ca74efa9903e",
+      "probability": 48,
+      "reasoning": "For: Bookkeeping, which they ask for; against: 2+ years of experience requested.",
+      "version": "interview-fit-prior.v1",
+      "at": "2026-10-02T16:17:55.120Z"
+    },
+    {
+      "_id": "e3d2bf07-ddd5-47f4-b2bf-6c2b8e4a12ab",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "gate": "outreach",
+      "fingerprint": "3e7009d5352caa2942fca2a465ab3d2ff6519479b21dddee42c3744607e20ffb",
+      "probability": 48,
+      "reasoning": "For: Bookkeeping, which they ask for; against: 2+ years of experience requested.",
+      "version": "interview-fit-prior.v1",
+      "at": "2026-10-02T16:24:13.480Z"
+    },
+    {
+      "_id": "372d766b-c354-4d94-be8d-866ce52ef505",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "gate": "follow_up",
+      "fingerprint": "d0aa7381d5131d5a3aa4096a072742f66f1176de17e705737f19277a2e58ce76",
+      "probability": 48,
+      "reasoning": "For: Bookkeeping, which they ask for; against: 2+ years of experience requested.",
+      "version": "interview-fit-prior.v1",
+      "at": "2026-10-02T16:26:24.106Z"
+    },
+    {
+      "_id": "78db2240-0e74-44c5-88f9-bc181a3baf1c",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "gate": "outreach",
+      "fingerprint": "3e7009d5352caa2942fca2a465ab3d2ff6519479b21dddee42c3744607e20ffb",
+      "probability": 48,
+      "reasoning": "For: Bookkeeping, which they ask for; against: 2+ years of experience requested.",
+      "version": "interview-fit-prior.v1",
+      "at": "2026-10-02T16:30:16.605Z"
+    },
+    {
+      "_id": "c2f1b111-47f8-43fe-a9f3-882623ae5c5f",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "3318c521-5d23-493c-8296-9f17efc3a2d2",
+      "gate": "resume",
+      "fingerprint": "cbb0f092d36245db77349106f21a745e1ae679113ed25f427cec3d353c44999e",
+      "probability": 33,
+      "reasoning": "For: Relevant experience: Bookkeeping Assistant; against: Tax preparation.",
+      "version": "interview-fit-prior.v1",
+      "at": "2026-10-17T00:27:55.084Z"
+    }
+  ],
+  "outcomes": [
+    {
+      "_id": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c:0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "at": "2026-10-16T16:38:15.105Z",
+      "outcome": "interview",
+      "predictionId": "e3d2bf07-ddd5-47f4-b2bf-6c2b8e4a12ab",
+      "probability": 48,
+      "submittedAt": "2026-10-02T16:26:23.036Z"
+    }
+  ],
+  "lanes": [
+    {
+      "_id": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c:0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+      "contact": {
+        "name": "David Hawthorne-Finch",
+        "role": "Posting contact",
+        "email": "d.hawthorne-finch@h-fts.com",
+        "sourceUrl": "https://careers.h-fts.com/job/68213/accounts-assistant-semi-senior-accountant/heywood",
+        "quote": "Contact name: David Hawthorne-Finch Phone number: +443339962882 Contact email: d.hawthorne-finch@h-fts.com",
+        "verifiedAt": "2026-10-02T16:30:16.544Z"
+      },
+      "emptyReason": null,
+      "why": "I want to build my accounting experience through the client work described in this role.",
+      "fact": "Reconciled vendor accounts in QuickBooks each month",
+      "name": "Sam Verification",
+      "draft": {
+        "subject": "Accounts Assistant/Semi Senior Accountant at Hawthorne-Finch Talent Solutions",
+        "body": "Hi David Hawthorne-Finch,\n\nI'm interested in the Accounts Assistant/Semi Senior Accountant role at Hawthorne-Finch Talent Solutions.\nI want to build my accounting experience through the client work described in this role.\n\nReconciled vendor accounts in QuickBooks each month\n\nWould you be open to a brief conversation about the role?\n\nThank you,\nSam Verification"
+      },
+      "followUp": {
+        "subject": "Following up: Accounts Assistant/Semi Senior Accountant at Hawthorne-Finch Talent Solutions",
+        "body": "Hi David Hawthorne-Finch,\n\nI'm following up on my application for the Accounts Assistant/Semi Senior Accountant role at Hawthorne-Finch Talent Solutions.\nI want to build my accounting experience through the client work described in this role.\n\nReconciled vendor accounts in QuickBooks each month\n\nWould you be open to a brief conversation about the role?\n\nThank you,\nSam Verification"
+      },
+      "gate": {
+        "fingerprint": "3e7009d5352caa2942fca2a465ab3d2ff6519479b21dddee42c3744607e20ffb",
+        "checks": [
+          {
+            "label": "Confirmed evidence",
+            "ok": true,
+            "detail": "The tailored example must be copied from a confirmed fact."
+          },
+          {
+            "label": "Your reason",
+            "ok": true,
+            "detail": "Your own reason for wanting this role is required."
+          },
+          {
+            "label": "Human voice",
+            "ok": true,
+            "detail": "No em dashes, filler, or machine-written phrases."
+          },
+          {
+            "label": "Formatting",
+            "ok": true,
+            "detail": "53 words; requires a finished greeting, subject, and signature."
+          },
+          {
+            "label": "Employer and recipient",
+            "ok": true,
+            "detail": "Names this employer, role, and sourced contact."
+          }
+        ],
+        "model": {
+          "status": "pass",
+          "issues": [],
+          "model": "synthetic-local-reviewer",
+          "reviewers": [
+            {
+              "reviewer": "facts",
+              "label": "Fact check",
+              "issues": [],
+              "disqualified": null,
+              "status": "pass",
+              "model": "synthetic-local-reviewer"
+            },
+            {
+              "reviewer": "reader",
+              "label": "Hiring manager read",
+              "issues": [],
+              "disqualified": null,
+              "status": "pass",
+              "model": "synthetic-local-reviewer"
+            },
+            {
+              "reviewer": "complete",
+              "label": "Full read",
+              "issues": [],
+              "disqualified": null,
+              "status": "pass",
+              "model": "synthetic-local-reviewer"
+            }
+          ],
+          "message": "3 independent reviewers read the outreach against what you confirmed and found nothing to fix."
+        },
+        "passed": true,
+        "at": "2026-10-02T16:30:16.585Z",
+        "documentLines": [
+          {
+            "key": "subject",
+            "text": "Accounts Assistant/Semi Senior Accountant at Hawthorne-Finch Talent Solutions"
+          },
+          {
+            "key": "body:0",
+            "text": "Hi David Hawthorne-Finch,"
+          },
+          {
+            "key": "body:1",
+            "text": ""
+          },
+          {
+            "key": "body:2",
+            "text": "I'm interested in the Accounts Assistant/Semi Senior Accountant role at Hawthorne-Finch Talent Solutions."
+          },
+          {
+            "key": "body:3",
+            "text": "I want to build my accounting experience through the client work described in this role."
+          },
+          {
+            "key": "body:4",
+            "text": ""
+          },
+          {
+            "key": "body:5",
+            "text": "Reconciled vendor accounts in QuickBooks each month"
+          },
+          {
+            "key": "body:6",
+            "text": ""
+          },
+          {
+            "key": "body:7",
+            "text": "Would you be open to a brief conversation about the role?"
+          },
+          {
+            "key": "body:8",
+            "text": ""
+          },
+          {
+            "key": "body:9",
+            "text": "Thank you,"
+          },
+          {
+            "key": "body:10",
+            "text": "Sam Verification"
+          }
+        ],
+        "changes": [
+          {
+            "before": "I want this role because it is the best job in the world.",
+            "after": "I want to build my accounting experience through the client work described in this role.",
+            "rule": "Use a specific personal reason instead of extravagant praise."
+          }
+        ],
+        "prediction": {
+          "id": "78db2240-0e74-44c5-88f9-bc181a3baf1c",
+          "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+          "gate": "outreach",
+          "fingerprint": "3e7009d5352caa2942fca2a465ab3d2ff6519479b21dddee42c3744607e20ffb",
+          "probability": 48,
+          "reasoning": "For: Bookkeeping, which they ask for; against: 2+ years of experience requested.",
+          "version": "interview-fit-prior.v1",
+          "at": "2026-10-02T16:30:16.605Z"
+        }
+      },
+      "followUpGate": {
+        "fingerprint": "d0aa7381d5131d5a3aa4096a072742f66f1176de17e705737f19277a2e58ce76",
+        "checks": [
+          {
+            "label": "Confirmed evidence",
+            "ok": true,
+            "detail": "The tailored example must be copied from a confirmed fact."
+          },
+          {
+            "label": "Your reason",
+            "ok": true,
+            "detail": "Your own reason for wanting this role is required."
+          },
+          {
+            "label": "Human voice",
+            "ok": true,
+            "detail": "No em dashes, filler, or machine-written phrases."
+          },
+          {
+            "label": "Formatting",
+            "ok": true,
+            "detail": "57 words; requires a finished greeting, subject, and signature."
+          },
+          {
+            "label": "Employer and recipient",
+            "ok": true,
+            "detail": "Names this employer, role, and sourced contact."
+          }
+        ],
+        "model": {
+          "status": "pass",
+          "issues": [],
+          "model": "synthetic-local-reviewer",
+          "reviewers": [
+            {
+              "reviewer": "facts",
+              "label": "Fact check",
+              "issues": [],
+              "disqualified": null,
+              "status": "pass",
+              "model": "synthetic-local-reviewer"
+            },
+            {
+              "reviewer": "reader",
+              "label": "Hiring manager read",
+              "issues": [],
+              "disqualified": null,
+              "status": "pass",
+              "model": "synthetic-local-reviewer"
+            },
+            {
+              "reviewer": "complete",
+              "label": "Full read",
+              "issues": [],
+              "disqualified": null,
+              "status": "pass",
+              "model": "synthetic-local-reviewer"
+            }
+          ],
+          "message": "3 independent reviewers read the follow-up against what you confirmed and found nothing to fix."
+        },
+        "passed": true,
+        "at": "2026-10-02T16:26:24.086Z",
+        "documentLines": [
+          {
+            "key": "subject",
+            "text": "Following up: Accounts Assistant/Semi Senior Accountant at Hawthorne-Finch Talent Solutions"
+          },
+          {
+            "key": "body:0",
+            "text": "Hi David Hawthorne-Finch,"
+          },
+          {
+            "key": "body:1",
+            "text": ""
+          },
+          {
+            "key": "body:2",
+            "text": "I'm following up on my application for the Accounts Assistant/Semi Senior Accountant role at Hawthorne-Finch Talent Solutions."
+          },
+          {
+            "key": "body:3",
+            "text": "I want to build my accounting experience through the client work described in this role."
+          },
+          {
+            "key": "body:4",
+            "text": ""
+          },
+          {
+            "key": "body:5",
+            "text": "Reconciled vendor accounts in QuickBooks each month"
+          },
+          {
+            "key": "body:6",
+            "text": ""
+          },
+          {
+            "key": "body:7",
+            "text": "Would you be open to a brief conversation about the role?"
+          },
+          {
+            "key": "body:8",
+            "text": ""
+          },
+          {
+            "key": "body:9",
+            "text": "Thank you,"
+          },
+          {
+            "key": "body:10",
+            "text": "Sam Verification"
+          }
+        ],
+        "changes": [],
+        "prediction": {
+          "id": "372d766b-c354-4d94-be8d-866ce52ef505",
+          "applicationId": "0497194b-157f-41a5-8a2d-0e09eb5e146a",
+          "gate": "follow_up",
+          "fingerprint": "d0aa7381d5131d5a3aa4096a072742f66f1176de17e705737f19277a2e58ce76",
+          "probability": 48,
+          "reasoning": "For: Bookkeeping, which they ask for; against: 2+ years of experience requested.",
+          "version": "interview-fit-prior.v1",
+          "at": "2026-10-02T16:26:24.106Z"
+        }
+      },
+      "touches": [
+        {
+          "subject": "Accounts Assistant/Semi Senior Accountant at Hawthorne-Finch Talent Solutions",
+          "body": "Hi David Hawthorne-Finch,\n\nI'm interested in the Accounts Assistant/Semi Senior Accountant role at Hawthorne-Finch Talent Solutions.\nI want to build my accounting experience through the client work described in this role.\n\nReconciled vendor accounts in QuickBooks each month\n\nWould you be open to a brief conversation about the role?\n\nThank you,\nSam Verification",
+          "id": "0dff965e-276a-4717-86c1-9bcdebd24d11",
+          "kind": "outreach",
+          "to": "d.hawthorne-finch@h-fts.com",
+          "at": "2026-10-02T16:30:55.367Z",
+          "providerId": "synthetic-local-22633cce-b86f-4f15-bc93-07fd1458c7cd"
+        },
+        {
+          "subject": "Following up: Accounts Assistant/Semi Senior Accountant at Hawthorne-Finch Talent Solutions",
+          "body": "Hi David Hawthorne-Finch,\n\nI'm following up on my application for the Accounts Assistant/Semi Senior Accountant role at Hawthorne-Finch Talent Solutions.\nI want to build my accounting experience through the client work described in this role.\n\nReconciled vendor accounts in QuickBooks each month\n\nWould you be open to a brief conversation about the role?\n\nThank you,\nSam Verification",
+          "id": "ab02e8e8-da6e-4302-9497-9fcf25380ac3",
+          "kind": "follow_up",
+          "to": "d.hawthorne-finch@h-fts.com",
+          "at": "2026-10-16T16:37:35.352Z",
+          "providerId": "synthetic-local-91cd5478-f5ac-4cc8-abec-625e0c44c2d1"
+        }
+      ],
+      "sendState": null,
+      "attemptId": "ab02e8e8-da6e-4302-9497-9fcf25380ac3",
+      "attemptKind": "follow_up"
+    },
+    {
+      "_id": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c:3318c521-5d23-493c-8296-9f17efc3a2d2",
+      "userId": "ojLBCmBb6XZvGlFiR1QCiYilVcWBXS4c",
+      "applicationId": "3318c521-5d23-493c-8296-9f17efc3a2d2",
+      "contact": null,
+      "emptyReason": "No named recruiter or hiring manager with a public email was found in the live posting. We have not guessed a contact.",
+      "why": "",
+      "fact": "Reconciled vendor accounts in QuickBooks each month",
+      "name": "Sam Verification",
+      "draft": null,
+      "followUp": null,
+      "gate": null,
+      "followUpGate": null,
+      "touches": [],
+      "sendState": null
+    }
+  ]
+}

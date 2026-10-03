@@ -116,7 +116,7 @@ export async function moveApplication(userId: string, id: string, stage: Stage, 
   z.uuid().parse(id);
   StageSchema.parse(stage);
   if (sortOrder !== undefined) z.number().finite().parse(sortOrder);
-  return db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     const [app] = await tx.select().from(schema.application).where(and(eq(schema.application.id, id), eq(schema.application.userId, userId))).for("update");
     if (!app) throw new Error("Application not found");
     await tx.update(schema.application).set(stagePatch(app, stage, new Date(), sortOrder)).where(and(eq(schema.application.id, id), eq(schema.application.userId, userId)));
@@ -125,6 +125,10 @@ export async function moveApplication(userId: string, id: string, stage: Stage, 
       data: { applicationId: id, from: app.stage, to: stage, jobId: app.jobId, resumeId: app.resumeId },
     });
   });
+  if (stage === "applied") {
+    const { prepareSubmittedFollowUp } = await import("@/lib/outreach/service");
+    await prepareSubmittedFollowUp(userId, id);
+  }
 }
 export async function updateApplication(userId: string, id: string, patch: Partial<Pick<Application, "notes" | "contacts" | "nextFollowUpAt" | "deadline" | "confirmationRef" | "followUpSentAt">>) {
   const app = await getApplication(userId, id);
@@ -164,6 +168,8 @@ export async function recordReply(userId: string, id: string, input: { kind: str
 /** Removing an application also removes its private activity and email drafts. */
 export async function deleteApplication(userId: string, id: string) {
   z.uuid().parse(id);
+  const { deleteInterviewData } = await import("@/lib/interviews/service");
+  await deleteInterviewData(userId, id);
   await db.transaction(async (tx) => {
     const events = await tx.query.agentEvent.findMany({ where: eq(schema.agentEvent.userId, userId), columns: { id: true, data: true } });
     const eventIds = events.filter((event) => event.data.applicationId === id).map((event) => event.id);

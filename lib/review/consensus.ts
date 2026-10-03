@@ -3,12 +3,11 @@ import { callReviewModel, settleVerdict, type ModelIssue, type ModelReview, type
 import { supportingFact } from "./support";
 
 /**
- * A review that does not rest on one model's say-so. Two reviewers with different
- * jobs read the document independently and it passes only if both pass. A reviewer
+ * Three reviewers with different jobs read independently. All three must pass. A reviewer
  * whose complaint the confirmed facts contradict is set aside for this run (its
- * flags are dropped, not argued with) and a third reviewer takes its place, so a
+ * flags are dropped, not argued with) and a fourth reviewer takes its place, so a
  * model's mistake never makes the person rewrite a true line, and a pass is never
- * given on the word of fewer than two reviewers.
+ * given on the word of fewer than three reviewers.
  *
  * Nothing here can add a claim: reviewers only read, and every flag must quote the
  * document verbatim.
@@ -17,7 +16,7 @@ import { supportingFact } from "./support";
 export type ConsensusSpec = {
   /** Used for credits and logs: "review.gate" or "review.letter". */
   purpose: string;
-  /** The first two run together; the third replaces one that is set aside. */
+  /** The first three run together; a fourth replaces one that is set aside. */
   framings: Framing[];
   /** The user message each reviewer receives. */
   input: string;
@@ -26,7 +25,7 @@ export type ConsensusSpec = {
   facts: string[];
   /** Names a line may use that facts do not hold, such as an employer or school. */
   known?: string[];
-  noun: "resume" | "letter";
+  noun: "resume" | "letter" | "outreach" | "follow-up";
 };
 
 type Round = { framing: Framing; outcome: Awaited<ReturnType<typeof callReviewModel>> };
@@ -58,15 +57,17 @@ async function ask(userId: string, framing: Framing, spec: ConsensusSpec, opts: 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export async function reviewByConsensus(userId: string, spec: ConsensusSpec, opts: { chargeAccount?: boolean } = {}): Promise<ModelReview> {
-  const [first, second, spare] = spec.framings;
-  const verdicts = await Promise.all([ask(userId, first, spec, opts), ask(userId, second, spec, opts)]);
+  const primary = spec.framings.slice(0, 3);
+  if (primary.length !== 3) throw new Error("Three independent reviewer framings are required.");
+  const spare = spec.framings[3];
+  const verdicts = await Promise.all(primary.map((framing) => ask(userId, framing, spec, opts)));
 
   const counted = () => verdicts.filter((v) => (v.status === "pass" || v.status === "fail") && !v.disqualified);
   const trouble = () => verdicts.find((v) => v.status === "unavailable" || v.status === "limit" || v.status === "error");
   const modelName = () => verdicts.find((v) => v.model)?.model ?? null;
 
-  // A reviewer was set aside and nobody has failed the document: the third reviewer takes its place.
-  if (spare && !counted().some((v) => v.status === "fail") && !trouble() && counted().length < 2) verdicts.push(await ask(userId, spare, spec, opts));
+  // One contradicted reviewer can be replaced. Multiple contradicted reads cannot produce a pass.
+  if (spare && !counted().some((v) => v.status === "fail") && !trouble() && counted().length === 2) verdicts.push(await ask(userId, spare, spec, opts));
 
   const standing = counted();
   const fails = standing.filter((v) => v.status === "fail");
@@ -88,7 +89,7 @@ export async function reviewByConsensus(userId: string, spec: ConsensusSpec, opt
           : "The final read-through didn't finish. Check it again in a minute. Your other checks still count.";
     return { status: problem.status, issues: [], model: problem.model ?? modelName(), reviewers: verdicts, message };
   }
-  if (standing.length >= 2) {
+  if (standing.length >= 3) {
     return { status: "pass", issues: [], model: modelName(), reviewers: verdicts, message: `${standing.length} independent reviewers read the ${spec.noun} against what you confirmed and found nothing to fix.${note}` };
   }
   return { status: "error", issues: [], model: modelName(), reviewers: verdicts, message: `The reviewers couldn't agree on this ${spec.noun}, so it wasn't passed. Check it again in a minute.${note}` };

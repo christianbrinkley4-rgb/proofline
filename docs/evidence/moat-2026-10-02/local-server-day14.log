@@ -1,0 +1,9 @@
+▲ Next.js 16.3.6
+- Local:         http://localhost:3100
+- Network:       http://10.74.25.6:3100
+✓ Ready in 201ms
+✓ Running next.config.ts took 790ms
+⨯ TypeError: Date.parse is not a function
+    at ignore-listed frames {
+  digest: '2441880597'
+}

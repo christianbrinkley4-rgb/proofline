@@ -106,6 +106,7 @@ export default async function JobPage({ params, searchParams }: PageProps<"/app/
         adjustments: stored.adjustments,
         linter: gate.linter,
         model: gate.review?.model ?? null,
+        changes: gate.review?.changes ?? [],
         reviewedAt: gate.review?.at ?? null,
         stale: gate.stale,
         canExport: gate.canExport,

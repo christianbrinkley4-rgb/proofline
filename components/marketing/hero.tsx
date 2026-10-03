@@ -17,12 +17,12 @@ export function Hero() {
         </p>
 
         <h1 className="mx-auto mt-7 max-w-[15ch] font-display text-[46px] leading-[0.98] font-semibold text-balance motion-safe:animate-rise motion-safe:[animation-delay:80ms] sm:text-[68px] lg:text-[84px]">
-          The resume you can defend in the interview.
+          A job search built to get you interviews.
         </h1>
 
         <p className="mx-auto mt-6 max-w-[38rem] text-[17px] leading-7 text-pretty text-muted-foreground motion-safe:animate-rise motion-safe:[animation-delay:160ms] sm:text-[19px] sm:leading-8">
-          Every line comes from something you confirmed. Nothing is invented. Paste any job and get your fit, a one-page
-          resume made for it, and exactly what would make it stronger.
+          Put your effort into 10 perfect applications instead of 300 autopilot submissions. Every line comes from
+          something you confirmed, every message gets checked, and you choose what to send. The goal is a real interview.
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 motion-safe:animate-rise motion-safe:[animation-delay:240ms] sm:flex-row">

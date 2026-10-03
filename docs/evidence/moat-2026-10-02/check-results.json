@@ -1,0 +1,20 @@
+[
+  {
+    "log": "full-tests-final.log",
+    "command": "npm run test",
+    "startedAt": "2026-10-02T16:42:38.4523989Z",
+    "exitCode": 0
+  },
+  {
+    "log": "typecheck-final.log",
+    "command": "npm run typecheck",
+    "startedAt": "2026-10-02T16:46:15.4149105Z",
+    "exitCode": 0
+  },
+  {
+    "log": "lint-final.log",
+    "command": "npm run lint",
+    "startedAt": "2026-10-02T16:46:35.7505282Z",
+    "exitCode": 0
+  }
+]

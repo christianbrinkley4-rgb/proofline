@@ -1,0 +1,13 @@
+
+> proofline@0.1.0 test
+> vitest run lib/outreach
+
+
+ RUN  v5.0.1 C:/Users/chris/OneDrive/Documents/ChatGPT/proofline/beta-readiness
+
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  11:36:28
+   Duration  1.76s (transform 42%, import 25%, tests 24%, worker 8%)
+

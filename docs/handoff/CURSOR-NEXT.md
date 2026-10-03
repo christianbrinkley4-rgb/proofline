@@ -1,5 +1,15 @@
 # Handoff to Cursor (September 28, 2026)
 
+## October 2 competitive moat release status
+
+Item 0 Sentry client fix is live as READY production `dpl_CGFjTF6wMRux7eYZc4WuH3y7nF4p`. The client bundle contains the full public DSN; Sentry dashboard receipt is `PROOFLINE-1`, event `e315d0e1935a415097f9ab91614803f2`, environment `production`. The temporary public `/sentry-check` is removed from source; removal ships with the next deployment. The permanent control is on the owner page.
+
+Items 1-3 are implemented and verified on the optimized local build, **not deployed**: Atlas predictions at passing gates, one-tap outcomes and calibration; sourced recruiter outreach and pre-gated day-14 follow-ups with review/send controls and touch receipts; three-reviewer receipts with exact failure quotes/observed edits, and interviews positioning. Final checks passed: 117 files, 1,553 tests, typecheck, lint, production build. The fresh-signup browser loop stored 48%, recorded Interview, and showed 48% predicted versus 100% (1/1) actual in the 41-60% bucket. A second real posting with no named recruiter showed the honest empty state and no draft/contact/touches in Atlas. Detailed acceptance evidence and IDs: [COMPETITIVE-MOAT-2026-10-02.md](../COMPETITIVE-MOAT-2026-10-02.md).
+
+Verification used real Atlas and the real app with synthetic reviewer/email providers and a process-only day-14 clock. It does not prove real Gemini review quality or real email delivery. The initial probability is labeled an uncalibrated fit prior, not a trained model. No new paid service or SQL migration. Mongo indexes initialize automatically; passing gates fail closed if Atlas persistence fails. The old two-reviewer receipt cannot authorize a send; three distinct standing completed reviews are now required.
+
+**Before releasing items 1-3:** configure Production `MONGODB_URI` and `MONGODB_DB=proofline`, authorize an Atlas network path for Vercel, then deploy and verify the existing production review/email providers. The ignored local `.env.local` contains the scoped Atlas connection; the free Proofline cluster has readWrite roles for `proofline` and isolated `proofline_moat_verification_20261002`. Current-computer IP access is configured for local verification only. Do not deploy without the production Atlas configuration. No deployment of items 1-3 is claimed here.
+
 ## October 1 beta-readiness punchlist
 
 Sentry reporting, onboarding skills and Find jobs completion, signup autofill handling, immediate keyword feedback, truthful review summaries, spacing, per-account credit copy and confirmed SimpleAnalytics are implemented. No migration or quota change. Details, files and verification limits: [BETA-PUNCHLIST-2026-10-01.md](../BETA-PUNCHLIST-2026-10-01.md). Production build, typecheck, lint and the final full suite (111 files, 1,478 tests) passed. Real password-manager integration and a Sentry dashboard receipt remain manual checks.

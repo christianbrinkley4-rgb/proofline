@@ -1,5 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { deleteInterviewData, loadInterviewData } from "@/lib/interviews/service";
+import { loadRelationshipLanes } from "@/lib/outreach/service";
 
 /**
  * Everything Proofline stores about one person, for "download my data", and the
@@ -37,6 +39,8 @@ export async function exportAccount(userId: string) {
   return {
     exportedAt: new Date().toISOString(),
     format: "proofline-export-v1",
+    interviewTracking: await loadInterviewData(userId),
+    relationships: await loadRelationshipLanes(userId),
     user,
     profile,
     experiences,
@@ -67,6 +71,7 @@ export async function exportAccount(userId: string) {
  * when no one else has them: a pasted description, or a link only this person saved.
  */
 export async function deleteAccount(userId: string) {
+  await deleteInterviewData(userId);
   await db.transaction(async (tx) => {
     const matches = await tx.select({ jobId: schema.jobMatch.jobId }).from(schema.jobMatch).where(eq(schema.jobMatch.userId, userId));
     const applied = await tx.select({ jobId: schema.application.jobId }).from(schema.application).where(eq(schema.application.userId, userId));

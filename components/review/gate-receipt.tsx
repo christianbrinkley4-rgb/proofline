@@ -1,0 +1,13 @@
+import type { ModelReview } from "@/lib/review/model";
+import { reviewerScope, threeReviewersPassed, type GateChange } from "@/lib/review/receipt";
+export function GateReceipt({ model, passed, changes = [], stale = false, checks = [] }: { model: ModelReview | null; passed: boolean; changes?: GateChange[]; stale?: boolean; checks?: Array<{ label: string; ok: boolean; detail: string; quote?: string }> }) {
+  const pass = Boolean(model && passed && threeReviewersPassed(model) && !stale);
+  return <section aria-label="Quality gate receipt" className="space-y-3 rounded-lg border p-3 text-xs leading-5">
+    <p className="font-semibold">{stale ? "Changed since review. Check this version again." : pass ? "PASS. Three reviewers completed their reads and all blocking checks passed." : model?.status === "fail" ? "FAIL. Fix the quoted issues and check again." : "Quality gate is waiting for completed checks."}</p>
+    <p className="text-muted-foreground">Truthfulness, human voice, formatting, and language for this employer. PASS means this version met the checks; it does not guarantee an interview.</p>
+    {checks.length > 0 && <ul>{checks.map((check) => <li key={check.label}><span className="font-medium">{check.label}: {check.ok ? "PASS" : "Must fix"}.</span> {check.detail}{!check.ok && check.quote && <blockquote className="whitespace-pre-wrap">“{check.quote}”</blockquote>}</li>)}</ul>}
+    {model?.reviewers?.length ? <ul className="space-y-2">{model.reviewers.map((reviewer) => <li key={reviewer.reviewer}><p className="font-medium">{reviewer.label}: {reviewer.disqualified ? "set aside" : reviewer.status === "pass" ? "PASS" : reviewer.status === "fail" ? "FAIL" : "Incomplete"}</p><p className="text-muted-foreground">{reviewerScope(reviewer.reviewer)}</p>{reviewer.disqualified && <p>{reviewer.disqualified}</p>}</li>)}</ul> : <p className="text-muted-foreground">Three completed reviewer reads are required.</p>}
+    {model?.issues.map((issue) => <div key={issue.quote} className="rounded bg-muted p-2"><blockquote className="whitespace-pre-wrap font-medium">“{issue.quote}”</blockquote><p>{issue.rule_broken}</p><p className="text-muted-foreground">Suggested fix: {issue.fix}</p></div>)}
+    {changes.length > 0 && <div className="border-t pt-3"><p className="font-medium">What changed since the failed read</p><ul className="mt-2 space-y-3">{changes.map((change, index) => <li key={index}><p className="text-muted-foreground">Previously: {change.rule}</p><blockquote className="whitespace-pre-wrap">Before: “{change.before}”</blockquote><blockquote className="whitespace-pre-wrap">{change.after === null ? "Removed from this document." : `Now: “${change.after}”`}</blockquote></li>)}</ul></div>}
+  </section>;
+}

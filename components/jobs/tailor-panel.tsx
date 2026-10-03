@@ -19,6 +19,8 @@ import type { LintCheck } from "@/lib/review/linter";
 import type { ModelReview } from "@/lib/review/model";
 import { cn } from "@/lib/utils";
 import { onTabListKeyDown } from "@/components/shared/tab-keys";
+import { GateReceipt } from "@/components/review/gate-receipt";
+import type { GateChange } from "@/lib/review/receipt";
 
 export type TailorResumeView = {
   resumeId: string;
@@ -44,6 +46,7 @@ export type TailorResumeView = {
   aiConfigured: boolean;
   /** The active proof link for this resume, if the person shared one. */
   shareSlug: string | null;
+  changes?: GateChange[];
 };
 
 type Panel = "review" | "why" | "cut";
@@ -440,6 +443,7 @@ function ReviewList({
       </div>
 
       <section aria-label="Final read-through" className="rounded-lg border p-3">
+        <GateReceipt model={model} passed={resume.canExport} stale={resume.stale} changes={resume.changes} />
         <p className="flex items-center gap-2 text-[13px] font-medium">
           {reviewing ? (
             <LoaderCircle className="size-4 animate-spin" />

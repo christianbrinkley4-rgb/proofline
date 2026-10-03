@@ -8,6 +8,9 @@ import { checkCoverLetter, letterStatus, type CoverLetter, type LetterCheck, typ
 import { reviewByConsensus } from "./consensus";
 import { LETTER_FRAMINGS } from "./framings";
 import type { ModelReview } from "./model";
+import { recordGatePrediction } from "@/lib/interviews/service";
+import type { Prediction } from "@/lib/interviews/model";
+import { changesSince, type DocumentLine, type GateChange } from "./receipt";
 
 /**
  * The cover letter's review gate, the same shape as the resume's: the rules checks
@@ -26,6 +29,9 @@ export type LetterGateResult = {
   model: ModelReview;
   passed: boolean;
   at: string;
+  prediction?: Prediction;
+  documentLines?: DocumentLine[];
+  changes?: GateChange[];
 };
 
 export type LetterGateInput = {
@@ -163,6 +169,9 @@ export async function runLetterGate(userId: string, jobId: string, opts: { charg
     },
     opts,
   );
+  result.documentLines = result ? [{ key: "greeting", text: letter.greeting }, ...letter.paragraphs.map((p, index) => ({ key: `${p.purpose}:${index}`, text: p.text })), { key: "signoff", text: letter.signoff }] : [];
+  result.changes = changesSince(packet?.letterReview as unknown as LetterGateResult | null, result.documentLines);
+  if (result.passed) result.prediction = await recordGatePrediction(userId, jobId, "letter", result.fingerprint);
   await db
     .update(schema.applicationPacket)
     .set({ letterReview: result as unknown as Record<string, unknown> })
@@ -171,7 +180,12 @@ export async function runLetterGate(userId: string, jobId: string, opts: { charg
     jobId,
     blocking: result.checks.filter((c) => c.blocking && !c.ok).map((c) => c.id),
     model: result.model.status,
+    receipt: result,
   });
+  if (result.passed && result.prediction) {
+    const { prepareRelationship } = await import("@/lib/outreach/service");
+    await prepareRelationship(userId, result.prediction.applicationId).catch(() => undefined);
+  }
   return result;
 }
 

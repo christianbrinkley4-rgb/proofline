@@ -2,9 +2,9 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, Copy, FileText, GripVertical, LayoutList, MailCheck, Plus, Search, SquareKanban, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BriefcaseBusiness, CalendarClock, Check, FileText, GripVertical, LayoutList, MailCheck, Plus, Search, SquareKanban, X } from "lucide-react";
 import { toast } from "sonner";
-import { addManualApplicationAction, deleteApplicationAction, markFollowUpSentAction, moveApplicationAction, recordFollowUpAction, recordReplyAction, snoozeFollowUpAction, updateApplicationAction } from "@/app/app/tracker/actions";
+import { addManualApplicationAction, deleteApplicationAction, moveApplicationAction, recordReplyAction, updateApplicationAction } from "@/app/app/tracker/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,9 +12,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { KitGroups } from "@/components/packet/answer-kit";
 import { readSent, sentSummary } from "@/lib/packet/sent-record";
-import { followUpDraft, followUpState, safeJobUrl, STAGES, STAGE_LABEL, stagePatch, trackerStats, type Application, type Stage } from "@/lib/tracker/model";
+import { followUpState, safeJobUrl, STAGES, STAGE_LABEL, stagePatch, trackerStats, type Application, type Stage } from "@/lib/tracker/model";
 import { REPLY_LABEL, type ApplicationActivity, type ReplyKind } from "@/lib/tracker/activity";
 import { cn } from "@/lib/utils";
+import { RelationshipLane } from "./relationship-lane";
+import type { RelationshipLane as Lane } from "@/lib/outreach/model";
+import { InterviewOutcomes, type InterviewInsight } from "./interview-outcomes";
+import { ApplicationGates, type ApplicationGatesView } from "./application-gates";
 
 export type ApplicationInsight = { score: number; strengths: string[]; gaps: string[]; nextSteps: string[]; versions: number };
 
@@ -26,13 +30,14 @@ const date = (value: Date | string | null) => {
 const selectClass = "h-9 w-full rounded-md border bg-background px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const errorMessage = "Couldn't save that change. Your information is still here; please try again.";
 
-export function TrackerBoard({ applications, insights, activity, name, now, initialAppId = null }: {
-  applications: Application[]; insights: Record<string, ApplicationInsight>; activity: ApplicationActivity[]; name: string; now: string; initialAppId?: string | null;
+export function TrackerBoard({ applications, insights, interviews = {}, relationships = {}, gates = {}, activity, name, now, initialAppId = null }: {
+  applications: Application[]; insights: Record<string, ApplicationInsight>; interviews?: Record<string, InterviewInsight>; relationships?: Record<string, Lane>; gates?: Record<string, ApplicationGatesView>; activity: ApplicationActivity[]; name: string; now: string; initialAppId?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"board" | "list">("board");
   const [dueOnly, setDueOnly] = useState(false);
   const [selected, setSelected] = useState<string | null>(initialAppId);
+  const [reviewFollowUp, setReviewFollowUp] = useState(false);
   const [adding, setAdding] = useState(false);
   const [dragged, setDragged] = useState<string | null>(null);
   const [over, setOver] = useState<Stage | null>(null);
@@ -51,6 +56,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
   const isDue = (a: Application) => followUpState(a, instant) === "due";
   const visible = apps.filter((a) => (!dueOnly || isDue(a)) && (a.company + " " + a.title + " " + (a.confirmationRef ?? "")).toLowerCase().includes(query.toLowerCase()));
   const active = apps.find((a) => a.id === selected);
+  function openApplication(id: string, followUp = false) { setReviewFollowUp(followUp); setSelected(id); }
   function move(id: string, stage: Stage) {
     startTransition(async () => {
       applyLocal({ id, stage });
@@ -58,15 +64,9 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
       catch { toast.error(errorMessage); }
     });
   }
-  function markSent(id: string) {
-    startTransition(async () => {
-      applyLocal({ id, sent: true });
-      try { await markFollowUpSentAction(id); toast("Follow-up marked as sent. Nothing was sent by Proofline."); }
-      catch { toast.error(errorMessage); }
-    });
-  }
   return (
     <>
+      <Link href="/app/calibration" className="mt-5 inline-block text-sm font-medium underline">Check interview prediction accuracy</Link>
       {/* Counters and filters only help once there's something to count. */}
       {apps.length > 0 && (<>
       <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -115,7 +115,7 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
               return (
                 <section key={stage} aria-label={STAGE_LABEL[stage]} onDragOver={(e) => { e.preventDefault(); setOver(stage); }} onDragLeave={() => setOver(null)} onDrop={(e) => { e.preventDefault(); if (dragged && !pending) move(dragged, stage); setDragged(null); setOver(null); }} className={cn("min-h-72 rounded-xl border bg-muted/40 p-2 transition-colors", over === stage && "border-border-strong bg-muted")}>
                   <header className="mb-2 flex items-center justify-between px-2 py-2"><h2 className="flex items-center gap-2 text-[13px] font-medium"><span className={cn("size-1.5 rounded-full bg-border-strong", stage === "offer" && "bg-brand", stage === "applied" && "bg-pending")} />{STAGE_LABEL[stage]}</h2><span className="font-mono text-xs text-subtle-foreground">{cards.length}</span></header>
-                  <div className="space-y-2">{cards.map((a) => <ApplicationCard key={a.id} app={a} insight={insights[a.id]} due={isDue(a)} pending={pending} onOpen={() => setSelected(a.id)} onMove={(s) => move(a.id, s)} onSent={() => markSent(a.id)} onDrag={() => setDragged(a.id)} onDragEnd={() => { setDragged(null); setOver(null); }} />)}</div>
+                  <div className="space-y-2">{cards.map((a) => <ApplicationCard key={a.id} app={a} insight={insights[a.id]} interview={interviews[a.id]} due={isDue(a)} pending={pending} onOpen={() => openApplication(a.id)} onMove={(s) => move(a.id, s)} onSent={() => openApplication(a.id, true)} onDrag={() => setDragged(a.id)} onDragEnd={() => { setDragged(null); setOver(null); }} />)}</div>
                   {!cards.length && <p className="px-3 py-8 text-center text-xs text-subtle-foreground">{dragged ? "Drop here" : "No roles here yet"}</p>}
                 </section>
               );
@@ -123,12 +123,12 @@ export function TrackerBoard({ applications, insights, activity, name, now, init
           </div>
         </div>
       ) : (
-        <ApplicationTable apps={visible} instant={instant} pending={pending} onOpen={(id) => setSelected(id)} onMove={move} onSent={markSent} />
+        <ApplicationTable apps={visible} instant={instant} pending={pending} onOpen={(id) => openApplication(id)} onMove={move} onSent={(id) => openApplication(id, true)} />
       )}
       {apps.length > 0 && <p className="mt-2 text-[12px] leading-5 text-subtle-foreground">Proofline never applies for you. Apply on the employer&apos;s site, then mark the role Applied here; you choose what to send when the follow-up comes due.</p>}
       <Dialog open={adding} onOpenChange={setAdding}><DialogContent><DialogHeader><DialogTitle>Add an application</DialogTitle><DialogDescription>A role from anywhere, all in one place.</DialogDescription></DialogHeader><AddApplication onDone={() => setAdding(false)} /></DialogContent></Dialog>
       <Sheet open={Boolean(active)} onOpenChange={(open) => { if (!open) setSelected(null); }}><SheetContent className="data-[side=right]:w-full sm:data-[side=right]:max-w-lg overflow-y-auto">
-        {active && <ApplicationDetail key={active.id} app={active} insight={insights[active.id]} logs={activity.filter((item) => item.applicationId === active.id)} name={name} onClose={() => setSelected(null)} />}
+        {active && <ApplicationDetail key={active.id} app={active} insight={insights[active.id]} interview={interviews[active.id]} lane={relationships[active.id]} gates={gates[active.id]} due={isDue(active)} reviewFollowUp={reviewFollowUp} logs={activity.filter((item) => item.applicationId === active.id)} name={name} onClose={() => setSelected(null)} />}
       </SheetContent></Sheet>
     </>
   );
@@ -172,7 +172,7 @@ function ApplicationTable({ apps, instant, pending, onOpen, onMove, onSent }: {
                 <td className="px-3 py-2.5 tabular-nums">{a.appliedAt ? date(a.appliedAt) : <span className="text-subtle-foreground">Not yet</span>}</td>
                 <td className="px-3 py-2.5">
                   {follow === "due" ? (
-                    <Button size="xs" variant="outline" disabled={pending} onClick={() => onSent(a.id)}><MailCheck data-icon="inline-start" />Mark as sent</Button>
+                    <Button size="xs" variant="outline" disabled={pending} onClick={() => onSent(a.id)}><MailCheck data-icon="inline-start" />Review follow-up</Button>
                   ) : follow === "sent" ? (
                     <span className="text-muted-foreground">Sent {date(a.followUpSentAt)}</span>
                   ) : follow === "upcoming" ? (
@@ -191,8 +191,8 @@ function ApplicationTable({ apps, instant, pending, onOpen, onMove, onSent }: {
   );
 }
 
-function ApplicationCard({ app, insight, due, pending, onOpen, onMove, onSent, onDrag, onDragEnd }: {
-  app: Application; insight?: ApplicationInsight; due: boolean; pending: boolean; onOpen: () => void; onMove: (stage: Stage) => void; onSent: () => void; onDrag?: () => void; onDragEnd?: () => void;
+function ApplicationCard({ app, insight, interview, due, pending, onOpen, onMove, onSent, onDrag, onDragEnd }: {
+  app: Application; insight?: ApplicationInsight; interview?: InterviewInsight; due: boolean; pending: boolean; onOpen: () => void; onMove: (stage: Stage) => void; onSent: () => void; onDrag?: () => void; onDragEnd?: () => void;
 }) {
   return (
     <article draggable={Boolean(onDrag) && !pending} onDragStart={(e) => { e.dataTransfer.setData("text/plain", app.id); e.dataTransfer.effectAllowed = "move"; onDrag?.(); }} onDragEnd={onDragEnd} className="rounded-lg border bg-background p-3 shadow-xs">
@@ -213,8 +213,9 @@ function ApplicationCard({ app, insight, due, pending, onOpen, onMove, onSent, o
         {due && <span className="rounded bg-pending-soft px-1.5 py-0.5 text-pending-ink">Follow-up due</span>}
         {app.followUpSentAt && <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground"><Check className="size-3" />Follow-up sent {date(app.followUpSentAt)}</span>}
       </div>
-      {due && <Button size="xs" variant="outline" className="mt-2 w-full" disabled={pending} onClick={onSent}><MailCheck data-icon="inline-start" />Mark as sent</Button>}
+      {due && <Button size="xs" variant="outline" className="mt-2 w-full" disabled={pending} onClick={onSent}><MailCheck data-icon="inline-start" />Review follow-up</Button>}
       <label className="mt-3 block"><span className="sr-only">Stage for {app.title} at {app.company}</span><select className={selectClass} value={app.stage} disabled={pending} onChange={(e) => onMove(e.target.value as Stage)}>{STAGES.map((stage) => <option key={stage} value={stage}>{STAGE_LABEL[stage]}</option>)}</select></label>
+      <InterviewOutcomes applicationId={app.id} submitted={Boolean(app.appliedAt)} data={interview} />
     </article>
   );
 }
@@ -238,15 +239,12 @@ function AddApplication({ onDone }: { onDone: () => void }) {
   </form>;
 }
 
-function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Application; insight?: ApplicationInsight; logs: ApplicationActivity[]; name: string; onClose: () => void }) {
+function ApplicationDetail({ app, insight, interview, lane, gates, due, reviewFollowUp, logs, onClose }: { app: Application; insight?: ApplicationInsight; interview?: InterviewInsight; lane?: Lane; gates?: ApplicationGatesView; due: boolean; reviewFollowUp: boolean; logs: ApplicationActivity[]; name: string; onClose: () => void }) {
   const [notes, setNotes] = useState(app.notes ?? "");
   const [deadline, setDeadline] = useState(app.deadline ?? "");
   const [confirmationRef, setConfirmationRef] = useState(app.confirmationRef ?? "");
   const [contact, setContact] = useState(app.contacts?.[0]?.name ?? "");
   const [email, setEmail] = useState(app.contacts?.[0]?.email ?? "");
-  const initialDraft = followUpDraft(app, name);
-  const [subject, setSubject] = useState(initialDraft.subject);
-  const [body, setBody] = useState(initialDraft.body);
   const [replyKind, setReplyKind] = useState<ReplyKind>("update");
   const [replySummary, setReplySummary] = useState("");
   const [whatHelped, setWhatHelped] = useState("");
@@ -309,17 +307,9 @@ function ApplicationDetail({ app, insight, logs, name, onClose }: { app: Applica
         </div>
         <Button size="sm" type="submit" disabled={pending}>Save details</Button>
       </form>
-      {app.appliedAt && app.stage !== "rejected" && app.stage !== "offer" && <section className="space-y-3 border-t pt-5">
-        <h3 className="text-sm font-semibold">Follow-up draft</h3>
-        <p className="text-xs leading-5 text-muted-foreground">Edit, copy, and send from your email. Record it here afterward so you keep a history.{app.nextFollowUpAt ? " Next reminder: " + date(app.nextFollowUpAt) + "." : ""}</p>
-        <label className="block space-y-1 text-xs"><span>Subject</span><Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={300} /></label>
-        <label className="block space-y-1 text-xs"><span>Message</span><Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={9} maxLength={5000} /></label>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText("Subject: " + subject + "\n\n" + body); toast("Draft copied."); } catch { toast.error("Select the draft and copy it manually."); } }}><Copy data-icon="inline-start" />Copy draft</Button>
-          <Button size="sm" disabled={pending || !body.trim() || !subject.trim() || Boolean(app.followUpSentAt)} onClick={() => run(() => recordFollowUpAction(app.id, { subject, body }), "Follow-up marked as sent. Nothing was sent by Proofline.")}>{app.followUpSentAt ? `Marked as sent ${date(app.followUpSentAt)}` : "Mark as sent"}</Button>
-          {app.stage === "applied" && <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => snoozeFollowUpAction(app.id, 3), "Reminder moved to three days from now.")}>Remind me in 3 days</Button>}
-        </div>
-      </section>}
+      <InterviewOutcomes applicationId={app.id} submitted={Boolean(app.appliedAt)} data={interview} />
+      <ApplicationGates gates={gates} />
+      {app.jobId && <RelationshipLane applicationId={app.id} lane={lane} submitted={Boolean(app.appliedAt)} due={due} reviewFollowUp={reviewFollowUp} />}
       {app.appliedAt && <section className="space-y-3 border-t pt-5">
         <h3 className="text-sm font-semibold">Record a reply</h3>
         <p className="text-xs leading-5 text-muted-foreground">Log what the employer actually said. Invitations and decisions update the application stage; a general update leaves it as is.</p>

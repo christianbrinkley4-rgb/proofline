@@ -10,13 +10,15 @@ import { hasUsableJobDescription, JOB_DESCRIPTION_REQUIRED } from "@/lib/jobs/de
 import { getJobForUser, requirementsOf, type JobRow } from "@/lib/jobs/store";
 import { roleName } from "@/lib/jobs/text";
 import { listExperiences } from "@/lib/kb/experiences";
-import { fieldOf } from "@/lib/facts/base";
+import { fieldOf, confirmedFactTexts } from "@/lib/facts/base";
 import { listFacts } from "@/lib/kb/facts";
 import { getProfile } from "@/lib/kb/profile";
 import { ANSWERS_V1 } from "@/lib/llm/prompts/answers.v1";
 import { COVER_LETTER_V2 } from "@/lib/llm/prompts/cover-letter.v2";
 import { getLlm } from "@/lib/llm/provider";
 import { listBullets } from "@/lib/resume/bullets/service";
+import { letterFingerprint, type LetterGateResult } from "@/lib/review/letter-gate";
+import { threeReviewersPassed } from "@/lib/review/receipt";
 import { verifyBullet } from "@/lib/resume/verify";
 import { findVoiceIssues } from "@/lib/voice/rules";
 import { AnswerSchema, answerSupported, draftAnswerOffline, evidenceFor, type ApplicationAnswer } from "./answers";
@@ -303,6 +305,8 @@ export async function deleteAnswer(userId: string, jobId: string, id: string): P
 }
 
 export type PacketView = {
+  gate: LetterGateResult | null;
+  gateStale: boolean;
   letter: CoverLetter | null;
   checks: ReturnType<typeof checkCoverLetter>;
   why: string;
@@ -319,7 +323,11 @@ export async function packetView(userId: string, jobId: string): Promise<PacketV
   if (!ctx) return null;
   const letter = readLetter(packet);
   const evidenceById = new Map(ctx.evidence.map((e) => [e.id, e]));
+  const savedGate = packet?.letterReview as unknown as LetterGateResult | null;
+  const current = Boolean(letter && savedGate?.version === 1 && savedGate.fingerprint === letterFingerprint({ letter, facts: await confirmedFactTexts(userId), jobDescription: ctx.job.description ?? "" }) && (!savedGate.passed || (threeReviewersPassed(savedGate.model) && savedGate.prediction)));
   return {
+    gate: current ? savedGate : null,
+    gateStale: Boolean(savedGate && !current),
     letter,
     checks: letter ? checkCoverLetter(letter, ctx.factText, evidenceById) : [],
     why: packet?.why ?? "",

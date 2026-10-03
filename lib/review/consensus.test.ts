@@ -20,7 +20,7 @@ type Answer = { verdict: "PASS" | "FAIL"; issues?: ModelIssue[] } | { status: nu
 const issue = (quote: string, category: ModelIssue["category"], rule = "rule", fix = "Say it with what the facts hold"): ModelIssue => ({ quote, category, rule_broken: rule, fix });
 
 /** Answers each reviewer by its framing, so a test says what each independent reviewer thinks. */
-function reviewers(answers: Partial<Record<"facts" | "reader" | "complete", Answer>>) {
+function reviewers(answers: Partial<Record<"facts" | "reader" | "complete" | "replacement", Answer>>) {
   vi.stubEnv("PROOFLINE_REVIEW_KEY", "test-key");
   const calls: string[] = [];
   const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
@@ -38,13 +38,13 @@ function reviewers(answers: Partial<Record<"facts" | "reader" | "complete", Answ
 const run = () => reviewByConsensus("u", spec, { chargeAccount: false });
 
 describe("review by consensus", () => {
-  it("passes when two independent reviewers pass, and does not call a third", async () => {
+  it("passes only when all three independent reviewers pass", async () => {
     const calls = reviewers({});
     const out = await run();
     expect(out.status).toBe("pass");
-    expect(out.message).toBe("2 independent reviewers read the resume against what you confirmed and found nothing to fix.");
-    expect(calls.sort()).toEqual(["facts", "reader"]);
-    expect(out.reviewers?.map((r) => [r.reviewer, r.status])).toEqual([["facts", "pass"], ["reader", "pass"]]);
+    expect(out.message).toBe("3 independent reviewers read the resume against what you confirmed and found nothing to fix.");
+    expect(calls.sort()).toEqual(["complete", "facts", "reader"]);
+    expect(out.reviewers?.map((r) => [r.reviewer, r.status])).toEqual([["facts", "pass"], ["reader", "pass"], ["complete", "pass"]]);
   });
 
   it("fails when either reviewer finds a real problem, with only the lines that reviewer quoted", async () => {
@@ -53,7 +53,7 @@ describe("review by consensus", () => {
     expect(out.status).toBe("fail");
     expect(out.issues).toHaveLength(1);
     expect(out.issues[0].rule_broken).toBe("reads machine-made");
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
   });
 
   it("counts a line both reviewers flag once", async () => {
@@ -69,10 +69,10 @@ describe("review by consensus", () => {
     const calls = reviewers({ facts: { verdict: "FAIL", issues: [issue(supported, "unsupported_claim", "no support for the duplicate payments")] } });
     const out = await run();
     expect(out.status).toBe("pass");
-    expect(calls.sort()).toEqual(["complete", "facts", "reader"]);
+    expect(calls.sort()).toEqual(["complete", "facts", "reader", "replacement"]);
     const facts = out.reviewers!.find((r) => r.reviewer === "facts")!;
     expect(facts.disqualified).toBe(`Flagged "${supported}" as unsupported, but your confirmed facts say "${FACTS[0]}".`);
-    expect(out.message).toContain("2 independent reviewers");
+    expect(out.message).toContain("3 independent reviewers");
     expect(out.message).toContain("One reviewer's flag was set aside because your confirmed facts support that line.");
   });
 
@@ -93,7 +93,7 @@ describe("review by consensus", () => {
     const out = await run();
     expect(out.status).toBe("fail");
     expect(out.reviewers!.find((r) => r.reviewer === "facts")!.disqualified).toBeNull();
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
   });
 
   it("keeps a reviewer's genuine flag when it was also wrong about another line", async () => {
@@ -122,7 +122,7 @@ describe("review by consensus", () => {
     const out = await run();
     expect(out.status).toBe("error");
     expect(out.message).toMatch(/didn't finish/);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
   });
 
   it("is a failure, not an error, when one reviewer fails the resume and the other cannot be reached", async () => {

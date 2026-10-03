@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-02T15:42:44.728Z",
+  "host": "proofline.hdhkaet.mongodb.net",
+  "database": "proofline_moat_verification_20261002",
+  "synthetic": true,
+  "ping": true,
+  "acknowledged": true,
+  "applicationId": "12183647-d080-45c7-89e7-656cb16d4ecc",
+  "documentId": "7c4ddd2b-9514-46fb-a4e9-13a06be2e0f6",
+  "readMatches": true
+}

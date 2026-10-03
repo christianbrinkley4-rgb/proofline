@@ -1,0 +1,69 @@
+
+> proofline@0.1.0 test
+> vitest run lib/review/consensus.test.ts lib/review/letter-gate.test.ts lib/interviews/model.test.ts lib/interviews/service.test.ts
+
+
+ RUN  v5.0.1 C:/Users/chris/OneDrive/Documents/ChatGPT/proofline/beta-readiness
+
+ ❯ lib/review/letter-gate.test.ts (13 tests | 2 failed) 325ms
+   ❯ the cover letter's model review (6)
+     × passes only when the rules pass and the model says PASS 123ms
+     × sends the posting, the letter, the profile, and the confirmed facts, and no signature or contact details 36ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/review/letter-gate.test.ts > the cover letter's model review > passes only when the rules pass and the model says PASS
+AssertionError: expected "vi.fn()" to be called 2 times, but got 3 times
+ ❯ lib/review/letter-gate.test.ts:90:23
+     88|     const fetchMock = modelSays("PASS");
+     89|     const result = await evaluateLetter("u", input(letter()), { charge…
+     90|     expect(fetchMock).toHaveBeenCalledTimes(2);
+       |                       ^
+     91|     expect(result.passed).toBe(true);
+     92|     expect(result.model.message).toMatch(/found nothing to fix/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  lib/review/letter-gate.test.ts > the cover letter's model review > sends the posting, the letter, the profile, and the confirmed facts, and no signature or contact details
+AssertionError: expected [ …(3) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+@@ -19,6 +19,19 @@
+  3. The sentence about why the student wants this job is theirs. Never fail it for being short, plain, or personal.
+  4. You may NOT fail for: contractions, the greeting or sign-off, style preferences between two truthful wordings, or claims you cannot verify.
+  5. Every issue must copy the offending letter text exactly, character for character, into \"quote\"; name the rule it breaks in \"rule_broken\"; use the category \"filler\", \"fit\", or \"other\"; and give a \"fix\" that uses only the confirmed facts or the posting.
+
+  Return strict JSON and nothing else: {\"verdict\":\"PASS\"|\"FAIL\",\"issues\":[{\"quote\":\"...\",\"rule_broken\":\"...\",\"fix\":\"...\",\"category\":\"filler\"|\"fit\"|\"other\"}]}. PASS means \"issues\" is an empty array. No prose outside the JSON.",
++   "You are the last reviewer before a student sends a cover letter for one specific job.
++
++ The bar: it reads like a person wrote it. It names this employer and role, rests on one or two true examples, and has no filler, no flattery, and no claim the facts do not support.
++
++ How to review:
++ 1. Before flagging any claim about the student as invented, search the ENTIRE facts list and the profile and quote the closest supporting line. Only flag a claim if zero supporting language exists anywhere.
++ 2. Prove support, don't hunt guilt. PASS if every claim has support.
++ 3. The sentence about why the student wants this job is theirs. Never fail it for being short, plain, or personal. Fail it only for filler words or for a claim about the employer that the posting does not make.
++ 4. You may NOT fail for: contractions, the greeting or sign-off, the opening line about the student's school and graduation (it comes from their profile), style preferences between two truthful wordings, anything you cannot quote verbatim from the letter, or corrections that add new claims, numbers, or methods the student never confirmed.
++ 5. You may fail for: a claim about the student with no supporting language in the facts; a claim about the employer or the role that is not in the posting; filler, flattery, or wording that reads as machine-written; a sentence that says nothing specific.
++ 6. Every issue must copy the offending letter text exactly, character for character, into \"quote\"; name the rule it breaks in \"rule_broken\"; and give a \"fix\" that uses only the confirmed facts or the posting.
++
++ Return strict JSON and nothing else: {\"verdict\":\"PASS\"|\"FAIL\",\"issues\":[{\"quote\":\"...\",\"rule_broken\":\"...\",\"fix\":\"...\",\"category\":\"unsupported_claim\"|\"filler\"|\"fit\"|\"other\"}]}. Use \"unsupported_claim\" only when no line in the facts or the posting supports the claim. PASS means \"issues\" is an empty array. No prose outside the JSON.",
+  ]
+
+ ❯ lib/review/letter-gate.test.ts:107:21
+    105|     // Two independent reviewers with different jobs read the same let…
+    106|     const systems = fetchMock.mock.calls.map((call) => JSON.parse(((ca…
+    107|     expect(systems).toEqual([LETTER_FRAMINGS[0].system, LETTER_FRAMING…
+       |                     ^
+    108|     expect(new Set(systems).size).toBe(2);
+    109|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 48 passed (50)
+   Start at  11:34:31
+   Duration  10.18s (import 57%, tests 31%, transform 12%)
+

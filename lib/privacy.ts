@@ -10,11 +10,15 @@ export const PRIVACY_POINTS = [
   },
   {
     title: "Who sees it",
-    text: "You, and the small team running the beta when we need to fix something or read feedback you send. We don't sell it or share it with employers.",
+    text: "You, and the small team running the beta when we need to fix something or read feedback you send. We don't sell it. When you review and send outreach, the selected contact receives that exact message and your reply address.",
   },
   {
     title: "AI review",
     text: "Recommended resume lines are drafted by Proofline's own rules from how you described a role. That description is saved with the role and isn't sent to an AI model. When you save a line from Ideas from similar roles, your answers on that card may be sent to Google Gemini to check the wording. You see any change before it is saved. Before a resume can be downloaded, and when Ready to apply checks a job for you, its text, your cover letter, the posting's requirements, and what you confirmed may be sent to Gemini, where more than one reviewer reads them. Your contact details are not sent. If you turn on the morning run, this happens each morning for the jobs it checks, and you can turn it off at any time.",
+  },
+  {
+    title: "Interview predictions and conversations",
+    text: "MongoDB Atlas stores your gate predictions, recorded outcomes, sourced contacts, reviewed drafts, and send receipts. Calibration uses outcomes you record, not employer-confirmed results. If email sending is configured, Resend receives the recipient, reviewed message, and your account email as the reply address only when you press Send. A provider receipt means the email was accepted for sending, not proof it reached the recipient. These records are included in your data download and account deletion.",
   },
   {
     title: "Share links",

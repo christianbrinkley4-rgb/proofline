@@ -7,10 +7,17 @@ import { requireSession } from "@/lib/auth";
 import { confirmedFactTexts } from "@/lib/facts/base";
 import { getJobForUser } from "@/lib/jobs/store";
 import { CoverLetterSchema, type CoverLetter } from "@/lib/packet/cover-letter";
+import { runLetterGate } from "@/lib/review/letter-gate";
 import { practiceFeedback, type PracticeFeedback } from "@/lib/packet/practice";
 import { deleteAnswer, draftAnswer, draftCoverLetter, packetView, saveAnswer, saveCoverLetter, saveInterviewNote, saveWhy } from "@/lib/packet/service";
 
 const JobId = z.uuid();
+export async function checkCoverLetterAction(jobId: string) {
+  const session = await requireSession();
+  const id = JobId.parse(jobId);
+  const result = await runLetterGate(session.user.id, id);
+  refresh(id); revalidatePath("/app/tracker"); return result;
+}
 
 function refresh(jobId: string) {
   revalidatePath(`/app/jobs/${jobId}/packet`);

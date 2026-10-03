@@ -1,0 +1,98 @@
+- link "Skip to content":
+  - /url: "#main"
+- complementary "Sidebar":
+  - link "Proofline":
+    - /url: /app
+    - generic: Proofline
+  - navigation "App":
+    - link "Home":
+      - /url: /app
+      - text: Home
+    - link "Find jobs":
+      - /url: /app/find
+      - text: Find jobs
+    - link "Ready to apply":
+      - /url: /app/ready
+      - text: Ready to apply
+    - link "My jobs":
+      - /url: /app/jobs
+      - text: My jobs
+    - link "My experience":
+      - /url: /app/facts
+      - text: My experience
+    - link "Applications":
+      - /url: /app/tracker
+      - text: Applications
+    - link "Settings":
+      - /url: /app/settings
+      - text: Settings
+  - link "My experience 11 saved All checked":
+    - /url: /app/facts
+    - generic: My experience
+    - generic: 11 saved
+    - paragraph: All checked
+  - button "Account menu for Sam Verification":
+    - generic: SV
+    - generic: Sam Verification
+    - generic: moat-loop-20261002@example.test
+- main:
+  - heading "Do the predictions hold up?" [level=1]
+  - paragraph: Compare the interview estimates made before you applied with the outcomes you recorded.
+  - paragraph: These are initial estimates, not a guarantee. Each application counts once, using its last prediction before submission. Pending applications and withdrawals are excluded from both rates. No response counts only when you record it.
+  - table "Predicted probability compared with recorded interview rate":
+    - caption: Predicted probability compared with recorded interview rate
+    - rowgroup:
+      - row "Estimate bucket Applications Recorded outcomes Pending Withdrawn Predicted Actual interview rate":
+        - columnheader "Estimate bucket"
+        - columnheader "Applications"
+        - columnheader "Recorded outcomes"
+        - columnheader "Pending"
+        - columnheader "Withdrawn"
+        - columnheader "Predicted"
+        - columnheader "Actual interview rate"
+    - rowgroup:
+      - row "0-20% 0 0 0 0 No results yet No results yet":
+        - rowheader "0-20%"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "No results yet"
+        - cell "No results yet"
+      - row "21-40% 0 0 0 0 No results yet No results yet":
+        - rowheader "21-40%"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "No results yet"
+        - cell "No results yet"
+      - row "41-60% 1 1 0 0 48% 100% (1/1)":
+        - rowheader "41-60%"
+        - cell "1"
+        - cell "1"
+        - cell "0"
+        - cell "0"
+        - cell "48%"
+        - cell "100% (1/1)"
+      - row "61-80% 0 0 0 0 No results yet No results yet":
+        - rowheader "61-80%"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "No results yet"
+        - cell "No results yet"
+      - row "81-100% 0 0 0 0 No results yet No results yet":
+        - rowheader "81-100%"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "0"
+        - cell "No results yet"
+        - cell "No results yet"
+  - link "Record an outcome in Applications":
+    - /url: /app/tracker
+- button "Send feedback":
+  - text: Send feedback
+- region "Notifications alt+T"

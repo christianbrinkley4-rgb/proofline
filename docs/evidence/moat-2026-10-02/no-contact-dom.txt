@@ -1,0 +1,206 @@
+- link:
+  - /url: "#main"
+  - text: Skip to content
+- complementary:
+  - link:
+    - /url: /app
+    - generic: Proofline
+  - navigation:
+    - link:
+      - /url: /app
+      - text: Home
+    - link:
+      - /url: /app/find
+      - text: Find jobs
+    - link:
+      - /url: /app/ready
+      - text: Ready to apply
+    - link:
+      - /url: /app/jobs
+      - text: My jobs
+    - link:
+      - /url: /app/facts
+      - text: My experience
+    - link:
+      - /url: /app/tracker
+      - text: Applications
+    - link:
+      - /url: /app/settings
+      - text: Settings
+  - link:
+    - /url: /app/facts
+    - generic: My experience
+    - generic: 11 saved
+    - paragraph: All checked
+  - button:
+    - generic: SV
+    - generic: Sam Verification
+    - generic: moat-loop-20261002@example.test
+- main:
+  - heading [level=1]: Applications
+  - paragraph: Every job you're applying to, on one board. Mark one Applied and I'll remind you to follow up 14 days later.
+  - link:
+    - /url: /app/calibration
+    - text: Check interview prediction accuracy
+  - paragraph: Applications
+  - paragraph: "1"
+  - paragraph: Roles you've applied to
+  - paragraph: Replies logged
+  - paragraph: "0"
+  - paragraph: Only replies you record
+  - paragraph: Active interviews & offers
+  - paragraph: "1"
+  - paragraph: Current stage
+  - paragraph: Follow-ups due
+  - paragraph: "0"
+  - paragraph: A good time to check in
+  - textbox:
+    - /placeholder: "Search role, company, or confirmation #"
+  - button:
+    - text: Follow-ups
+  - button [pressed]:
+  - button:
+  - button:
+    - text: Add application
+  - region:
+    - heading [level=2]: Saved
+    - generic: "1"
+    - article:
+      - button:
+        - generic: Extenteam
+        - generic: Operational Bookkeeper
+      - generic: 50 fit
+      - text: Resume attached
+      - generic: Stage for Operational Bookkeeper at Extenteam
+      - combobox
+      - region:
+        - paragraph: "Interview estimate: 33%"
+        - paragraph: "For: Relevant experience: Bookkeeping Assistant; against: Tax preparation."
+        - paragraph: An initial estimate. Your recorded outcomes show how accurate it is.
+  - region:
+    - heading [level=2]: Applied
+    - generic: "0"
+    - paragraph: No roles here yet
+  - region:
+    - heading [level=2]: Assessment
+    - generic: "0"
+    - paragraph: No roles here yet
+  - region:
+    - heading [level=2]: Interview
+    - generic: "1"
+    - article:
+      - button:
+        - generic: Hawthorne-Finch Talent Solutions
+        - generic: Accounts Assistant/Semi Senior Accountant
+      - generic: 79 fit
+      - text: Resume attached
+      - generic: Applied Oct 2
+      - text: Follow-up sent Oct 16
+      - generic: Stage for Accounts Assistant/Semi Senior Accountant at Hawthorne-Finch Talent Solutions
+      - combobox
+      - region:
+        - paragraph: "Interview estimate: 48%"
+        - paragraph: "For: Bookkeeping, which they ask for; against: 2+ years of experience requested."
+        - paragraph: An initial estimate. Your recorded outcomes show how accurate it is.
+        - button [pressed]: Interview
+        - button: Rejection
+        - button: No response
+        - button: Withdrawn
+  - region:
+    - heading [level=2]: Offer
+    - generic: "0"
+    - paragraph: No roles here yet
+  - region:
+    - heading [level=2]: Rejected
+    - generic: "0"
+    - paragraph: No roles here yet
+  - paragraph: Proofline never applies for you. Apply on the employer's site, then mark the role Applied here; you choose what to send when the follow-up comes due.
+- button:
+  - text: Send feedback
+- region "Notifications alt+T"
+- alert: Applications · Proofline
+- dialog "Operational Bookkeeper":
+  - heading "Operational Bookkeeper" [level=2]
+  - paragraph: Extenteam · Saved
+  - link "Open posting":
+    - /url: https://job-boards.greenhouse.io/extenteam/jobs/5436695008
+    - text: Open posting
+  - link "Fit score":
+    - /url: /app/jobs/ce16913c-44d1-425c-883b-277c00478091
+  - link "Linked resume":
+    - /url: /app/jobs/ce16913c-44d1-425c-883b-277c00478091?tab=resume
+    - text: Linked resume
+  - link "Application answers":
+    - /url: /app/jobs/ce16913c-44d1-425c-883b-277c00478091/kit
+  - heading "Your plan for this role" [level=3]
+  - generic: 50/100 fit
+  - paragraph: Match to your confirmed background, not a hiring prediction.
+  - heading "What to lead with" [level=4]
+  - list:
+    - text: "Relevant experience: Bookkeeping Assistant"
+  - heading "Gaps to address" [level=4]
+  - list:
+    - listitem: Tax preparation
+    - listitem: Patient intake
+    - listitem: Accounts receivable (nice to have)
+  - heading "Make your next move count" [level=4]
+  - list:
+    - listitem: If you have used Tax preparation or Patient intake, add a specific example to your profile. Otherwise, build a small project to gain that experience.
+    - listitem: "Prepare a short example that demonstrates: Relevant experience: Bookkeeping Assistant."
+    - listitem: Review the attached resume against the full posting before your next conversation.
+  - heading "Details" [level=3]
+  - text: Deadline
+  - textbox "Deadline"
+  - text: Confirmation reference
+  - textbox "Confirmation reference":
+    - /placeholder: From their confirmation email
+  - text: Notes
+  - textbox "Application notes":
+    - /placeholder: Interview prep, conversations, what to do next...
+  - text: Contact name
+  - textbox "Contact name"
+  - text: Contact email
+  - textbox "Contact email"
+  - button "Save details"
+  - region "Interview prediction and outcome":
+    - paragraph: "Interview estimate: 33%"
+    - paragraph: "For: Relevant experience: Bookkeeping Assistant; against: Tax preparation."
+    - paragraph: An initial estimate. Your recorded outcomes show how accurate it is.
+  - heading "Application quality gates" [level=3]
+  - paragraph: Resume
+  - region "Quality gate receipt":
+    - paragraph: PASS. Three reviewers completed their reads and all blocking checks passed.
+    - paragraph: Truthfulness, human voice, formatting, and language for this employer. PASS means this version met the checks; it does not guarantee an interview.
+    - list:
+      - generic: "Fits on one page: PASS."
+      - text: Fits on one page, measured with the real fonts.
+      - generic: "No em dashes: PASS."
+      - text: No em dashes anywhere.
+      - generic: "Every claim matches something you confirmed: PASS."
+      - text: Every number and claim matches something you confirmed.
+      - generic: "No citizenship, job numbers, pay amounts, or machine phrases: PASS."
+      - text: Nothing a resume shouldn't carry.
+    - list:
+      - paragraph: "Fact check: PASS"
+      - paragraph: Truthfulness against confirmed facts
+      - paragraph: "Recruiter read: PASS"
+      - paragraph: Human voice and this employer's language
+      - paragraph: "Full read: PASS"
+      - paragraph: Complete read, clarity, and formatting
+  - heading "A conversation about this role" [level=3]
+  - paragraph: One relevant example and your own reason for wanting this job. You review every message before sending.
+  - paragraph: No verified contact found
+  - paragraph: No named recruiter or hiring manager with a public email was found in the live posting. We have not guessed a contact.
+  - text: In your words, why this role?
+  - textbox "In your words, why this role?" [active]
+  - button "Find contact and check outreach"
+  - heading "Activity" [level=3]
+  - list:
+    - paragraph: Oct 16
+    - paragraph: Saved opportunity
+    - paragraph: Oct 16
+    - paragraph: Linked a resume version
+  - button "Remove application":
+    - text: Remove application
+  - button "Close":
+    - generic: Close

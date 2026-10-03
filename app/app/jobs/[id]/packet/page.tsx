@@ -194,6 +194,8 @@ export default async function PacketPage({ params }: PageProps<"/app/jobs/[id]/p
             canDraft={canDraft}
             initialWhy={view.why}
             checks={view.checks}
+            gate={view.gate}
+            gateStale={view.gateStale}
             sources={sources}
           />
           {view.letter && <FeedbackControl kind="cover_letter" subjectId={id} className="mt-6" />}

@@ -1,0 +1,16 @@
+
+> proofline@0.1.0 test
+> vitest run lib/outreach lib/review/consensus.test.ts lib/review/letter-gate.test.ts
+
+
+ RUN  v5.0.1 C:/Users/chris/OneDrive/Documents/ChatGPT/proofline/beta-readiness
+
+
+ Test Files  5 passed (5)
+      Tests  50 passed (50)
+   Start at  11:39:40
+   Duration  7.77s (import 79%, transform 18%, tests 3%)
+
+    Isolate  5 workers spawned · ~1.99s startup each (spawn + environment, per file)
+             at least ~498ms faster with isolate: false — reuses workers across files instead of one per file
+

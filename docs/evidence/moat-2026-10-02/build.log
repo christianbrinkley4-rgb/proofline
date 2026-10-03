@@ -1,0 +1,114 @@
+
+> proofline@0.1.0 build
+> next build
+
+▲ Next.js 16.3.6 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 1479ms
+- Experiments (use with caution):
+  · clientTraceMetadata
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 30.9s
+  Running next.config.js provided runAfterProductionCompile ...
+✓ Completed runAfterProductionCompile in 1006ms
+  Running TypeScript ...
+  Finished TypeScript in 34.0s ...
+  Collecting page data using 7 workers ...
+(node:7780) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+(node:33864) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+[Error [BetterAuthError]: You are using the default secret. Please set `BETTER_AUTH_SECRET` in your environment variables or pass `secret` in your auth config.]
+  Generating static pages using 7 workers (0/42) ...
+  Generating static pages using 7 workers (10/42) 
+  Generating static pages using 7 workers (20/42) 
+  Generating static pages using 7 workers (31/42) 
+✓ Generating static pages using 7 workers (42/42) in 2.8s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/account/export
+├ ƒ /api/agent/chat
+├ ƒ /api/auth/[...all]
+├ ƒ /api/check
+├ ƒ /api/cron/ai-health
+├ ƒ /api/cron/refresh-feed
+├ ƒ /api/cron/refresh-searches
+├ ƒ /api/cron/run-loops
+├ ƒ /api/dev/feed
+├ ƒ /api/dev/login
+├ ƒ /api/dev/sample-resume
+├ ƒ /api/dev/seed
+├ ƒ /api/extension/applied
+├ ƒ /api/extension/jobs
+├ ƒ /api/extension/kit
+├ ƒ /api/extension/profile
+├ ƒ /api/extension/score
+├ ƒ /api/jobs/search
+├ ƒ /api/mcp
+├ ƒ /api/onboarding/resume-draft
+├ ƒ /api/packet/[jobId]/cover-letter/[format]
+├ ƒ /api/profile-options
+├ ƒ /api/resume/upload
+├ ƒ /api/resumes/[id]/[format]
+├ ƒ /app
+├ ƒ /app/agent
+├ ƒ /app/calibration
+├ ƒ /app/career
+├ ƒ /app/extension
+├ ƒ /app/facts
+├ ƒ /app/facts/linkedin
+├ ƒ /app/find
+├ ƒ /app/jobs
+├ ƒ /app/jobs/[id]
+├ ƒ /app/jobs/[id]/kit
+├ ƒ /app/jobs/[id]/packet
+├ ƒ /app/onboarding
+├ ƒ /app/owner
+├ ƒ /app/profile
+├ ƒ /app/ready
+├ ƒ /app/resumes
+├ ƒ /app/resumes/[id]
+├ ƒ /app/resumes/compare
+├ ƒ /app/resumes/new
+├ ƒ /app/settings
+├ ƒ /app/tracker
+├ ○ /check
+├ ○ /contact
+├ ƒ /forgot-password
+├ ○ /guides
+├   /guides/[slug]
+│ ├ ● /guides/quantify-resume-bullets
+│ ├ ● /guides/ats-myths
+│ └ ● /guides/ai-resume-tells
+├ ○ /icon.svg
+├ ƒ /login
+├ ○ /privacy
+├ ƒ /proof/[slug]
+├ ƒ /reset-password
+├ ○ /robots.txt
+├ ƒ /signup
+└ ○ /sitemap.xml
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

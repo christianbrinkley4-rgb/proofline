@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { and, count, isNotNull, isNull, max } from "drizzle-orm";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { AiCheck, CopyText, TestEmail } from "@/components/owner/owner-checks";
+import { SentryCheck } from "@/components/owner/sentry-check";
 import { requireSession } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { emailConfigured } from "@/lib/email";
@@ -71,6 +72,8 @@ export default async function OwnerPage() {
           </div>
         </dl>
       </Section>
+
+      <Section title="Browser error reporting" note="Send a fixed synthetic error, then confirm its event ID in the Proofline Sentry project."><SentryCheck /></Section>
 
       <Section title="Alerts" note="Problems the daily checks found. The AI check runs at 9:00 UTC.">
         {alerts.length ? (

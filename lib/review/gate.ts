@@ -11,6 +11,9 @@ import { reviewByConsensus } from "./consensus";
 import { RESUME_FRAMINGS } from "./framings";
 import { buildReviewInput, type ModelReview } from "./model";
 import { resumeLines, resumeToText } from "./resume-text";
+import { recordGatePrediction } from "@/lib/interviews/service";
+import type { Prediction } from "@/lib/interviews/model";
+import { changesSince, threeReviewersPassed, type DocumentLine, type GateChange } from "./receipt";
 
 /**
  * The review gate: nothing exports until every BLOCKING linter check passes and
@@ -27,6 +30,9 @@ export type GateResult = {
   model: ModelReview;
   passed: boolean;
   at: string;
+  prediction?: Prediction;
+  documentLines?: DocumentLine[];
+  changes?: GateChange[];
 };
 
 /** Pages the content needs, from the layout engine's real font metrics. */
@@ -84,13 +90,21 @@ export async function runGate(userId: string, stored: StoredResume): Promise<Gat
     ? { status: "skipped", issues: [], model: null, message: "The final read-through runs once everything marked Must fix is fixed." }
     : await reviewResume(userId, inputs, resumeLines(stored.document).filter((l) => l.kind !== "contact").map((l) => l.text).join("\n"));
   const result: GateResult = { version: 1, fingerprint: inputs.fingerprint, linter, model, passed: !blocked.length && model.status === "pass", at: new Date().toISOString() };
+  result.documentLines = resumeLines(stored.document).filter((line) => line.kind !== "contact").map((line, index) => ({ key: line.bulletId ?? `${line.kind}:${index}`, text: line.text }));
+  result.changes = changesSince(stored.row.review as unknown as GateResult | null, result.documentLines);
+  if (result.passed && stored.row.jobId) result.prediction = await recordGatePrediction(userId, stored.row.jobId, "resume", result.fingerprint, stored.row.id);
   await db.update(schema.resume).set({ review: result as unknown as Record<string, unknown> }).where(eq(schema.resume.id, stored.row.id));
   await logEvent(userId, result.passed ? "gate_passed" : "gate_failed", {
     resumeId: stored.row.id,
     jobId: stored.row.jobId,
     blocking: blocked.map((c) => c.id),
     model: model.status,
+    receipt: result,
   });
+  if (result.passed && result.prediction) {
+    const { prepareRelationship } = await import("@/lib/outreach/service");
+    await prepareRelationship(userId, result.prediction.applicationId).catch(() => undefined);
+  }
   return result;
 }
 
@@ -112,7 +126,7 @@ export async function gateStatus(userId: string, stored: StoredResume, layout?: 
   const inputs = await gather(userId, stored, layout);
   const linter = lint(inputs);
   const saved = (stored.row.review as unknown as GateResult | null) ?? null;
-  const review = saved && saved.version === 1 && saved.fingerprint === inputs.fingerprint ? saved : null;
+  const review = saved && saved.version === 1 && saved.fingerprint === inputs.fingerprint && (!saved.passed || (threeReviewersPassed(saved.model) && (!stored.row.jobId || Boolean(saved.prediction)))) ? saved : null;
   const blocked = blockingFailures(linter);
   const reason = blocked.length
     ? `Fix ${blocked.length === 1 ? "one thing" : `${blocked.length} things`} first: ${blocked.map((c) => c.label.toLowerCase()).join("; ")}.`

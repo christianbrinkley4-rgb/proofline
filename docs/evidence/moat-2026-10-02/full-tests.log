@@ -1,0 +1,70 @@
+
+> proofline@0.1.0 test
+> vitest run
+
+
+ RUN  v5.0.1 C:/Users/chris/OneDrive/Documents/ChatGPT/proofline/beta-readiness
+
+(node:42288) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ lib/agent/package-letter.test.ts (11 tests | 1 failed) 4664ms
+   ❯ packaging the cover letter for a role (6)
+     × never redrafts a letter the person edited 113ms
+(node:40468) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32448) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42784) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ lib/review/letter-gate.test.ts (13 tests | 1 failed) 268ms
+   ❯ the cover letter's model review (6)
+     × keeps the all-purpose letter prompt as the replacement reviewer 15ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/agent/package-letter.test.ts > packaging the cover letter for a role > never redrafts a letter the person edited
+AssertionError: expected "vi.fn()" to be called 2 times, but got 3 times
+ ❯ lib/agent/package-letter.test.ts:119:23
+    117|     const fetchMock = modelSays("PASS");
+    118|     expect(await packageLetter(userId, jobId)).toEqual({ ok: true });
+    119|     expect(fetchMock).toHaveBeenCalledTimes(3);
+       |                       ^
+    120|     expect(readLetter(await getPacket(userId, jobId))?.paragraphs.find…
+    121|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  lib/review/letter-gate.test.ts > the cover letter's model review > keeps the all-purpose letter prompt as the replacement reviewer
+AssertionError: expected 'You are the last reviewer before a st…' to be 'You are the last reviewer before a st…' // Object.is equality
+
+- Expected
++ Received
+
+@@ -9,5 +9,6 @@
+  4. You may NOT fail for: contractions, the greeting or sign-off, the opening line about the student's school and graduation (it comes from their profile), style preferences between two truthful wordings, anything you cannot quote verbatim from the letter, or corrections that add new claims, numbers, or methods the student never confirmed.
+  5. You may fail for: a claim about the student with no supporting language in the facts; a claim about the employer or the role that is not in the posting; filler, flattery, or wording that reads as machine-written; a sentence that says nothing specific.
+  6. Every issue must copy the offending letter text exactly, character for character, into "quote"; name the rule it breaks in "rule_broken"; and give a "fix" that uses only the confirmed facts or the posting.
+
+  Return strict JSON and nothing else: {"verdict":"PASS"|"FAIL","issues":[{"quote":"...","rule_broken":"...","fix":"...","category":"unsupported_claim"|"filler"|"fit"|"other"}]}. Use "unsupported_claim" only when no line in the facts or the posting supports the claim. PASS means "issues" is an empty array. No prose outside the JSON.
++ Also check formatting: readable paragraphs, a finished greeting and sign-off, and no unfinished placeholders.
+
+ ❯ lib/review/letter-gate.test.ts:112:39
+    110|
+    111|   it("keeps the all-purpose letter prompt as the replacement reviewer"…
+    112|     expect(LETTER_FRAMINGS[2].system).toBe(LETTER_SYSTEM_PROMPT);
+       |                                       ^
+    113|   });
+    114|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 115 passed (117)
+      Tests  2 failed | 1550 passed (1552)
+   Start at  11:54:23
+   Duration  182.26s (tests 47%, import 36%, transform 17%)
+
+     Import  331 modules were evaluated 1012 times · 158.09s total, 36% of tracked time
+             ~12.97s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+

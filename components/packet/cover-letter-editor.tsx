@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, CircleAlert, Copy, Download, LoaderCircle, RefreshCw, Sparkle, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { draftCoverLetterAction, saveCoverLetterAction, saveWhyAction } from "@/app/app/jobs/[id]/packet/actions";
+import { checkCoverLetterAction, draftCoverLetterAction, saveCoverLetterAction, saveWhyAction } from "@/app/app/jobs/[id]/packet/actions";
+import { GateReceipt } from "@/components/review/gate-receipt";
+import type { LetterGateResult } from "@/lib/review/letter-gate";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { blockingExportMessage, downloadExport, isBlockingFail } from "@/lib/export-download";
@@ -32,6 +34,8 @@ export function CoverLetterEditor({
   checks,
   sources,
   canDraft,
+  gate = null,
+  gateStale = false,
 }: {
   jobId: string;
   company: string;
@@ -41,6 +45,8 @@ export function CoverLetterEditor({
   checks: LetterCheck[];
   sources: Record<string, SourceView>;
   canDraft: boolean;
+  gate?: LetterGateResult | null;
+  gateStale?: boolean;
 }) {
   const router = useRouter();
   const [letter, setLetter] = useState<CoverLetter | null>(initialLetter);
@@ -229,6 +235,7 @@ export function CoverLetterEditor({
           </ul>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" disabled={pending || dirty || blocked} onClick={() => startTransition(async () => { try { await checkCoverLetterAction(jobId); router.refresh(); } catch (error) { toast.error(error instanceof Error ? error.message : "The review could not finish."); } })}>Check this letter</Button>
             <Button onClick={save} disabled={pending || !dirty}>
               {pending && dirty ? <LoaderCircle className="animate-spin" /> : null}
               Save edits
@@ -277,6 +284,7 @@ export function CoverLetterEditor({
             )}
           </div>
           {blocked && !dirty && blockHint && <p className="text-[12.5px] text-pending-ink">{blockHint}</p>}
+          <GateReceipt model={gate?.model ?? null} passed={Boolean(gate?.passed)} stale={gateStale || dirty} changes={gate?.changes} />
           {!blocked && !dirty && warns.length > 0 && (
             <p className="text-[12.5px] text-muted-foreground">
               {warns.length} {warns.length === 1 ? "suggestion" : "suggestions"} to review above. Download still works.
