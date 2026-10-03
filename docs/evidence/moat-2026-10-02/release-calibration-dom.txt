@@ -1,0 +1,14 @@
+Do the predictions hold up?
+
+Compare the interview estimates made before you applied with the outcomes you recorded.
+
+These are initial estimates, not a guarantee. Each application counts once, using its last prediction before submission. Pending applications and withdrawals are excluded from both rates. No response counts only when you record it.
+
+Predicted probability compared with recorded interview rate
+Estimate bucket	Applications	Recorded outcomes	Pending	Withdrawn	Predicted	Actual interview rate
+0-20%	0	0	0	0	No results yet	No results yet
+21-40%	0	0	0	0	No results yet	No results yet
+41-60%	0	0	0	0	No results yet	No results yet
+61-80%	0	0	0	0	No results yet	No results yet
+81-100%	0	0	0	0	No results yet	No results yet
+Record an outcome in Applications

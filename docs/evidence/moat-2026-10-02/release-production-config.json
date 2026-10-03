@@ -1,0 +1,22 @@
+{
+  "mongoVariables": [
+    {
+      "key": "MONGODB_URI",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "MONGODB_DB",
+      "type": "sensitive",
+      "target": [
+        "production"
+      ]
+    }
+  ],
+  "readyState": "READY",
+  "deploymentId": "dpl_26T79osdEcDpQok86Bf2LmSLciDy",
+  "project": "proofline-beta",
+  "url": "proofline-beta-drxxz3qho-christianbrinkley4-5140s-projects.vercel.app"
+}

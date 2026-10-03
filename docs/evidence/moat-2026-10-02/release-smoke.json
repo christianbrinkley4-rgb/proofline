@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-03T00:52:25.734Z",
+  "base": "https://proofline-beta.vercel.app",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "location": null
+    },
+    {
+      "path": "/signup",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "location": null
+    },
+    {
+      "path": "/login",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "location": null
+    },
+    {
+      "path": "/privacy",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "location": null
+    },
+    {
+      "path": "/check",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "location": null
+    },
+    {
+      "path": "/app/calibration",
+      "status": 307,
+      "expected": 307,
+      "passed": true,
+      "location": "/login?next=%2Fapp%2Fcalibration"
+    },
+    {
+      "path": "/sentry-check",
+      "status": 404,
+      "expected": 404,
+      "passed": true,
+      "location": null
+    }
+  ],
+  "positioning": true,
+  "clientDsn": {
+    "assetsChecked": 14,
+    "matchingAssets": [
+      "/_next/static/immutable/chunks/1erxqlyeptq_n.js"
+    ]
+  },
+  "passed": true
+}

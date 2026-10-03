@@ -1,5 +1,22 @@
 # Competitive moat verification, October 2, 2026
 
+## Production release
+
+Items 0-3 are live at https://proofline-beta.vercel.app. READY deployment `dpl_26T79osdEcDpQok86Bf2LmSLciDy` runs source commit `78d0d4520909fdb2b7a3446d6b3dd20fd29374e9`, pushed to GitHub main. The release was built with Production settings, checked READY, and then promoted. [Cloud build and deployment log](evidence/moat-2026-10-02/release-production-deploy.log), [build exit receipt](evidence/moat-2026-10-02/release-build-result.json), [promotion receipt](evidence/moat-2026-10-02/release-promotion.log), [live target metadata](evidence/moat-2026-10-02/release-production-config.json).
+
+The owner explicitly approved transferring the existing scoped URI to sensitive server-only Vercel Production `MONGODB_URI`, setting `MONGODB_DB=proofline`, and adding Atlas `0.0.0.0/0` for Vercel's dynamic outbound IPs. The rule is Active; credentials and TLS remain required. No paid service was added. [Applied network rule](evidence/moat-2026-10-02/release-atlas-network-applied.png). `.vercelignore` excludes local data, credentials, caches, and verification artifacts from deployment uploads. Credentials were checked absent from tracked text before pushing.
+
+| Live check | Evidence |
+| --- | --- |
+| Production Atlas usable by Vercel | Signed-in `/app/calibration` completed the actual Atlas reads and index initialization, and rendered the five empty production buckets. This is separate from the synthetic test account's 48%/1-of-1 local result. [Screenshot](evidence/moat-2026-10-02/release-calibration.png), [rendered text](evidence/moat-2026-10-02/release-calibration-dom.txt). |
+| Tracker loads | Signed-in Applications renders its empty state and the calibration link. [Rendered text](evidence/moat-2026-10-02/release-tracker.txt). |
+| Existing real AI provider answers | Owner Check AI now returned resume review passed and fact wording answered through `gemini-3.5-flash-lite`, 0.7 seconds. This health check sends made-up data and is not a three-reviewer quality evaluation. [Result](evidence/moat-2026-10-02/release-ai-health.txt), [screenshot](evidence/moat-2026-10-02/release-ai-health.png). |
+| Public routes and authentication | Home, signup, login, privacy, check: 200. Signed-out calibration: 307 to login. Temporary public `/sentry-check`: 404. [HTTP receipt](evidence/moat-2026-10-02/release-smoke.json). |
+| Positioning and Sentry client config survive release | The home response contains 10 perfect applications and 300 autopilot submissions. Of 14 script assets checked, `/_next/static/immutable/chunks/1erxqlyeptq_n.js` contains the full public DSN. [Receipt](evidence/moat-2026-10-02/release-smoke.json). Original dashboard receipt remains documented under item 0. |
+| Runtime error scan | New deployment, error-level logs, 15-minute window: no logs found. [Scan](evidence/moat-2026-10-02/release-error-scan.log). This is a bounded scan, not a long-term stability claim. |
+
+The full local acceptance loop and its controlled reviewer/send tests below remain the evidence for outcome math, day-14 timing, contact verification, gate edits and touch persistence. No real outreach/follow-up email was sent during release verification; real delivery is not claimed.
+
 ## Item 0: production fix deployed, dashboard receipt confirmed
 
 - Production deployment: `dpl_CGFjTF6wMRux7eYZc4WuH3y7nF4p`, READY, https://proofline-beta.vercel.app.
@@ -9,7 +26,7 @@
 - Browser test clicked on production: `Proofline safe browser verification`, event ID `e315d0e1935a415097f9ab91614803f2`; SDK transport finished. This is not dashboard receipt.
 - Dashboard receipt confirmed after the owner restored browser control: issue `PROOFLINE-1`, environment `production`, tag `operation=monitoring.browser-check`, `synthetic=true`, and the production page URL. [Exact event receipt](https://christian-brinkley.sentry.io/issues/7768334297/events/e315d0e1935a415097f9ab91614803f2/?project=4512183107190784).
 - There are no Sentry tunnel references in the source configuration. Direct ingestion is used; `/monitoring` is unused.
-- The temporary public `/sentry-check` page has been removed from source after receipt; removal will ship with the next deployment. The durable test control is available only on the existing owner page.
+- The temporary public `/sentry-check` page was removed after receipt and is now 404 in the release above. The durable test control is available only on the existing owner page.
 - Full tests: 111 files, 1,481 tests passed. Typecheck, lint, local production build and Vercel production build passed.
 
 ## Item 1: Atlas prediction and outcome loop verified locally
@@ -66,6 +83,6 @@ Test/typecheck/lint exit receipts: [check-results.json](evidence/moat-2026-10-02
 
 The evening continuation restored the already-authorized current-computer IP after a network change. OneDrive read-only attributes prevented the local acceptance database reopening; its stale lock was preserved and folder attributes corrected without ACL changes or database reset. [Recovery diagnostic](evidence/moat-2026-10-02/local-db-reopen-restored.log), [Atlas network evidence](evidence/moat-2026-10-02/atlas-current-ip-restored.png). The main application's original records and receipts remain intact.
 
-Item 0 is live. Items 1-3 are implemented and verified locally, **not deployed**. Before a production release, configure `MONGODB_URI` and `MONGODB_DB=proofline` in the Vercel Production environment and provide an authorized Atlas network path for Vercel. Local current-IP access is not a production network configuration. Passing gates now require Atlas, so deploying without that configuration would block them. Existing production review/email providers must also be verified in the released environment. No paid service was added. No B2B, pricing, marketing integration, or mobile work was included.
+Items 0-3 were subsequently released with the explicitly approved production Atlas configuration and network rule, as recorded at the top. The existing real AI provider answered its synthetic health sample; the email provider's configuration is present, but real delivery was not exercised. No paid service was added. No B2B, pricing, marketing integration, or mobile work was included.
 
 Reproduce the local acceptance server with ignored local Atlas configuration: `node scripts/start-moat-verification.mjs`; capture Atlas evidence with `node scripts/capture-moat-atlas.mjs`. For the timing check only, set `MOAT_VERIFICATION_ADVANCE_DAYS=14` before starting the harness. The synthetic provider preload refuses to run outside the named verification database and synthetic email key. It is never imported by the application.

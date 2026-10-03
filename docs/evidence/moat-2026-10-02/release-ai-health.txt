@@ -1,0 +1,49 @@
+Owner
+
+Only accounts in OWNER_EMAILS see this page. Testers' messages, reset requests, and the checks that keep the beta working.
+
+System checks
+AI review
+Key is set. Downloads wait for this review.
+Check AI now
+
+Resume review: Answered (passed the sample resume).
+
+Fact wording: Answered: "Caught 3 billing errors in one month by reconciling 40 daily patient payments using an Excel tracker I built"
+
+gemini-3.5-flash-lite, 0.7s. Made-up data only; no tester's allowance was used.
+
+Password-reset email
+Resend is set up; testers get their own reset links.
+Send me a test email
+Find jobs
+1,551 open listings, newest Oct 2, 6:36 AM.
+Browser error reporting
+
+Send a fixed synthetic error, then confirm its event ID in the Proofline Sentry project.
+
+Send safe browser test
+
+Alerts
+
+Problems the daily checks found. The AI check runs at 9:00 UTC.
+
+Nothing has failed.
+
+Password resets waiting for you
+
+Email is set up, so new requests go straight to the tester. Older ones stay here.
+
+No reset requests in the last 72 hours.
+
+Feedback
+
+From the Send feedback button in the app, newest first.
+
+No feedback yet.
+
+Contact form
+
+From the public Contact page.
+
+No messages yet.

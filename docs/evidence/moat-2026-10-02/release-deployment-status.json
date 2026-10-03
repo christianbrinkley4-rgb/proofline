@@ -1,0 +1,29 @@
+{
+  "id": "dpl_26T79osdEcDpQok86Bf2LmSLciDy",
+  "url": "proofline-beta-drxxz3qho-christianbrinkley4-5140s-projects.vercel.app",
+  "readyState": "READY",
+  "target": "production",
+  "createdAt": 1790988485694,
+  "buildingAt": 1790988487814,
+  "ready": 1790988530795,
+  "alias": [
+    "proofline-beta-christianbrinkley4-5140s-projects.vercel.app"
+  ],
+  "meta": {
+    "githubCommitAuthorName": "Christian Brinkley",
+    "githubCommitAuthorEmail": "christianbrinkley4@gmail.com",
+    "githubCommitMessage": "Exclude local data and verification artifacts from Vercel uploads",
+    "githubCommitOrg": "christianbrinkley4-rgb",
+    "githubCommitRef": "main",
+    "githubCommitRepo": "proofline",
+    "githubCommitSha": "78d0d4520909fdb2b7a3446d6b3dd20fd29374e9",
+    "githubDeployment": "1",
+    "githubOrg": "christianbrinkley4-rgb",
+    "githubRepo": "proofline",
+    "gitDirty": "1",
+    "gitRootDirectory": "",
+    "actor": "codex",
+    "lambdaRuntimeStats": "{\"nodejs\":7}",
+    "bundler": "turbopack"
+  }
+}
